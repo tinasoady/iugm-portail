@@ -1,4 +1,3 @@
-// @ts-expect-error - le client Prisma sera généré par `prisma generate`
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";

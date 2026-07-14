@@ -16,11 +16,84 @@ enum Role {
 
 // Table centrale pour la gestion de l'authentification et des profils
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
+  id           String     @id @default(cuid())
+  email        String     @unique
   passwordHash String
-  role         Role     @default(ETUDIANT)
+  role         Role       @default(ETUDIANT)
   fullName     String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  auditLogs    AuditLog[]
+  // Dossier étudiant lié si ce compte a été créé via la validation pédagogique
+  studentFile  Student?
+}
+
+// Workflow d'inscription d'un étudiant
+enum StudentStatus {
+  ENREGISTRE // dossier créé par l'agent d'administration
+  PAIEMENT_VERIFIE // reçu bancaire vérifié
+  ADMIN_VALIDEE // inscription administrative validée
+  INSCRIT // inscription pédagogique validée, compte étudiant créé
+}
+
+// Dossier étudiant géré par les agents (distinct du compte de connexion User)
+model Student {
+  id            String        @id @default(cuid())
+  matricule     String        @unique
+  fullName      String
+  birthDate     DateTime?
+  phone         String?
+  personalEmail String?
+  program       String // filière
+  level         String // niveau (L1, L2, M1...)
+  department    String? // département de rattachement de la filière
+  receiptNumber String? // numéro du reçu bancaire vérifié
+  status        StudentStatus @default(ENREGISTRE)
+  // Compte de connexion créé automatiquement à la validation pédagogique
+  account       User?            @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  accountId     String?          @unique
+  results       AcademicResult[]
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@index([fullName])
+  @@index([status])
+}
+
+// Mention calculée automatiquement à partir de la moyenne (/20)
+enum Mention {
+  ECHEC // < 10
+  PASSABLE // 10 à < 12
+  ASSEZ_BIEN // 12 à < 14
+  BIEN // 14 à < 16
+  TRES_BIEN // >= 16
+}
+
+// Résultat académique assigné par l'agent pédagogique
+model AcademicResult {
+  id           String   @id @default(cuid())
+  student      Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId    String
+  academicYear String // ex: "2025-2026"
+  semester     String // "S1", "S2"...
+  average      Float // moyenne sur 20
+  mention      Mention
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  @@unique([studentId, academicYear, semester])
+  @@index([mention])
+}
+
+// Journal des actions sensibles (connexions, créations de comptes, etc.)
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String // ex: LOGIN_SUCCESS, LOGIN_FAILED, USER_CREATED
+  details   String? // contexte lisible (email ciblé, rôle attribué, etc.)
+  // L'acteur est optionnel : un LOGIN_FAILED n'a pas d'utilisateur identifié
+  actor     User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  actorId   String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }

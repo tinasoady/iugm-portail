@@ -1,28 +1,9 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import crypto from "crypto";
+import bcrypt from "bcryptjs";
 
 import { prisma } from "@/lib/prisma";
-
-function timingSafeEqual(a: Buffer, b: Buffer) {
-  if (a.length !== b.length) return false;
-  return crypto.timingSafeEqual(a, b);
-}
-
-function verifyPassword(password: string, passwordHash: string) {
-  // format attendu: pbkdf2$<iterations>$<saltHex>$<hashHex>
-  const [algo, iterStr, saltHex, hashHex] = passwordHash.split("$");
-  if (algo !== "pbkdf2" || !iterStr || !saltHex || !hashHex) return false;
-
-  const iterations = Number(iterStr);
-  if (!Number.isFinite(iterations) || iterations <= 0) return false;
-
-  const salt = Buffer.from(saltHex, "hex");
-  const expected = Buffer.from(hashHex, "hex");
-
-  const derived = crypto.pbkdf2Sync(password, salt, iterations, expected.length, "sha512");
-  return timingSafeEqual(derived, expected);
-}
+import { createSessionToken, SESSION_COOKIE, SESSION_MAX_AGE } from "@/lib/auth";
+import { logAction } from "@/lib/audit";
 
 export async function POST(req: Request) {
   try {
@@ -34,56 +15,51 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Champs manquants" }, { status: 400 });
     }
 
-    const user = await prisma.personnel.findUnique({
+    const user = await prisma.user.findUnique({
       where: { email },
       select: { id: true, email: true, role: true, passwordHash: true },
     });
 
     if (!user) {
+      await logAction("LOGIN_FAILED", `Email inconnu : ${email}`);
       return NextResponse.json({ error: "Identifiants invalides" }, { status: 401 });
     }
 
-    const ok = verifyPassword(password, user.passwordHash);
+    // Le seed et la page admin hashent les mots de passe avec bcrypt (bcryptjs)
+    const ok = await bcrypt.compare(password, user.passwordHash);
     if (!ok) {
+      await logAction("LOGIN_FAILED", `Mot de passe erroné pour ${email}`, user.id);
       return NextResponse.json({ error: "Identifiants invalides" }, { status: 401 });
     }
 
-    const authSecret = process.env.AUTH_SECRET;
-    if (!authSecret) {
-      return NextResponse.json({ error: "Configuration AUTH_SECRET manquante" }, { status: 500 });
-    }
-
-    // session token signé (simple) : base64(payload).signature
-    const payload = {
+    const token = createSessionToken({
       sub: user.id,
       email: user.email,
       role: user.role,
-      iat: Math.floor(Date.now() / 1000),
+    });
+
+    await logAction("LOGIN_SUCCESS", `Connexion de ${user.email}`, user.id);
+
+    // Chaque rôle arrive directement sur son tableau de bord
+    const HOME_BY_ROLE: Record<string, string> = {
+      SUPERADMIN: "/admin",
+      AGENT_ADMINISTRATION: "/agent-admin",
+      AGENT_PEDAGOGIQUE: "/agent-pedagogique",
     };
+    const destination = HOME_BY_ROLE[user.role] ?? "/";
+    const res = NextResponse.redirect(new URL(destination, req.url), 303);
 
-    const payloadB64 = Buffer.from(JSON.stringify(payload)).toString("base64url");
-    const sig = crypto
-      .createHmac("sha256", authSecret)
-      .update(payloadB64)
-      .digest("hex");
-
-    const token = `${payloadB64}.${sig}`;
-
-    // Redirect vers une page future (pour l’instant /)
-    const redirectUrl = new URL("/", req.url);
-    const res = NextResponse.redirect(redirectUrl);
-
-    res.cookies.set("iugm_session", token, {
+    res.cookies.set(SESSION_COOKIE, token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
-      maxAge: 60 * 60 * 8, // 8h
+      maxAge: SESSION_MAX_AGE,
     });
 
     return res;
   } catch (e) {
+    console.error("Erreur /api/auth/login :", e);
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
   }
 }
-
