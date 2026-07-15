@@ -38,26 +38,87 @@ enum StudentStatus {
 
 // Dossier étudiant géré par les agents (distinct du compte de connexion User)
 model Student {
-  id            String        @id @default(cuid())
-  matricule     String        @unique
-  fullName      String
+  id           String  @id @default(cuid())
+  matricule    String  @unique // format FI2026-1 (FI + année d'inscription + n° séquentiel)
+  academicYear String? // année universitaire de rattachement, ex "2026-2027"
+
+  // Identité
+  fullName      String // "NOM Prénom" (affichage et compatibilité)
+  lastName      String?
+  firstName     String?
+  gender        String? // "M" | "F"
   birthDate     DateTime?
+  birthPlace    String?
+  motherName    String?
+  fatherName    String?
+  nationality   String? // "Malagasy" | "Étranger"
+  maritalStatus String? // situation familiale : Célibataire | Marié(e) | Salarié(e)
+
+  // Carte d'identité nationale
+  cin           String?
+  cinIssueDate  DateTime?
+  cinIssuePlace String?
+
+  // Renseignements sur le baccalauréat
+  baccNumber         String? // numéro du bacc
+  baccYear           String? // année d'obtention
+  baccSeries         String? // série
+  baccMention        String? // mention obtenue au bacc
+  baccCenter         String? // centre d'examen
+  baccCountry        String? // pays
+  previousSchool     String? // établissement d'origine
+  previousUniversity String? // inscription antérieure à l'université
+  repeatCode         String? // hérité : N = nouveau, R = redoublant, T = triplant
+
+  // Contact
+  address       String? // adresse exacte de l'étudiant
   phone         String?
   personalEmail String?
-  program       String // filière
-  level         String // niveau (L1, L2, M1...)
-  department    String? // département de rattachement de la filière
+
+  // Parents
+  parentsPhone   String?
+  parentsAddress String?
+  parentsCity    String?
+
+  // Personne à contacter d'urgence (obligatoire pour chaque étudiant)
+  guardianName    String?
+  guardianPhone   String?
+  guardianAddress String?
+
+  // Pièces du dossier (cochées par l'agent à la réception)
+  docResidenceCert    Boolean @default(false) // certificat de résidence
+  docCinCopy          Boolean @default(false) // copie légalisée CIN / acte d'état civil (mineur)
+  docParentCin        Boolean @default(false) // CIN légalisée du parent
+  docPhotos           Boolean @default(false) // 4 photos d'identité récentes
+  docPinkFolder       Boolean @default(false) // papier chemise rose
+  docPaymentSlip      Boolean @default(false) // bordereau de versement
+  docEngagementLetter Boolean @default(false) // lettre d'engagement co-signée
+
+  // Cursus
+  domain       String? // domaine
+  mention      String? // mention du cursus
+  track        String? // parcours
+  trainingType String? // type de formation
+  program      String? // hérité : filière (alimenté avec la mention)
+  level        String? // hérité : niveau
+  department   String? // hérité : département (alimenté avec le domaine)
+
   receiptNumber String? // numéro du reçu bancaire vérifié
+  conduct       String? // appréciation de conduite (rédigée par l'agent pédagogique)
   status        StudentStatus @default(ENREGISTRE)
   // Compte de connexion créé automatiquement à la validation pédagogique
-  account       User?            @relation(fields: [accountId], references: [id], onDelete: SetNull)
-  accountId     String?          @unique
+  account         User?   @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  accountId       String? @unique
+  // Mot de passe initial du compte, imprimé sur le reçu d'inscription pour être
+  // remis à l'étudiant (à changer par l'étudiant à sa première connexion)
+  initialPassword String?
   results       AcademicResult[]
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
 
   @@index([fullName])
   @@index([status])
+  @@index([academicYear])
 }
 
 // Mention calculée automatiquement à partir de la moyenne (/20)
@@ -83,6 +144,22 @@ model AcademicResult {
 
   @@unique([studentId, academicYear, semester])
   @@index([mention])
+}
+
+// Paramètres de l'établissement (clé/valeur) : nom, adresse, logo (data URL), etc.
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+// Tarifs configurables par le superadmin (droits d'inscription, scolarité...)
+model Tariff {
+  id        String   @id @default(cuid())
+  label     String
+  amount    Int // montant en ariary
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // Journal des actions sensibles (connexions, créations de comptes, etc.)

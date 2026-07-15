@@ -7,7 +7,6 @@ import { AppShell } from "@/app/ui/app-shell";
 import { StatCard } from "@/app/ui/stat-card";
 import { IconFolder, IconClipboard, IconShield, IconCap } from "@/app/ui/icons";
 import { STATUS_LABELS, STATUS_BADGE_CLASSES } from "@/app/ui/student-status";
-import { RegisterStudentForm } from "./register-form";
 import { DossierActions } from "./dossier-actions";
 import { ImportCsvForm } from "./import-form";
 
@@ -72,11 +71,20 @@ export default async function AgentAdminPage({
         <div className="grid gap-8 lg:grid-cols-[minmax(0,380px)_1fr]">
           {/* Colonne gauche : enregistrement + CSV */}
           <div className="space-y-8">
-            <section className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-black">
-              <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-                Enregistrer un nouvel étudiant
+            <section className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-zinc-900">
+              <h2 className="mb-1 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+                Nouvelle inscription
               </h2>
-              <RegisterStudentForm />
+              <p className="mb-4 text-xs text-zinc-500 dark:text-zinc-400">
+                Formulaire complet étape par étape : identité, CIN, études antérieures, contact et
+                cursus. Le matricule (FI{new Date().getFullYear()}-n) est généré automatiquement.
+              </p>
+              <a
+                href="/agent-admin/inscription"
+                className="inline-block rounded-xl bg-linear-to-r from-indigo-600 to-violet-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md transition hover:from-indigo-500 hover:to-violet-500"
+              >
+                + Inscrire un étudiant
+              </a>
             </section>
 
             <section className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-black">
@@ -142,10 +150,15 @@ export default async function AgentAdminPage({
                       <tr key={s.id} className="border-b border-black/5 last:border-0 dark:border-white/5">
                         <td className="py-2.5 pr-4 whitespace-nowrap font-mono text-xs text-zinc-600 dark:text-zinc-400">
                           {s.matricule}
+                          {s.academicYear && (
+                            <span className="block text-[10px] text-zinc-400 dark:text-zinc-500">
+                              {s.academicYear}
+                            </span>
+                          )}
                         </td>
                         <td className="py-2.5 pr-4 text-zinc-900 dark:text-zinc-50">{s.fullName}</td>
                         <td className="py-2.5 pr-4 text-zinc-600 dark:text-zinc-400">
-                          {s.program} — {s.level}
+                          {[s.program, s.level ?? s.track].filter(Boolean).join(" — ") || "—"}
                         </td>
                         <td className="py-2.5 pr-4 whitespace-nowrap text-zinc-600 dark:text-zinc-400">
                           {dateFormatter.format(s.createdAt)}

@@ -133,7 +133,7 @@ export default async function AgentPedagogiquePage({
                       </td>
                       <td className="py-2.5 pr-4 text-zinc-900 dark:text-zinc-50">{s.fullName}</td>
                       <td className="py-2.5 pr-4 text-zinc-600 dark:text-zinc-400">
-                        {s.program} — {s.level}
+                        {[s.program, s.level ?? s.track].filter(Boolean).join(" — ") || "—"}
                       </td>
                       <td className="py-2.5 pr-4 font-mono text-xs text-zinc-600 dark:text-zinc-400">
                         {s.receiptNumber ?? "—"}
@@ -224,7 +224,7 @@ export default async function AgentPedagogiquePage({
                       </td>
                       <td className="py-2.5 pr-4 text-zinc-900 dark:text-zinc-50">{s.fullName}</td>
                       <td className="py-2.5 pr-4 text-zinc-600 dark:text-zinc-400">
-                        {s.program} — {s.level}
+                        {[s.program, s.level ?? s.track].filter(Boolean).join(" — ") || "—"}
                         {s.department ? ` (${s.department})` : ""}
                       </td>
                       <td className="py-2.5 pr-4">
@@ -308,7 +308,7 @@ export default async function AgentPedagogiquePage({
                       </td>
                       <td className="py-2.5 pr-4 text-zinc-900 dark:text-zinc-50">{s.fullName}</td>
                       <td className="py-2.5 pr-4 text-zinc-600 dark:text-zinc-400">
-                        {s.program} — {s.level}
+                        {[s.program, s.level ?? s.track].filter(Boolean).join(" — ") || "—"}
                       </td>
                       <td className="py-2.5">
                         <span className={STATUS_BADGE_CLASSES[s.status]}>

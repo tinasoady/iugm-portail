@@ -38,6 +38,9 @@ const ACTION_LABELS: Record<string, string> = {
   CSV_IMPORTED: "Import CSV",
   RESULT_ASSIGNED: "Résultat assigné",
   INSCRIPTION_RECEIPT_PRINTED: "Reçu d'inscription imprimé",
+  STUDENT_DELETED: "Dossier supprimé",
+  STUDENT_UPDATED: "Dossier modifié",
+  SETTINGS_UPDATED: "Paramètres modifiés",
 };
 
 const dateFormatter = new Intl.DateTimeFormat("fr-FR", {

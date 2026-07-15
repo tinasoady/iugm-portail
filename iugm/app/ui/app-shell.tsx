@@ -2,7 +2,18 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { logout } from "@/app/auth-actions";
-import { IconDashboard, IconFolder, IconCap, IconBell, IconLogout } from "./icons";
+import { getSettings } from "@/lib/settings";
+import {
+  IconDashboard,
+  IconFolder,
+  IconCap,
+  IconBell,
+  IconLogout,
+  IconClipboard,
+  IconUsers,
+  IconGear,
+} from "./icons";
+import { ThemeToggle } from "./theme-toggle";
 
 const ROLE_LABELS: Record<string, string> = {
   SUPERADMIN: "Super administrateur",
@@ -32,10 +43,28 @@ const NAV_ITEMS: NavItem[] = [
     roles: ["SUPERADMIN", "AGENT_ADMINISTRATION"],
   },
   {
+    href: "/agent-admin/inscription",
+    label: "Inscription",
+    icon: <IconClipboard />,
+    roles: ["SUPERADMIN", "AGENT_ADMINISTRATION"],
+  },
+  {
     href: "/agent-pedagogique",
     label: "Pédagogie",
     icon: <IconCap />,
     roles: ["SUPERADMIN", "AGENT_PEDAGOGIQUE"],
+  },
+  {
+    href: "/etudiants",
+    label: "Liste étudiants",
+    icon: <IconUsers />,
+    roles: ["SUPERADMIN", "AGENT_ADMINISTRATION", "AGENT_PEDAGOGIQUE"],
+  },
+  {
+    href: "/admin/parametres",
+    label: "Paramètres",
+    icon: <IconGear />,
+    roles: ["SUPERADMIN"],
   },
 ];
 
@@ -47,8 +76,9 @@ function initials(email: string): string {
   return chars.toUpperCase();
 }
 
-// Coquille commune : sidebar verticale sombre + barre supérieure + contenu
-export function AppShell({
+// Coquille commune : sidebar verticale sombre + barre supérieure + contenu.
+// Composant serveur asynchrone : il lit les paramètres (logo, nom) en base.
+export async function AppShell({
   email,
   role,
   title,
@@ -62,17 +92,29 @@ export function AppShell({
   children: ReactNode;
 }) {
   const nav = NAV_ITEMS.filter((item) => item.roles.includes(role));
+  const settings = await getSettings();
 
   return (
     <div className="min-h-screen bg-zinc-100 dark:bg-zinc-950">
       {/* Sidebar */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col bg-zinc-950 md:flex">
         <div className="flex items-center gap-3 px-6 py-6">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-linear-to-br from-indigo-500 to-violet-600 text-sm font-bold text-white shadow-lg">
-            IU
-          </div>
+          {settings.logo ? (
+            // eslint-disable-next-line @next/next/no-img-element -- data URL, next/image inutile ici
+            <img
+              src={settings.logo}
+              alt={`Logo ${settings.institutionAcronym}`}
+              className="h-10 w-10 rounded-xl bg-white object-contain p-0.5 shadow-lg"
+            />
+          ) : (
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-linear-to-br from-indigo-500 to-violet-600 text-sm font-bold text-white shadow-lg">
+              IU
+            </div>
+          )}
           <div>
-            <p className="text-sm font-bold tracking-wide text-white">IUGM</p>
+            <p className="text-sm font-bold tracking-wide text-white">
+              {settings.institutionAcronym}
+            </p>
             <p className="text-[11px] text-zinc-400">Gestion de scolarité</p>
           </div>
         </div>
@@ -121,7 +163,8 @@ export function AppShell({
             <h1 className="truncate text-lg font-semibold text-zinc-900 dark:text-zinc-50">
               {title}
             </h1>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <ThemeToggle />
               <span className="hidden rounded-full p-2 text-zinc-400 sm:block dark:text-zinc-500">
                 <IconBell />
               </span>

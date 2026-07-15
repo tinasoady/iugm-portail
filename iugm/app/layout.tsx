@@ -17,6 +17,10 @@ export const metadata: Metadata = {
   description: "Système Cloud de Gestion des Inscriptions et de la Scolarité Universitaire",
 };
 
+// Applique le thème avant le premier rendu pour éviter le flash clair/sombre.
+// Préférence enregistrée dans localStorage("theme"), sinon préférence système.
+const themeInitScript = `(function(){try{var t=localStorage.getItem("theme");var d=t==="dark"||(!t&&window.matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.classList.toggle("dark",d);}catch(e){}})();`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -24,10 +28,14 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="fr"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        {children}
+      </body>
     </html>
   );
 }

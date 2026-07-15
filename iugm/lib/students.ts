@@ -10,13 +10,20 @@ export const STUDENT_EMAIL_DOMAIN = "student.iugm.edu";
 // Helpers
 // ---------------------------------------------------------------------------
 
-// Génère un matricule lisible et unique, ex: IUGM-2026-0007
-async function nextMatricule(): Promise<string> {
-  const year = new Date().getFullYear();
-  const prefix = `IUGM-${year}-`;
+// Année universitaire d'inscription par défaut : 2026 -> "2026-2027"
+export function defaultEnrollmentYear(): string {
+  const y = new Date().getFullYear();
+  return `${y}-${y + 1}`;
+}
+
+// Génère un matricule unique au format FI2026-1, FI2026-2...
+// (FI + année de début de l'année universitaire + numéro séquentiel)
+async function nextMatricule(academicYear?: string): Promise<string> {
+  const startYear = (academicYear ?? defaultEnrollmentYear()).split("-")[0];
+  const prefix = `FI${startYear}-`;
   const count = await prisma.student.count({ where: { matricule: { startsWith: prefix } } });
   for (let seq = count + 1; ; seq++) {
-    const candidate = `${prefix}${String(seq).padStart(4, "0")}`;
+    const candidate = `${prefix}${seq}`;
     const exists = await prisma.student.findUnique({ where: { matricule: candidate } });
     if (!exists) return candidate;
   }
@@ -59,22 +66,81 @@ export function generatePassword(length = 10): string {
 // ---------------------------------------------------------------------------
 
 export type RegisterStudentInput = {
-  fullName: string;
-  program: string;
-  level: string;
-  department?: string | null;
-  birthDate?: Date | null;
-  phone?: string | null;
+  academicYear: string; // ex "2026-2027"
+  // 1. Renseignements sur l'étudiant
+  lastName: string;
+  firstName: string;
+  nationality: string; // Malagasy | Étranger
+  gender: string; // "M" | "F"
+  birthDate: Date;
+  birthPlace: string;
+  cin?: string | null;
+  cinIssueDate?: Date | null;
+  cinIssuePlace?: string | null;
+  phone: string;
   personalEmail?: string | null;
+  address: string;
+  maritalStatus: string; // Célibataire | Marié(e) | Salarié(e)
+  // 2. Renseignements sur le baccalauréat
+  baccNumber: string;
+  baccSeries: string;
+  baccMention: string;
+  baccYear: string;
+  baccCenter?: string | null;
+  baccCountry?: string | null;
+  previousSchool?: string | null;
+  previousUniversity?: string | null;
+  // 3. Renseignements sur les parents + personne à contacter d'urgence
+  fatherName?: string | null;
+  motherName?: string | null;
+  parentsPhone?: string | null;
+  parentsAddress?: string | null;
+  parentsCity?: string | null;
+  guardianName: string; // personne à contacter d'urgence (obligatoire)
+  guardianPhone: string;
+  guardianAddress?: string | null;
+  // 4. Inscription : formation choisie
+  mention: string;
+  // 5. Pièces du dossier
+  docResidenceCert: boolean;
+  docCinCopy: boolean;
+  docParentCin: boolean;
+  docPhotos: boolean;
+  docPinkFolder: boolean;
+  docPaymentSlip: boolean;
+  docEngagementLetter: boolean;
 };
 
-// 1. Agent d'administration : enregistre un nouvel étudiant
+// 1. Agent d'administration : enregistre un nouvel étudiant (inscription administrative).
+//    Le matricule FI{année}-{n} est généré automatiquement.
 export async function registerStudent(input: RegisterStudentInput, actorId: string) {
-  const matricule = await nextMatricule();
+  if (!/^\d{4}-\d{4}$/.test(input.academicYear)) {
+    throw new Error("Année universitaire invalide (format attendu : 2026-2027).");
+  }
+  if (!["M", "F"].includes(input.gender)) {
+    throw new Error("Sexe invalide (M ou F).");
+  }
+  if (!input.guardianName || !input.guardianPhone) {
+    throw new Error("La personne à contacter d'urgence est obligatoire.");
+  }
+
+  const matricule = await nextMatricule(input.academicYear);
+  const fullName = `${input.lastName.toUpperCase()} ${input.firstName}`;
+
   const student = await prisma.student.create({
-    data: { ...input, matricule },
+    data: {
+      ...input,
+      matricule,
+      fullName,
+      // Champ hérité, alimenté pour les filtres et listes existants
+      program: input.mention,
+    },
   });
-  await logAction("STUDENT_REGISTERED", `Dossier ${matricule} créé pour ${input.fullName}`, actorId);
+  await logAction(
+    "STUDENT_REGISTERED",
+    `Dossier ${matricule} créé pour ${fullName} (${input.academicYear}) — formation ${input.mention}`,
+    actorId,
+  );
   return student;
 }
 
@@ -139,7 +205,8 @@ export async function validatePedagoInscription(studentId: string, actorId: stri
   });
   await prisma.student.update({
     where: { id: studentId },
-    data: { status: "INSCRIT", accountId: account.id },
+    // Le mot de passe initial est conservé pour être imprimé sur le reçu d'inscription
+    data: { status: "INSCRIT", accountId: account.id, initialPassword: password },
   });
 
   await logAction(
@@ -268,6 +335,101 @@ export async function listInscrits(filters: InscritsFilters = {}) {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Liste générale des étudiants (recherche / tri / classement par année)
+// ---------------------------------------------------------------------------
+
+const SORTABLE_FIELDS = {
+  nom: "fullName",
+  matricule: "matricule",
+  statut: "status",
+  date: "createdAt",
+} as const;
+
+export type StudentSortKey = keyof typeof SORTABLE_FIELDS;
+
+export type StudentListParams = {
+  q?: string;
+  year?: string; // année universitaire, ex "2026-2027"
+  sort?: string;
+  dir?: string; // asc | desc
+};
+
+export async function listStudents(params: StudentListParams = {}) {
+  const q = params.q?.trim();
+  const sortField = SORTABLE_FIELDS[(params.sort as StudentSortKey) ?? "nom"] ?? "fullName";
+  const dir = params.dir === "desc" ? "desc" : "asc";
+
+  return prisma.student.findMany({
+    where: {
+      ...(params.year ? { academicYear: params.year } : {}),
+      ...(q
+        ? {
+            OR: [
+              { fullName: { contains: q, mode: "insensitive" } },
+              { matricule: { contains: q, mode: "insensitive" } },
+              { cin: { contains: q, mode: "insensitive" } },
+              { program: { contains: q, mode: "insensitive" } },
+              { track: { contains: q, mode: "insensitive" } },
+            ],
+          }
+        : {}),
+    },
+    orderBy: { [sortField]: dir },
+    include: {
+      account: { select: { email: true } },
+      // Nécessaire pour le classement par mention (dernier résultat en premier)
+      results: { orderBy: [{ academicYear: "desc" }, { semester: "desc" }] },
+    },
+  });
+}
+
+// Dossier complet d'un étudiant pour sa page de profil
+export async function getStudentProfile(studentId: string) {
+  return prisma.student.findUnique({
+    where: { id: studentId },
+    include: {
+      account: { select: { email: true, createdAt: true } },
+      results: { orderBy: [{ academicYear: "desc" }, { semester: "desc" }] },
+    },
+  });
+}
+
+// Années universitaires présentes en base, la plus récente en premier
+export async function getAcademicYears(): Promise<string[]> {
+  const rows = await prisma.student.findMany({
+    where: { academicYear: { not: null } },
+    select: { academicYear: true },
+    distinct: ["academicYear"],
+  });
+  return rows
+    .map((r) => r.academicYear)
+    .filter((y): y is string => !!y)
+    .sort()
+    .reverse();
+}
+
+// Supprime définitivement un dossier étudiant, ses résultats (cascade)
+// et son compte de connexion s'il existe
+export async function deleteStudent(studentId: string, actorId: string) {
+  const student = await prisma.student.findUnique({ where: { id: studentId } });
+  if (!student) throw new Error("Dossier introuvable.");
+
+  await prisma.student.delete({ where: { id: studentId } });
+  if (student.accountId) {
+    await prisma.user.delete({ where: { id: student.accountId } }).catch(() => {
+      // compte déjà supprimé : sans incidence
+    });
+  }
+
+  await logAction(
+    "STUDENT_DELETED",
+    `Dossier ${student.matricule} (${student.fullName}) supprimé${student.accountId ? ", compte de connexion inclus" : ""}`,
+    actorId,
+  );
+  return student;
+}
+
 // Valeurs distinctes pour alimenter les listes déroulantes de filtres
 export async function getFilterOptions() {
   const rows = await prisma.student.findMany({
@@ -275,7 +437,7 @@ export async function getFilterOptions() {
     select: { program: true, department: true },
     distinct: ["program", "department"],
   });
-  const programs = [...new Set(rows.map((r) => r.program))].sort();
+  const programs = [...new Set(rows.map((r) => r.program).filter((p): p is string => !!p))].sort();
   const departments = [...new Set(rows.map((r) => r.department).filter((d): d is string => !!d))].sort();
   return { programs, departments };
 }
@@ -286,6 +448,7 @@ export async function getFilterOptions() {
 
 const CSV_HEADER = [
   "matricule",
+  "academicYear",
   "fullName",
   "birthDate",
   "phone",
@@ -311,12 +474,13 @@ export async function exportStudentsCsv(actorId: string): Promise<string> {
     lines.push(
       [
         s.matricule,
+        s.academicYear ?? "",
         s.fullName,
         s.birthDate ? s.birthDate.toISOString().slice(0, 10) : "",
         s.phone ?? "",
         s.personalEmail ?? "",
-        s.program,
-        s.level,
+        s.program ?? "",
+        s.level ?? "",
         s.department ?? "",
         s.receiptNumber ?? "",
         s.status,
@@ -372,11 +536,11 @@ export async function importStudentsCsv(csv: string, actorId: string): Promise<I
 
   const header = parseCsvLine(lines[0]).map((h) => h.trim());
   const idx = (name: string) => header.indexOf(name);
-  if (idx("fullName") === -1 || idx("program") === -1 || idx("level") === -1) {
+  if (idx("fullName") === -1) {
     return {
       created: 0,
       updated: 0,
-      errors: ["Colonnes obligatoires manquantes : fullName, program, level."],
+      errors: ["Colonne obligatoire manquante : fullName."],
     };
   }
 
@@ -391,10 +555,8 @@ export async function importStudentsCsv(csv: string, actorId: string): Promise<I
 
     try {
       const fullName = get("fullName");
-      const program = get("program");
-      const level = get("level");
-      if (!fullName || !program || !level) {
-        result.errors.push(`Ligne ${i + 1} : fullName, program et level sont obligatoires.`);
+      if (!fullName) {
+        result.errors.push(`Ligne ${i + 1} : fullName est obligatoire.`);
         continue;
       }
 
@@ -409,10 +571,12 @@ export async function importStudentsCsv(csv: string, actorId: string): Promise<I
         continue;
       }
 
+      const academicYearRaw = get("academicYear");
       const data = {
         fullName,
-        program,
-        level,
+        academicYear: /^\d{4}-\d{4}$/.test(academicYearRaw) ? academicYearRaw : null,
+        program: get("program") || null,
+        level: get("level") || null,
         department: get("department") || null,
         birthDate,
         phone: get("phone") || null,

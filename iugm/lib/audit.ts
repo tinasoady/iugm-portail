@@ -14,7 +14,10 @@ export type AuditAction =
   | "CSV_EXPORTED"
   | "CSV_IMPORTED"
   | "RESULT_ASSIGNED"
-  | "INSCRIPTION_RECEIPT_PRINTED";
+  | "INSCRIPTION_RECEIPT_PRINTED"
+  | "STUDENT_DELETED"
+  | "STUDENT_UPDATED"
+  | "SETTINGS_UPDATED";
 
 export async function logAction(action: AuditAction, details?: string, actorId?: string | null) {
   try {

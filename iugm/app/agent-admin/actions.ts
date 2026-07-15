@@ -3,12 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { getSession } from "@/lib/auth";
-import {
-  registerStudent,
-  verifyReceipt,
-  validateAdminInscription,
-  importStudentsCsv,
-} from "@/lib/students";
+import { verifyReceipt, validateAdminInscription, importStudentsCsv } from "@/lib/students";
 
 export type ActionState = { success?: string; error?: string };
 
@@ -19,46 +14,6 @@ async function requireAgentAdmin() {
     return null;
   }
   return session;
-}
-
-export async function registerStudentAction(
-  _prev: ActionState,
-  formData: FormData,
-): Promise<ActionState> {
-  const session = await requireAgentAdmin();
-  if (!session) return { error: "Accès refusé." };
-
-  const fullName = String(formData.get("fullName") ?? "").trim();
-  const program = String(formData.get("program") ?? "").trim();
-  const level = String(formData.get("level") ?? "").trim();
-  const department = String(formData.get("department") ?? "").trim();
-  const phone = String(formData.get("phone") ?? "").trim();
-  const personalEmail = String(formData.get("personalEmail") ?? "").trim();
-  const birthDateRaw = String(formData.get("birthDate") ?? "").trim();
-
-  if (!fullName || !program || !level) {
-    return { error: "Nom, filière et niveau sont obligatoires." };
-  }
-  const birthDate = birthDateRaw ? new Date(birthDateRaw) : null;
-  if (birthDate && Number.isNaN(birthDate.getTime())) {
-    return { error: "Date de naissance invalide." };
-  }
-
-  const student = await registerStudent(
-    {
-      fullName,
-      program,
-      level,
-      department: department || null,
-      birthDate,
-      phone: phone || null,
-      personalEmail: personalEmail || null,
-    },
-    session.sub,
-  );
-
-  revalidatePath("/agent-admin");
-  return { success: `Dossier créé : ${student.fullName} — matricule ${student.matricule}.` };
 }
 
 export async function verifyReceiptAction(
