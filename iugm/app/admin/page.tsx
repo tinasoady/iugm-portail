@@ -25,24 +25,6 @@ const ROLE_BADGE_CLASSES: Record<string, string> = {
     "rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-300",
 };
 
-const ACTION_LABELS: Record<string, string> = {
-  LOGIN_SUCCESS: "Connexion réussie",
-  LOGIN_FAILED: "Connexion échouée",
-  USER_CREATED: "Compte créé",
-  LOGOUT: "Déconnexion",
-  STUDENT_REGISTERED: "Étudiant enregistré",
-  RECEIPT_VERIFIED: "Reçu bancaire vérifié",
-  ADMIN_INSCRIPTION_VALIDATED: "Inscr. administrative validée",
-  PEDAGO_INSCRIPTION_VALIDATED: "Inscr. pédagogique validée",
-  CSV_EXPORTED: "Export CSV",
-  CSV_IMPORTED: "Import CSV",
-  RESULT_ASSIGNED: "Résultat assigné",
-  INSCRIPTION_RECEIPT_PRINTED: "Reçu d'inscription imprimé",
-  STUDENT_DELETED: "Dossier supprimé",
-  STUDENT_UPDATED: "Dossier modifié",
-  SETTINGS_UPDATED: "Paramètres modifiés",
-};
-
 const dateFormatter = new Intl.DateTimeFormat("fr-FR", {
   dateStyle: "short",
   timeStyle: "medium",
@@ -72,15 +54,10 @@ export default async function AdminPage() {
   if (!session) redirect("/login");
   if (session.role !== "SUPERADMIN") redirect("/");
 
-  const [users, logs, roleCounts] = await Promise.all([
+  const [users, roleCounts] = await Promise.all([
     prisma.user.findMany({
       orderBy: { createdAt: "desc" },
       select: { id: true, email: true, fullName: true, role: true, createdAt: true },
-    }),
-    prisma.auditLog.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 50,
-      include: { actor: { select: { email: true } } },
     }),
     prisma.user.groupBy({ by: ["role"], _count: { _all: true } }),
   ]);
@@ -188,57 +165,6 @@ export default async function AdminPage() {
         </section>
       </div>
 
-      {/* Journal d'audit */}
-      <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-zinc-900">
-        <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-          Journal des actions (50 dernières)
-        </h2>
-        {logs.length === 0 ? (
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            Aucune action enregistrée pour le moment.
-          </p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-black/10 text-xs uppercase tracking-wider text-zinc-400 dark:border-white/10 dark:text-zinc-500">
-                  <th className="py-2.5 pr-4 font-semibold">Date</th>
-                  <th className="py-2.5 pr-4 font-semibold">Action</th>
-                  <th className="py-2.5 pr-4 font-semibold">Auteur</th>
-                  <th className="py-2.5 font-semibold">Détails</th>
-                </tr>
-              </thead>
-              <tbody>
-                {logs.map((log) => (
-                  <tr
-                    key={log.id}
-                    className="border-b border-black/5 last:border-0 dark:border-white/5"
-                  >
-                    <td className="py-2.5 pr-4 whitespace-nowrap text-zinc-600 dark:text-zinc-400">
-                      {dateFormatter.format(log.createdAt)}
-                    </td>
-                    <td className="py-2.5 pr-4">
-                      <span
-                        className={
-                          log.action === "LOGIN_FAILED"
-                            ? "rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-medium text-red-700 dark:bg-red-950 dark:text-red-300"
-                            : "rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
-                        }
-                      >
-                        {ACTION_LABELS[log.action] ?? log.action}
-                      </span>
-                    </td>
-                    <td className="py-2.5 pr-4 text-zinc-600 dark:text-zinc-400">
-                      {log.actor?.email ?? "—"}
-                    </td>
-                    <td className="py-2.5 text-zinc-600 dark:text-zinc-400">{log.details ?? "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
     </AppShell>
   );
 }

@@ -197,11 +197,13 @@ export async function validatePedagoInscription(studentId: string, actorId: stri
   }
 
   const email = await availableStudentEmail(student.fullName);
-  const password = generatePassword();
+  // Le mot de passe initial est le numéro d'inscription (matricule) de l'étudiant
+  const password = student.matricule;
   const passwordHash = await bcrypt.hash(password, 10);
 
   const account = await prisma.user.create({
-    data: { email, fullName: student.fullName, role: "ETUDIANT", passwordHash },
+    // Mot de passe initial prévisible (matricule) : changement forcé à la première connexion
+    data: { email, fullName: student.fullName, role: "ETUDIANT", passwordHash, mustChangePassword: true },
   });
   await prisma.student.update({
     where: { id: studentId },
@@ -428,6 +430,65 @@ export async function deleteStudent(studentId: string, actorId: string) {
     actorId,
   );
   return student;
+}
+
+// ---------------------------------------------------------------------------
+// Gestion de l'écolage
+// ---------------------------------------------------------------------------
+
+// Un dossier est considéré payé dès que le reçu bancaire a été vérifié
+// (statut au-delà de ENREGISTRE)
+export type EcolageStats = {
+  total: number;
+  paid: number;
+  unpaid: number;
+  byFormation: Array<{ formation: string; paid: number; total: number }>;
+};
+
+export async function getEcolageStats(year?: string): Promise<EcolageStats> {
+  const students = await prisma.student.findMany({
+    where: year ? { academicYear: year } : {},
+    select: { status: true, mention: true, program: true },
+  });
+
+  const stats: EcolageStats = { total: students.length, paid: 0, unpaid: 0, byFormation: [] };
+  const formations = new Map<string, { paid: number; total: number }>();
+
+  for (const s of students) {
+    const isPaid = s.status !== "ENREGISTRE";
+    if (isPaid) stats.paid++;
+    else stats.unpaid++;
+
+    const formation = s.mention ?? s.program ?? "Formation non renseignée";
+    if (!formations.has(formation)) formations.set(formation, { paid: 0, total: 0 });
+    const f = formations.get(formation)!;
+    f.total++;
+    if (isPaid) f.paid++;
+  }
+
+  stats.byFormation = [...formations.entries()]
+    .map(([formation, f]) => ({ formation, ...f }))
+    .sort((a, b) => b.total - a.total);
+  return stats;
+}
+
+// Dossiers dont l'écolage n'est pas encore payé (pour relance)
+export async function listUnpaidStudents(year?: string) {
+  return prisma.student.findMany({
+    where: { status: "ENREGISTRE", ...(year ? { academicYear: year } : {}) },
+    orderBy: { createdAt: "asc" },
+    select: {
+      id: true,
+      matricule: true,
+      fullName: true,
+      phone: true,
+      guardianPhone: true,
+      mention: true,
+      program: true,
+      academicYear: true,
+      createdAt: true,
+    },
+  });
 }
 
 // Valeurs distinctes pour alimenter les listes déroulantes de filtres

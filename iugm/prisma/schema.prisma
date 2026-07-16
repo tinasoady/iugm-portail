@@ -19,6 +19,11 @@ model User {
   id           String     @id @default(cuid())
   email        String     @unique
   passwordHash String
+  // Force le changement de mot de passe à la prochaine connexion
+  // (vrai pour les comptes étudiants créés avec le matricule comme mot de passe)
+  mustChangePassword Boolean @default(false)
+  // Compte désactivé : connexion refusée (géré depuis la page Permissions)
+  active Boolean @default(true)
   role         Role       @default(ETUDIANT)
   fullName     String?
   createdAt    DateTime   @default(now())

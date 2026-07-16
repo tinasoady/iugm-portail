@@ -12,6 +12,8 @@ import {
   IconClipboard,
   IconUsers,
   IconGear,
+  IconCash,
+  IconShield,
 } from "./icons";
 import { ThemeToggle } from "./theme-toggle";
 
@@ -49,6 +51,12 @@ const NAV_ITEMS: NavItem[] = [
     roles: ["SUPERADMIN", "AGENT_ADMINISTRATION"],
   },
   {
+    href: "/agent-admin/ecolage",
+    label: "Gestion d'écolage",
+    icon: <IconCash />,
+    roles: ["SUPERADMIN", "AGENT_ADMINISTRATION"],
+  },
+  {
     href: "/agent-pedagogique",
     label: "Pédagogie",
     icon: <IconCap />,
@@ -61,10 +69,34 @@ const NAV_ITEMS: NavItem[] = [
     roles: ["SUPERADMIN", "AGENT_ADMINISTRATION", "AGENT_PEDAGOGIQUE"],
   },
   {
+    href: "/admin/permissions",
+    label: "Permissions",
+    icon: <IconShield />,
+    roles: ["SUPERADMIN"],
+  },
+  {
+    href: "/admin/journal",
+    label: "Journaux d'activité",
+    icon: <IconClipboard />,
+    roles: ["SUPERADMIN"],
+  },
+  {
     href: "/admin/parametres",
     label: "Paramètres",
     icon: <IconGear />,
     roles: ["SUPERADMIN"],
+  },
+  {
+    href: "/mon-profil",
+    label: "Mon profil",
+    icon: <IconUsers />,
+    roles: ["ETUDIANT"],
+  },
+  {
+    href: "/changer-mot-de-passe",
+    label: "Mot de passe",
+    icon: <IconGear />,
+    roles: ["ETUDIANT"],
   },
 ];
 

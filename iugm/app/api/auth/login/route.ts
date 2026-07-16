@@ -17,12 +17,27 @@ export async function POST(req: Request) {
 
     const user = await prisma.user.findUnique({
       where: { email },
-      select: { id: true, email: true, role: true, passwordHash: true },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        passwordHash: true,
+        mustChangePassword: true,
+        active: true,
+      },
     });
 
     if (!user) {
       await logAction("LOGIN_FAILED", `Email inconnu : ${email}`);
       return NextResponse.json({ error: "Identifiants invalides" }, { status: 401 });
+    }
+
+    if (!user.active) {
+      await logAction("LOGIN_FAILED", `Compte désactivé : ${email}`, user.id);
+      return NextResponse.json(
+        { error: "Compte désactivé. Contactez l'administration." },
+        { status: 403 },
+      );
     }
 
     // Le seed et la page admin hashent les mots de passe avec bcrypt (bcryptjs)
@@ -40,13 +55,17 @@ export async function POST(req: Request) {
 
     await logAction("LOGIN_SUCCESS", `Connexion de ${user.email}`, user.id);
 
-    // Chaque rôle arrive directement sur son tableau de bord
+    // Chaque rôle arrive directement sur son tableau de bord.
+    // Mot de passe initial prévisible : changement forcé avant tout accès.
     const HOME_BY_ROLE: Record<string, string> = {
       SUPERADMIN: "/admin",
       AGENT_ADMINISTRATION: "/agent-admin",
       AGENT_PEDAGOGIQUE: "/agent-pedagogique",
+      ETUDIANT: "/mon-profil",
     };
-    const destination = HOME_BY_ROLE[user.role] ?? "/";
+    const destination = user.mustChangePassword
+      ? "/changer-mot-de-passe"
+      : (HOME_BY_ROLE[user.role] ?? "/");
     const res = NextResponse.redirect(new URL(destination, req.url), 303);
 
     res.cookies.set(SESSION_COOKIE, token, {

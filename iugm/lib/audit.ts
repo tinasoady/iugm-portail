@@ -17,7 +17,10 @@ export type AuditAction =
   | "INSCRIPTION_RECEIPT_PRINTED"
   | "STUDENT_DELETED"
   | "STUDENT_UPDATED"
-  | "SETTINGS_UPDATED";
+  | "SETTINGS_UPDATED"
+  | "PASSWORD_CHANGED"
+  | "PERMISSION_UPDATED"
+  | "PASSWORD_RESET";
 
 export async function logAction(action: AuditAction, details?: string, actorId?: string | null) {
   try {
