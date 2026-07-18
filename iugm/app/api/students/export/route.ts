@@ -2,11 +2,15 @@ import { NextResponse } from "next/server";
 
 import { getSession } from "@/lib/auth";
 import { exportStudentsCsv } from "@/lib/students";
+import { hasTaskPermission, PERMISSION_DENIED_MESSAGE } from "@/lib/permissions";
 
 export async function GET() {
   const session = await getSession();
   if (!session || !["AGENT_ADMINISTRATION", "SUPERADMIN"].includes(session.role)) {
     return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
+  }
+  if (!(await hasTaskPermission(session.sub, session.role, "csv"))) {
+    return NextResponse.json({ error: PERMISSION_DENIED_MESSAGE }, { status: 403 });
   }
 
   const csv = await exportStudentsCsv(session.sub);

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { getSession } from "@/lib/auth";
 import { registerStudent } from "@/lib/students";
+import { hasTaskPermission, PERMISSION_DENIED_MESSAGE } from "@/lib/permissions";
 
 export type InscriptionState = {
   success?: string;
@@ -31,16 +32,20 @@ const REQUIRED_FIELDS: Array<[string, string]> = [
   ["guardianPhone", "Téléphone de la personne à contacter"],
   ["academicYear", "Année universitaire"],
   ["formation", "Choix de formation"],
+  ["level", "Niveau"],
 ];
 
 export async function registerInscriptionAction(
   _prev: InscriptionState,
   formData: FormData,
 ): Promise<InscriptionState> {
-  // Une Server Action reste appelable par POST direct : on revérifie le rôle
+  // Une Server Action reste appelable par POST direct : on revérifie le rôle et la tâche
   const session = await getSession();
   if (!session || !["AGENT_ADMINISTRATION", "SUPERADMIN"].includes(session.role)) {
     return { error: "Accès refusé." };
+  }
+  if (!(await hasTaskPermission(session.sub, session.role, "inscription"))) {
+    return { error: PERMISSION_DENIED_MESSAGE };
   }
 
   const get = (name: string) => String(formData.get(name) ?? "").trim();
@@ -96,8 +101,9 @@ export async function registerInscriptionAction(
         guardianName: get("guardianName"),
         guardianPhone: get("guardianPhone"),
         guardianAddress: get("guardianAddress") || null,
-        // 4. Formation
+        // 4. Formation + niveau d'entrée
         mention: get("formation"),
+        level: get("level"),
         // 5. Pièces du dossier
         docResidenceCert: getBool("docResidenceCert"),
         docCinCopy: getBool("docCinCopy"),

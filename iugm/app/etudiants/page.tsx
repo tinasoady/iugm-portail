@@ -2,19 +2,30 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { getSession } from "@/lib/auth";
-import { listStudents, getAcademicYears } from "@/lib/students";
+import { listStudents, getAcademicYears, getStudentFilterValues } from "@/lib/students";
+import { hasTaskPermission } from "@/lib/permissions";
 import { AppShell } from "@/app/ui/app-shell";
 import { STATUS_LABELS, STATUS_BADGE_CLASSES, MENTION_LABELS } from "@/app/ui/student-status";
 import { DeleteStudentButton } from "./delete-button";
 
 const dateFormatter = new Intl.DateTimeFormat("fr-FR", { dateStyle: "short" });
 
-type Params = { q?: string; year?: string; sort?: string; dir?: string; group?: string };
+type Params = {
+  q?: string;
+  year?: string;
+  filiere?: string;
+  niveau?: string;
+  sort?: string;
+  dir?: string;
+  group?: string;
+};
 
 // Modes de classement des blocs
 const GROUP_OPTIONS: Record<string, string> = {
   annee: "Année universitaire",
   filiere: "Filière",
+  niveau: "Niveau",
+  "filiere-niveau": "Filière / Niveau",
   domaine: "Domaine",
   mention: "Mention",
 };
@@ -25,6 +36,8 @@ function sortHref(params: Params, key: string): string {
   const search = new URLSearchParams();
   if (params.q) search.set("q", params.q);
   if (params.year) search.set("year", params.year);
+  if (params.filiere) search.set("filiere", params.filiere);
+  if (params.niveau) search.set("niveau", params.niveau);
   if (params.group) search.set("group", params.group);
   search.set("sort", key);
   search.set("dir", dir);
@@ -48,10 +61,15 @@ export default async function EtudiantsPage({
   }
 
   const params = await searchParams;
-  const [students, years] = await Promise.all([listStudents(params), getAcademicYears()]);
+  const [students, years, filterValues] = await Promise.all([
+    listStudents(params),
+    getAcademicYears(),
+    getStudentFilterValues(),
+  ]);
 
-  // La suppression est réservée à l'agent d'administration (et au superadmin)
-  const canDelete = ["AGENT_ADMINISTRATION", "SUPERADMIN"].includes(session.role);
+  // La suppression est réservée au superadmin et aux agents d'administration
+  // ayant la tâche « suppression_etudiant » dans leurs permissions
+  const canDelete = await hasTaskPermission(session.sub, session.role, "suppression_etudiant");
 
   // Classement des blocs selon le critère choisi (année par défaut)
   const group = GROUP_OPTIONS[params.group ?? ""] ? (params.group as string) : "annee";
@@ -60,6 +78,11 @@ export default async function EtudiantsPage({
     switch (group) {
       case "filiere":
         return s.mention ?? s.program ?? UNSET;
+      case "niveau":
+        return s.level ?? s.track ?? UNSET;
+      case "filiere-niveau":
+        // ex : "Management / L3"
+        return `${s.mention ?? s.program ?? "Filière non renseignée"} / ${s.level ?? s.track ?? "niveau ?"}`;
       case "domaine":
         return s.domain ?? s.department ?? UNSET;
       case "mention":
@@ -118,6 +141,30 @@ export default async function EtudiantsPage({
               </option>
             ))}
           </select>
+          <select
+            name="filiere"
+            defaultValue={params.filiere ?? ""}
+            className="rounded-xl border border-black/10 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-indigo-500/40 dark:border-white/10 dark:bg-zinc-950 dark:text-zinc-50"
+          >
+            <option value="">Toutes les filières</option>
+            {filterValues.filieres.map((f) => (
+              <option key={f} value={f}>
+                {f}
+              </option>
+            ))}
+          </select>
+          <select
+            name="niveau"
+            defaultValue={params.niveau ?? ""}
+            className="rounded-xl border border-black/10 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-indigo-500/40 dark:border-white/10 dark:bg-zinc-950 dark:text-zinc-50"
+          >
+            <option value="">Tous les niveaux</option>
+            {filterValues.niveaux.map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
           <label className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-300">
             Classer par
             <select
@@ -138,7 +185,7 @@ export default async function EtudiantsPage({
           >
             Rechercher
           </button>
-          {(params.q || params.year || params.group) && (
+          {(params.q || params.year || params.filiere || params.niveau || params.group) && (
             <Link
               href="/etudiants"
               className="rounded-xl border border-black/10 px-3 py-2 text-sm font-medium text-zinc-600 transition hover:bg-zinc-100 dark:border-white/10 dark:text-zinc-300 dark:hover:bg-zinc-800"
@@ -190,7 +237,7 @@ export default async function EtudiantsPage({
                     </a>
                   </th>
                   <th className="py-2.5 pr-4 font-semibold text-zinc-400 dark:text-zinc-500">
-                    Mention / Parcours
+                    Filière / Niveau
                   </th>
                   <th className="py-2.5 pr-4">
                     <a href={sortHref(params, "statut")} className={headerLinkClass}>
@@ -231,7 +278,7 @@ export default async function EtudiantsPage({
                       </a>
                     </td>
                     <td className="py-2.5 pr-4 text-zinc-600 dark:text-zinc-400">
-                      {[s.mention ?? s.program, s.track ?? s.level].filter(Boolean).join(" — ") ||
+                      {[s.mention ?? s.program, s.level ?? s.track].filter(Boolean).join(" / ") ||
                         "—"}
                     </td>
                     <td className="py-2.5 pr-4">

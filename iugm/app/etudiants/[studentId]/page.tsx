@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { getSession } from "@/lib/auth";
 import { getStudentProfile } from "@/lib/students";
+import { hasTaskPermission } from "@/lib/permissions";
 import { AppShell } from "@/app/ui/app-shell";
 import {
   STATUS_LABELS,
@@ -54,7 +55,7 @@ export default async function StudentProfilePage({
   const student = await getStudentProfile(studentId);
   if (!student) notFound();
 
-  const canEditConduct = ["AGENT_PEDAGOGIQUE", "SUPERADMIN"].includes(session.role);
+  const canEditConduct = await hasTaskPermission(session.sub, session.role, "conduite");
   const canPrintReceipt = ["AGENT_PEDAGOGIQUE", "SUPERADMIN"].includes(session.role);
   // Écolage considéré payé dès que le reçu bancaire a été vérifié
   const feePaid = student.status !== "ENREGISTRE";
@@ -168,7 +169,7 @@ export default async function StudentProfilePage({
           <InfoRow label="Année universitaire" value={student.academicYear} />
           <InfoRow label="Domaine" value={student.domain ?? student.department} />
           <InfoRow label="Mention (filière)" value={student.mention ?? student.program} />
-          <InfoRow label="Parcours (classe)" value={student.track ?? student.level} />
+          <InfoRow label="Niveau" value={student.level ?? student.track} />
           <InfoRow label="Type de formation" value={student.trainingType} />
           <InfoRow
             label="Code de redoublement"
@@ -252,6 +253,62 @@ export default async function StudentProfilePage({
           </ul>
         </section>
       </div>
+
+      {/* Historique des inscriptions */}
+      {student.enrollmentHistory.length > 0 && (
+        <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-zinc-900">
+          <h3 className="mb-3 text-base font-semibold text-zinc-900 dark:text-zinc-50">
+            Historique des inscriptions
+          </h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-black/10 text-xs uppercase tracking-wider text-zinc-400 dark:border-white/10 dark:text-zinc-500">
+                  <th className="py-2 pr-4 font-semibold">Année universitaire</th>
+                  <th className="py-2 pr-4 font-semibold">Niveau</th>
+                  <th className="py-2 pr-4 font-semibold">Reçu bancaire</th>
+                  <th className="py-2 font-semibold">Statut</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b border-black/5 dark:border-white/5">
+                  <td className="py-2.5 pr-4 font-medium text-zinc-900 dark:text-zinc-50">
+                    {student.academicYear ?? "—"}{" "}
+                    <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
+                      en cours
+                    </span>
+                  </td>
+                  <td className="py-2.5 pr-4 text-zinc-600 dark:text-zinc-400">
+                    {student.level ?? student.track ?? "—"}
+                  </td>
+                  <td className="py-2.5 pr-4 font-mono text-xs text-zinc-600 dark:text-zinc-400">
+                    {student.receiptNumber ?? "—"}
+                  </td>
+                  <td className="py-2.5">
+                    <span className={STATUS_BADGE_CLASSES[student.status]}>
+                      {STATUS_LABELS[student.status] ?? student.status}
+                    </span>
+                  </td>
+                </tr>
+                {student.enrollmentHistory.map((h) => (
+                  <tr key={h.id} className="border-b border-black/5 last:border-0 dark:border-white/5">
+                    <td className="py-2.5 pr-4 text-zinc-900 dark:text-zinc-50">{h.academicYear}</td>
+                    <td className="py-2.5 pr-4 text-zinc-600 dark:text-zinc-400">{h.track ?? "—"}</td>
+                    <td className="py-2.5 pr-4 font-mono text-xs text-zinc-600 dark:text-zinc-400">
+                      {h.receiptNumber ?? "—"}
+                    </td>
+                    <td className="py-2.5">
+                      <span className={STATUS_BADGE_CLASSES[h.status] ?? ""}>
+                        {STATUS_LABELS[h.status] ?? h.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       {/* Résultats semestriels */}
       <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-zinc-900">

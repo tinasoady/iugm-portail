@@ -13,12 +13,24 @@ export function ValidatePedagoButton({ studentId }: { studentId: string }) {
   if (state.credentials) {
     return (
       <div className="rounded-xl bg-green-50 px-3 py-2 text-xs text-green-800 dark:bg-green-950 dark:text-green-300">
-        <p className="font-semibold">✅ Compte étudiant créé — à transmettre :</p>
-        <p className="mt-1 font-mono">Email : {state.credentials.email}</p>
-        <p className="font-mono">Mot de passe : {state.credentials.password}</p>
-        <p className="mt-1 text-green-700 dark:text-green-400">
-          Notez ces identifiants maintenant : le mot de passe ne sera plus affiché.
-        </p>
+        {state.credentials.password === null ? (
+          <>
+            <p className="font-semibold">✅ Réinscription validée</p>
+            <p className="mt-1 font-mono">Compte existant : {state.credentials.email}</p>
+            <p className="mt-1 text-green-700 dark:text-green-400">
+              L&apos;étudiant conserve son email et son mot de passe habituels.
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="font-semibold">✅ Compte étudiant créé — à transmettre :</p>
+            <p className="mt-1 font-mono">Email : {state.credentials.email}</p>
+            <p className="font-mono">Mot de passe : {state.credentials.password}</p>
+            <p className="mt-1 text-green-700 dark:text-green-400">
+              Notez ces identifiants maintenant : le mot de passe ne sera plus affiché.
+            </p>
+          </>
+        )}
         <a
           href={`/agent-pedagogique/recu/${studentId}`}
           className="mt-2 inline-block rounded-lg border border-green-300 px-3 py-1.5 font-semibold text-green-800 transition hover:bg-green-100 dark:border-green-800 dark:text-green-300 dark:hover:bg-green-900"

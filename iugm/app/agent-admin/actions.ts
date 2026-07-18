@@ -4,15 +4,18 @@ import { revalidatePath } from "next/cache";
 
 import { getSession } from "@/lib/auth";
 import { verifyReceipt, validateAdminInscription, importStudentsCsv } from "@/lib/students";
+import { hasTaskPermission, PERMISSION_DENIED_MESSAGE, type TaskKey } from "@/lib/permissions";
 
 export type ActionState = { success?: string; error?: string };
 
-// Chaque action revérifie le rôle : une Server Action reste appelable par POST direct
-async function requireAgentAdmin() {
+// Chaque action revérifie le rôle ET la tâche : une Server Action reste
+// appelable par POST direct, et deux agents n'ont pas forcément les mêmes droits
+async function requireAgentAdmin(task: TaskKey) {
   const session = await getSession();
   if (!session || !["AGENT_ADMINISTRATION", "SUPERADMIN"].includes(session.role)) {
     return null;
   }
+  if (!(await hasTaskPermission(session.sub, session.role, task))) return "denied";
   return session;
 }
 
@@ -20,8 +23,9 @@ export async function verifyReceiptAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const session = await requireAgentAdmin();
+  const session = await requireAgentAdmin("verification_paiement");
   if (!session) return { error: "Accès refusé." };
+  if (session === "denied") return { error: PERMISSION_DENIED_MESSAGE };
 
   const studentId = String(formData.get("studentId") ?? "");
   const receiptNumber = String(formData.get("receiptNumber") ?? "").trim();
@@ -42,8 +46,9 @@ export async function validateAdminAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const session = await requireAgentAdmin();
+  const session = await requireAgentAdmin("verification_paiement");
   if (!session) return { error: "Accès refusé." };
+  if (session === "denied") return { error: PERMISSION_DENIED_MESSAGE };
 
   const studentId = String(formData.get("studentId") ?? "");
   if (!studentId) return { error: "Dossier manquant." };
@@ -61,8 +66,9 @@ export async function importCsvAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const session = await requireAgentAdmin();
+  const session = await requireAgentAdmin("csv");
   if (!session) return { error: "Accès refusé." };
+  if (session === "denied") return { error: PERMISSION_DENIED_MESSAGE };
 
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) {

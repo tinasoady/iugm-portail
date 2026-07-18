@@ -127,7 +127,7 @@ export default async function MonProfilPage() {
               </h3>
               <InfoRow label="Année universitaire" value={student.academicYear} />
               <InfoRow label="Formation (mention)" value={student.mention ?? student.program} />
-              <InfoRow label="Parcours (classe)" value={student.track ?? student.level} />
+              <InfoRow label="Niveau" value={student.level ?? student.track} />
               <InfoRow label="Type de formation" value={student.trainingType} />
               <InfoRow
                 label="Bacc"

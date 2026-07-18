@@ -5,29 +5,34 @@ import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth";
 import { logAction } from "@/lib/audit";
 import { validatePedagoInscription, assignAcademicResult } from "@/lib/students";
+import { hasTaskPermission, PERMISSION_DENIED_MESSAGE, type TaskKey } from "@/lib/permissions";
 
-// Garde commune : une Server Action reste appelable par POST direct
-async function requireAgentPedago() {
+// Garde commune : une Server Action reste appelable par POST direct,
+// et chaque agent n'a que les tâches que le superadmin lui a accordées
+async function requireAgentPedago(task: TaskKey) {
   const session = await getSession();
   if (!session || !["AGENT_PEDAGOGIQUE", "SUPERADMIN"].includes(session.role)) {
     return null;
   }
+  if (!(await hasTaskPermission(session.sub, session.role, task))) return "denied" as const;
   return session;
 }
 
 export type ValidateState = {
   success?: string;
   error?: string;
-  // Identifiants générés, affichés une seule fois pour être transmis à l'étudiant
-  credentials?: { email: string; password: string };
+  // Identifiants générés, affichés une seule fois pour être transmis à l'étudiant.
+  // password null = réinscription : le compte existant est conservé.
+  credentials?: { email: string; password: string | null };
 };
 
 export async function validatePedagoAction(
   _prev: ValidateState,
   formData: FormData,
 ): Promise<ValidateState> {
-  const session = await requireAgentPedago();
+  const session = await requireAgentPedago("validation_pedagogique");
   if (!session) return { error: "Accès refusé." };
+  if (session === "denied") return { error: PERMISSION_DENIED_MESSAGE };
 
   const studentId = String(formData.get("studentId") ?? "");
   if (!studentId) return { error: "Dossier manquant." };
@@ -36,7 +41,10 @@ export async function validatePedagoAction(
     const { student, email, password } = await validatePedagoInscription(studentId, session.sub);
     revalidatePath("/agent-pedagogique");
     return {
-      success: `Inscription validée pour ${student.fullName}. Compte étudiant créé.`,
+      success:
+        password === null
+          ? `Réinscription validée pour ${student.fullName}. Compte existant conservé.`
+          : `Inscription validée pour ${student.fullName}. Compte étudiant créé.`,
       credentials: { email, password },
     };
   } catch (e) {
@@ -50,8 +58,9 @@ export async function assignResultAction(
   _prev: AssignResultState,
   formData: FormData,
 ): Promise<AssignResultState> {
-  const session = await requireAgentPedago();
+  const session = await requireAgentPedago("resultats");
   if (!session) return { error: "Accès refusé." };
+  if (session === "denied") return { error: PERMISSION_DENIED_MESSAGE };
 
   const studentId = String(formData.get("studentId") ?? "");
   const academicYear = String(formData.get("academicYear") ?? "").trim();
@@ -76,8 +85,8 @@ export async function assignResultAction(
 
 // Journalise l'impression du reçu (appelée au clic sur « Imprimer »)
 export async function logReceiptPrintAction(matricule: string, fullName: string) {
-  const session = await requireAgentPedago();
-  if (!session) return;
+  const session = await requireAgentPedago("validation_pedagogique");
+  if (!session || session === "denied") return;
   await logAction(
     "INSCRIPTION_RECEIPT_PRINTED",
     `Reçu d'inscription imprimé pour ${fullName} (${matricule})`,

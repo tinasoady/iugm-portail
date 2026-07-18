@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { getSession } from "@/lib/auth";
 import { getEcolageStats, listUnpaidStudents, getAcademicYears } from "@/lib/students";
+import { hasTaskPermission } from "@/lib/permissions";
 import { AppShell } from "@/app/ui/app-shell";
 import { StatCard } from "@/app/ui/stat-card";
 import { Donut } from "@/app/ui/donut";
@@ -57,6 +58,7 @@ export default async function EcolagePage({
   const session = await getSession();
   if (!session) redirect("/login");
   if (!["AGENT_ADMINISTRATION", "SUPERADMIN"].includes(session.role)) redirect("/");
+  if (!(await hasTaskPermission(session.sub, session.role, "ecolage"))) redirect("/agent-admin");
 
   const { year } = await searchParams;
   const [stats, unpaidStudents, years] = await Promise.all([
@@ -243,7 +245,7 @@ export default async function EcolagePage({
         </p>
         {unpaidStudents.length === 0 ? (
           <p className="text-sm text-emerald-700 dark:text-emerald-400">
-            ✓ Tous les étudiants de cette sélection ont payé leur écolage.
+            ✓ Tous les étudiants n&apos;ont pas payé leur écolage.
           </p>
         ) : (
           <div className="overflow-x-auto">

@@ -36,7 +36,7 @@ export default async function ReceiptPage({
     ["Nom complet", student.fullName],
     ["Domaine", student.domain ?? student.department ?? "—"],
     ["Mention", student.mention ?? student.program ?? "—"],
-    ["Parcours", student.track ?? student.level ?? "—"],
+    ["Niveau", student.level ?? student.track ?? "—"],
     ["Type de formation", student.trainingType ?? "—"],
     ["N° du reçu bancaire", student.receiptNumber ?? "—"],
     ["Date d'inscription", dateFormatter.format(student.updatedAt)],

@@ -1,81 +1,29 @@
 import { NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
 
-import { prisma } from "@/lib/prisma";
-import { createSessionToken, SESSION_COOKIE, SESSION_MAX_AGE } from "@/lib/auth";
-import { logAction } from "@/lib/audit";
+import { authenticateUser } from "@/lib/login";
+import { SESSION_COOKIE, SESSION_MAX_AGE } from "@/lib/auth";
 
+// Point d'entrée API (la page de connexion utilise la Server Action app/login/actions.ts,
+// qui affiche les erreurs sur place ; cette route reste disponible pour les clients HTTP)
 export async function POST(req: Request) {
   try {
     const formData = await req.formData();
     const email = String(formData.get("email") ?? "").trim().toLowerCase();
     const password = String(formData.get("password") ?? "");
 
-    if (!email || !password) {
-      return NextResponse.json({ error: "Champs manquants" }, { status: 400 });
+    const result = await authenticateUser(email, password);
+    if (!result.ok) {
+      return NextResponse.json({ error: result.error }, { status: result.status });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email },
-      select: {
-        id: true,
-        email: true,
-        role: true,
-        passwordHash: true,
-        mustChangePassword: true,
-        active: true,
-      },
-    });
-
-    if (!user) {
-      await logAction("LOGIN_FAILED", `Email inconnu : ${email}`);
-      return NextResponse.json({ error: "Identifiants invalides" }, { status: 401 });
-    }
-
-    if (!user.active) {
-      await logAction("LOGIN_FAILED", `Compte désactivé : ${email}`, user.id);
-      return NextResponse.json(
-        { error: "Compte désactivé. Contactez l'administration." },
-        { status: 403 },
-      );
-    }
-
-    // Le seed et la page admin hashent les mots de passe avec bcrypt (bcryptjs)
-    const ok = await bcrypt.compare(password, user.passwordHash);
-    if (!ok) {
-      await logAction("LOGIN_FAILED", `Mot de passe erroné pour ${email}`, user.id);
-      return NextResponse.json({ error: "Identifiants invalides" }, { status: 401 });
-    }
-
-    const token = createSessionToken({
-      sub: user.id,
-      email: user.email,
-      role: user.role,
-    });
-
-    await logAction("LOGIN_SUCCESS", `Connexion de ${user.email}`, user.id);
-
-    // Chaque rôle arrive directement sur son tableau de bord.
-    // Mot de passe initial prévisible : changement forcé avant tout accès.
-    const HOME_BY_ROLE: Record<string, string> = {
-      SUPERADMIN: "/admin",
-      AGENT_ADMINISTRATION: "/agent-admin",
-      AGENT_PEDAGOGIQUE: "/agent-pedagogique",
-      ETUDIANT: "/mon-profil",
-    };
-    const destination = user.mustChangePassword
-      ? "/changer-mot-de-passe"
-      : (HOME_BY_ROLE[user.role] ?? "/");
-    const res = NextResponse.redirect(new URL(destination, req.url), 303);
-
-    res.cookies.set(SESSION_COOKIE, token, {
+    const res = NextResponse.redirect(new URL(result.destination, req.url), 303);
+    res.cookies.set(SESSION_COOKIE, result.token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
       maxAge: SESSION_MAX_AGE,
     });
-
     return res;
   } catch (e) {
     console.error("Erreur /api/auth/login :", e);

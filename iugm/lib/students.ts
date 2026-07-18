@@ -99,8 +99,9 @@ export type RegisterStudentInput = {
   guardianName: string; // personne à contacter d'urgence (obligatoire)
   guardianPhone: string;
   guardianAddress?: string | null;
-  // 4. Inscription : formation choisie
+  // 4. Inscription : formation choisie + niveau d'entrée (L1, L2, L3, M1, M2)
   mention: string;
+  level: string;
   // 5. Pièces du dossier
   docResidenceCert: boolean;
   docCinCopy: boolean;
@@ -185,7 +186,8 @@ export async function validateAdminInscription(studentId: string, actorId: strin
 }
 
 // 4. Agent pédagogique : valide l'inscription pédagogique.
-//    Le système crée automatiquement le compte étudiant (email pro + mot de passe).
+//    Première inscription : le système crée automatiquement le compte étudiant.
+//    Réinscription : le compte existant est conservé (password retourné null).
 export async function validatePedagoInscription(studentId: string, actorId: string) {
   const student = await prisma.student.findUnique({ where: { id: studentId } });
   if (!student) throw new Error("Dossier introuvable.");
@@ -194,6 +196,18 @@ export async function validatePedagoInscription(studentId: string, actorId: stri
   }
   if (student.status !== "ADMIN_VALIDEE") {
     throw new Error("L'inscription administrative n'a pas encore été faite pour ce dossier.");
+  }
+
+  // Réinscription d'un ancien étudiant : son compte existe déjà
+  if (student.accountId) {
+    const account = await prisma.user.findUnique({ where: { id: student.accountId } });
+    await prisma.student.update({ where: { id: studentId }, data: { status: "INSCRIT" } });
+    await logAction(
+      "PEDAGO_INSCRIPTION_VALIDATED",
+      `Réinscription pédagogique validée pour ${student.fullName} (${student.matricule}, ${student.academicYear ?? "année inconnue"}) — compte existant conservé`,
+      actorId,
+    );
+    return { student, email: account?.email ?? "", password: null as string | null };
   }
 
   const email = await availableStudentEmail(student.fullName);
@@ -219,7 +233,69 @@ export async function validatePedagoInscription(studentId: string, actorId: stri
   await logAction("USER_CREATED", `Compte étudiant ${email} créé automatiquement`, actorId);
 
   // Le mot de passe en clair n'est retourné qu'une seule fois, pour être transmis à l'étudiant
-  return { student, email, password };
+  return { student, email, password: password as string | null };
+}
+
+// ---------------------------------------------------------------------------
+// Réinscription des anciens étudiants
+// ---------------------------------------------------------------------------
+
+// Réinscrit un ancien étudiant (statut INSCRIT) pour une nouvelle année :
+// l'année en cours est archivée, le dossier repart au début du workflow
+// (paiement à vérifier), le matricule et le compte sont conservés.
+// `level` : nouveau niveau (ex : L1 -> L2).
+export async function reenrollStudent(
+  studentId: string,
+  input: { academicYear: string; level?: string | null },
+  actorId: string,
+) {
+  if (!/^\d{4}-\d{4}$/.test(input.academicYear)) {
+    throw new Error("Année universitaire invalide (format attendu : 2027-2028).");
+  }
+
+  const student = await prisma.student.findUnique({ where: { id: studentId } });
+  if (!student) throw new Error("Dossier introuvable.");
+  if (student.status !== "INSCRIT") {
+    throw new Error("Seul un étudiant dont l'inscription est finalisée peut être réinscrit.");
+  }
+  if (student.academicYear === input.academicYear) {
+    throw new Error(`Cet étudiant est déjà inscrit pour ${input.academicYear}.`);
+  }
+  const alreadyArchived = await prisma.enrollmentHistory.findFirst({
+    where: { studentId, academicYear: input.academicYear },
+  });
+  if (alreadyArchived) {
+    throw new Error(`Cet étudiant a déjà une inscription archivée pour ${input.academicYear}.`);
+  }
+
+  // Archive l'année qui se termine (avec le niveau suivi cette année-là)
+  await prisma.enrollmentHistory.create({
+    data: {
+      studentId,
+      academicYear: student.academicYear ?? "inconnue",
+      track: student.level ?? student.track,
+      status: student.status,
+      receiptNumber: student.receiptNumber,
+    },
+  });
+
+  // Le dossier repart au début du workflow pour la nouvelle année
+  const updated = await prisma.student.update({
+    where: { id: studentId },
+    data: {
+      academicYear: input.academicYear,
+      level: input.level?.trim() || student.level,
+      status: "ENREGISTRE",
+      receiptNumber: null,
+    },
+  });
+
+  await logAction(
+    "STUDENT_REENROLLED",
+    `Réinscription de ${student.fullName} (${student.matricule}) : ${student.academicYear ?? "?"} → ${input.academicYear}${input.level ? ` — niveau ${input.level}` : ""}`,
+    actorId,
+  );
+  return updated;
 }
 
 // ---------------------------------------------------------------------------
@@ -353,6 +429,8 @@ export type StudentSortKey = keyof typeof SORTABLE_FIELDS;
 export type StudentListParams = {
   q?: string;
   year?: string; // année universitaire, ex "2026-2027"
+  filiere?: string; // formation / mention
+  niveau?: string; // L1, L2, L3, M1, M2
   sort?: string;
   dir?: string; // asc | desc
 };
@@ -362,21 +440,29 @@ export async function listStudents(params: StudentListParams = {}) {
   const sortField = SORTABLE_FIELDS[(params.sort as StudentSortKey) ?? "nom"] ?? "fullName";
   const dir = params.dir === "desc" ? "desc" : "asc";
 
+  // Conditions cumulées (AND) : chaque filtre peut contenir son propre OR
+  const conditions: object[] = [];
+  if (params.year) conditions.push({ academicYear: params.year });
+  if (params.filiere) {
+    conditions.push({ OR: [{ mention: params.filiere }, { program: params.filiere }] });
+  }
+  if (params.niveau) {
+    conditions.push({ OR: [{ level: params.niveau }, { track: params.niveau }] });
+  }
+  if (q) {
+    conditions.push({
+      OR: [
+        { fullName: { contains: q, mode: "insensitive" } },
+        { matricule: { contains: q, mode: "insensitive" } },
+        { cin: { contains: q, mode: "insensitive" } },
+        { program: { contains: q, mode: "insensitive" } },
+        { track: { contains: q, mode: "insensitive" } },
+      ],
+    });
+  }
+
   return prisma.student.findMany({
-    where: {
-      ...(params.year ? { academicYear: params.year } : {}),
-      ...(q
-        ? {
-            OR: [
-              { fullName: { contains: q, mode: "insensitive" } },
-              { matricule: { contains: q, mode: "insensitive" } },
-              { cin: { contains: q, mode: "insensitive" } },
-              { program: { contains: q, mode: "insensitive" } },
-              { track: { contains: q, mode: "insensitive" } },
-            ],
-          }
-        : {}),
-    },
+    where: conditions.length > 0 ? { AND: conditions } : {},
     orderBy: { [sortField]: dir },
     include: {
       account: { select: { email: true } },
@@ -386,6 +472,18 @@ export async function listStudents(params: StudentListParams = {}) {
   });
 }
 
+// Valeurs distinctes pour les sélecteurs de filtres de la liste étudiants
+export async function getStudentFilterValues() {
+  const rows = await prisma.student.findMany({
+    select: { mention: true, program: true, level: true },
+  });
+  const filieres = [
+    ...new Set(rows.map((r) => r.mention ?? r.program).filter((f): f is string => !!f)),
+  ].sort();
+  const niveaux = [...new Set(rows.map((r) => r.level).filter((l): l is string => !!l))].sort();
+  return { filieres, niveaux };
+}
+
 // Dossier complet d'un étudiant pour sa page de profil
 export async function getStudentProfile(studentId: string) {
   return prisma.student.findUnique({
@@ -393,6 +491,7 @@ export async function getStudentProfile(studentId: string) {
     include: {
       account: { select: { email: true, createdAt: true } },
       results: { orderBy: [{ academicYear: "desc" }, { semester: "desc" }] },
+      enrollmentHistory: { orderBy: { archivedAt: "desc" } },
     },
   });
 }

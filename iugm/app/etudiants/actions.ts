@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { logAction } from "@/lib/audit";
 import { deleteStudent } from "@/lib/students";
+import { hasTaskPermission, PERMISSION_DENIED_MESSAGE } from "@/lib/permissions";
 
 export type DeleteState = { success?: string; error?: string };
 
@@ -18,6 +19,9 @@ export async function deleteStudentAction(
   const session = await getSession();
   if (!session || !["AGENT_ADMINISTRATION", "SUPERADMIN"].includes(session.role)) {
     return { error: "Accès refusé : seul l'agent d'administration peut supprimer un dossier." };
+  }
+  if (!(await hasTaskPermission(session.sub, session.role, "suppression_etudiant"))) {
+    return { error: PERMISSION_DENIED_MESSAGE };
   }
 
   const studentId = String(formData.get("studentId") ?? "");
@@ -42,6 +46,9 @@ export async function updateConductAction(
   const session = await getSession();
   if (!session || !["AGENT_PEDAGOGIQUE", "SUPERADMIN"].includes(session.role)) {
     return { error: "Accès refusé : seul l'agent pédagogique peut noter la conduite." };
+  }
+  if (!(await hasTaskPermission(session.sub, session.role, "conduite"))) {
+    return { error: PERMISSION_DENIED_MESSAGE };
   }
 
   const studentId = String(formData.get("studentId") ?? "");

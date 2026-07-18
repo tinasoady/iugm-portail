@@ -2,7 +2,9 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { logout } from "@/app/auth-actions";
+import { prisma } from "@/lib/prisma";
 import { getSettings } from "@/lib/settings";
+import type { TaskKey } from "@/lib/permissions";
 import {
   IconDashboard,
   IconFolder,
@@ -14,6 +16,7 @@ import {
   IconGear,
   IconCash,
   IconShield,
+  IconUser,
 } from "./icons";
 import { ThemeToggle } from "./theme-toggle";
 
@@ -29,6 +32,8 @@ type NavItem = {
   label: string;
   icon: ReactNode;
   roles: string[];
+  // Si définie, l'entrée n'apparaît que si l'agent a cette tâche dans ses permissions
+  task?: TaskKey;
 };
 
 const NAV_ITEMS: NavItem[] = [
@@ -49,12 +54,21 @@ const NAV_ITEMS: NavItem[] = [
     label: "Inscription",
     icon: <IconClipboard />,
     roles: ["SUPERADMIN", "AGENT_ADMINISTRATION"],
+    task: "inscription",
+  },
+  {
+    href: "/agent-admin/reinscription",
+    label: "Réinscription",
+    icon: <IconCap />,
+    roles: ["SUPERADMIN", "AGENT_ADMINISTRATION"],
+    task: "reinscription",
   },
   {
     href: "/agent-admin/ecolage",
     label: "Gestion d'écolage",
     icon: <IconCash />,
     roles: ["SUPERADMIN", "AGENT_ADMINISTRATION"],
+    task: "ecolage",
   },
   {
     href: "/agent-pedagogique",
@@ -92,11 +106,12 @@ const NAV_ITEMS: NavItem[] = [
     icon: <IconUsers />,
     roles: ["ETUDIANT"],
   },
+  // Gestion de son propre compte (photo, informations, mot de passe) — tous les rôles
   {
-    href: "/changer-mot-de-passe",
-    label: "Mot de passe",
-    icon: <IconGear />,
-    roles: ["ETUDIANT"],
+    href: "/profil",
+    label: "Mon compte",
+    icon: <IconUser />,
+    roles: ["SUPERADMIN", "AGENT_ADMINISTRATION", "AGENT_PEDAGOGIQUE", "ETUDIANT"],
   },
 ];
 
@@ -123,7 +138,17 @@ export async function AppShell({
   active: string; // href de la page courante, pour surligner le menu
   children: ReactNode;
 }) {
-  const nav = NAV_ITEMS.filter((item) => item.roles.includes(role));
+  // Photo de profil pour l'avatar + permissions pour filtrer le menu des agents
+  const account = await prisma.user.findUnique({
+    where: { email },
+    select: { permissions: true, photo: true },
+  });
+  const permissions = account?.permissions ?? [];
+  const nav = NAV_ITEMS.filter(
+    (item) =>
+      item.roles.includes(role) &&
+      (!item.task || role === "SUPERADMIN" || permissions.includes(item.task)),
+  );
   const settings = await getSettings();
 
   return (
@@ -201,9 +226,18 @@ export async function AppShell({
                 <IconBell />
               </span>
               <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-linear-to-br from-indigo-500 to-violet-600 text-xs font-bold text-white">
-                  {initials(email)}
-                </div>
+                {account?.photo ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- data URL, next/image inutile ici
+                  <img
+                    src={account.photo}
+                    alt="Photo de profil"
+                    className="h-9 w-9 rounded-full border border-black/10 object-cover dark:border-white/10"
+                  />
+                ) : (
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-linear-to-br from-indigo-500 to-violet-600 text-xs font-bold text-white">
+                    {initials(email)}
+                  </div>
+                )}
                 <div className="hidden text-right sm:block">
                   <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">{email}</p>
                   <p className="text-xs text-zinc-500 dark:text-zinc-400">

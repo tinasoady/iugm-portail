@@ -24,6 +24,9 @@ const ACTION_LABELS: Record<string, string> = {
   PASSWORD_CHANGED: "Mot de passe changé",
   PERMISSION_UPDATED: "Permission modifiée",
   PASSWORD_RESET: "Mot de passe réinitialisé",
+  STUDENT_REENROLLED: "Étudiant réinscrit",
+  USER_DELETED: "Compte supprimé",
+  PROFILE_UPDATED: "Profil mis à jour",
 };
 
 const PAGE_SIZE = 50;

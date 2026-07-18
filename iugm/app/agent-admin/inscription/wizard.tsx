@@ -70,7 +70,11 @@ const FIELD_LABELS: Record<string, string> = {
   guardianAddress: "Adresse exacte (urgence)",
   academicYear: "Année universitaire",
   formation: "Formation choisie",
+  level: "Niveau",
 };
+
+// Niveaux d'entrée possibles (inscription directe en L2, L3, M1... autorisée)
+const LEVELS = ["L1", "L2", "L3", "M1", "M2"];
 
 const VALUE_LABELS: Record<string, Record<string, string>> = {
   gender: { M: "Masculin", F: "Féminin" },
@@ -99,6 +103,7 @@ export function InscriptionWizard({
     nationality: "Malagasy",
     maritalStatus: "Célibataire",
     academicYear: defaultYear,
+    level: "L1",
   });
   const formRef = useRef<HTMLFormElement>(null);
   const [state, formAction, pending] = useActionState(registerInscriptionAction, initialState);
@@ -429,21 +434,34 @@ export function InscriptionWizard({
           </div>
         </div>
 
-        {/* Étape 4 : Inscription — choix de la formation */}
+        {/* Étape 4 : Inscription — année, niveau et formation */}
         <div data-step="3" className={step === 3 ? "space-y-4" : "hidden"}>
-          <div>
-            <label className={labelClass} htmlFor="academicYear">Année universitaire *</label>
-            <select
-              id="academicYear"
-              name="academicYear"
-              required
-              defaultValue={defaultYear}
-              className={inputClass}
-            >
-              {years.map((y) => (
-                <option key={y} value={y}>{y}</option>
-              ))}
-            </select>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className={labelClass} htmlFor="academicYear">Année universitaire *</label>
+              <select
+                id="academicYear"
+                name="academicYear"
+                required
+                defaultValue={defaultYear}
+                className={inputClass}
+              >
+                {years.map((y) => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={labelClass} htmlFor="level">Niveau *</label>
+              <select id="level" name="level" required defaultValue="L1" className={inputClass}>
+                {LEVELS.map((l) => (
+                  <option key={l} value={l}>{l}</option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                Inscription directe en L2, L3, M1... possible selon le dossier.
+              </p>
+            </div>
           </div>
 
           <p className={labelClass}>Choix de formation * (cocher une formation)</p>

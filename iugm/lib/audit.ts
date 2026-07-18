@@ -20,7 +20,10 @@ export type AuditAction =
   | "SETTINGS_UPDATED"
   | "PASSWORD_CHANGED"
   | "PERMISSION_UPDATED"
-  | "PASSWORD_RESET";
+  | "PASSWORD_RESET"
+  | "STUDENT_REENROLLED"
+  | "USER_DELETED"
+  | "PROFILE_UPDATED";
 
 export async function logAction(action: AuditAction, details?: string, actorId?: string | null) {
   try {

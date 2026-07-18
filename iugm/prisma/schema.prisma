@@ -24,6 +24,13 @@ model User {
   mustChangePassword Boolean @default(false)
   // Compte désactivé : connexion refusée (géré depuis la page Permissions)
   active Boolean @default(true)
+  // Fonction / poste (ex : Secrétaire, Chef de scolarité, Responsable finance...)
+  jobTitle String?
+  // Photo de profil (data URL, gérée par l'utilisateur sur sa page Mon compte)
+  photo String?
+  // Tâches autorisées pour cet utilisateur (clés du catalogue lib/permissions.ts).
+  // Deux agents du même rôle peuvent avoir des permissions différentes.
+  permissions String[] @default([])
   role         Role       @default(ETUDIANT)
   fullName     String?
   createdAt    DateTime   @default(now())
@@ -117,6 +124,8 @@ model Student {
   // Mot de passe initial du compte, imprimé sur le reçu d'inscription pour être
   // remis à l'étudiant (à changer par l'étudiant à sa première connexion)
   initialPassword String?
+  // Années universitaires précédentes (archivées à chaque réinscription)
+  enrollmentHistory EnrollmentHistory[]
   results       AcademicResult[]
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
@@ -124,6 +133,20 @@ model Student {
   @@index([fullName])
   @@index([status])
   @@index([academicYear])
+}
+
+// Année universitaire passée d'un étudiant, archivée lors de sa réinscription
+model EnrollmentHistory {
+  id            String   @id @default(cuid())
+  student       Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId     String
+  academicYear  String
+  track         String? // parcours / classe suivie cette année-là
+  status        String // statut au moment de l'archivage (normalement INSCRIT)
+  receiptNumber String?
+  archivedAt    DateTime @default(now())
+
+  @@index([studentId])
 }
 
 // Mention calculée automatiquement à partir de la moyenne (/20)

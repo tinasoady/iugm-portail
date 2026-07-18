@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { logAction } from "@/lib/audit";
+import { tasksForRole } from "@/lib/permissions";
 
 const ROLES = ["SUPERADMIN", "AGENT_ADMINISTRATION", "AGENT_PEDAGOGIQUE", "ETUDIANT"] as const;
 type RoleValue = (typeof ROLES)[number];
@@ -49,7 +50,15 @@ export async function createUser(
   const passwordHash = await bcrypt.hash(password, 10);
 
   const user = await prisma.user.create({
-    data: { email, fullName, role: role as RoleValue, passwordHash },
+    data: {
+      email,
+      fullName,
+      role: role as RoleValue,
+      passwordHash,
+      // Un nouvel agent reçoit toutes les tâches de son rôle par défaut ;
+      // le superadmin peut ensuite les restreindre depuis la page Permissions
+      permissions: tasksForRole(role),
+    },
   });
 
   await logAction("USER_CREATED", `Compte ${user.email} créé avec le rôle ${user.role}`, session.sub);
