@@ -259,6 +259,7 @@ export default async function EcolagePage({
                   <th className="py-2.5 font-semibold">Enregistré le</th>
                 </tr>
               </thead>
+              
               <tbody>
                 {unpaidStudents.map((s) => (
                   <tr
