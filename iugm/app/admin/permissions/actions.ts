@@ -8,6 +8,7 @@ import { getSession } from "@/lib/auth";
 import { logAction } from "@/lib/audit";
 import { generatePassword } from "@/lib/students";
 import { TASKS, tasksForRole, type TaskKey } from "@/lib/permissions";
+import { FORMATIONS } from "@/lib/formations";
 
 export type PermissionState = {
   success?: string;
@@ -144,6 +145,7 @@ export async function updateTasksAction(
 
   const userId = String(formData.get("userId") ?? "");
   const jobTitle = String(formData.get("jobTitle") ?? "").trim();
+  const formationRaw = String(formData.get("formation") ?? "").trim();
   if (!userId) return { error: "Utilisateur manquant." };
 
   const user = await prisma.user.findUnique({ where: { id: userId } });
@@ -152,17 +154,20 @@ export async function updateTasksAction(
     return { error: "Les tâches ne s'appliquent qu'aux agents." };
   }
 
+  // Formation affectée : doit exister au catalogue (vide = toutes les formations)
+  const formation = FORMATIONS.some((f) => f.label === formationRaw) ? formationRaw : null;
+
   // Ne conserve que les tâches cochées ET compatibles avec le rôle de l'agent
   const allowed = tasksForRole(user.role);
   const permissions = allowed.filter((task) => formData.get(`task_${task}`) === "on");
 
   await prisma.user.update({
     where: { id: userId },
-    data: { permissions, jobTitle: jobTitle || null },
+    data: { permissions, jobTitle: jobTitle || null, formation },
   });
   await logAction(
     "PERMISSION_UPDATED",
-    `Tâches de ${user.email}${jobTitle ? ` (${jobTitle})` : ""} : ${
+    `Tâches de ${user.email}${jobTitle ? ` (${jobTitle})` : ""}${formation ? ` — formation ${formation}` : " — toutes formations"} : ${
       permissions.length > 0 ? permissions.map((t) => TASKS[t as TaskKey].label).join(" ; ") : "aucune"
     }`,
     session.sub,

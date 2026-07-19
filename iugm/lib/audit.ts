@@ -23,7 +23,9 @@ export type AuditAction =
   | "PASSWORD_RESET"
   | "STUDENT_REENROLLED"
   | "USER_DELETED"
-  | "PROFILE_UPDATED";
+  | "PROFILE_UPDATED"
+  | "ANNOUNCEMENT_SENT"
+  | "ANNOUNCEMENT_DELETED";
 
 export async function logAction(action: AuditAction, details?: string, actorId?: string | null) {
   try {

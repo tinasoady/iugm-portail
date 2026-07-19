@@ -6,7 +6,12 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { logAction } from "@/lib/audit";
 import { deleteStudent } from "@/lib/students";
-import { hasTaskPermission, PERMISSION_DENIED_MESSAGE } from "@/lib/permissions";
+import {
+  hasTaskPermission,
+  canManageStudent,
+  PERMISSION_DENIED_MESSAGE,
+  FORMATION_DENIED_MESSAGE,
+} from "@/lib/permissions";
 
 export type DeleteState = { success?: string; error?: string };
 
@@ -26,6 +31,9 @@ export async function deleteStudentAction(
 
   const studentId = String(formData.get("studentId") ?? "");
   if (!studentId) return { error: "Dossier manquant." };
+  if (!(await canManageStudent(session.sub, session.role, studentId))) {
+    return { error: FORMATION_DENIED_MESSAGE };
+  }
 
   try {
     const student = await deleteStudent(studentId, session.sub);
@@ -54,6 +62,9 @@ export async function updateConductAction(
   const studentId = String(formData.get("studentId") ?? "");
   const conduct = String(formData.get("conduct") ?? "").trim();
   if (!studentId) return { error: "Dossier manquant." };
+  if (!(await canManageStudent(session.sub, session.role, studentId))) {
+    return { error: FORMATION_DENIED_MESSAGE };
+  }
   if (conduct.length > 2000) return { error: "Appréciation trop longue (2000 caractères max)." };
 
   try {

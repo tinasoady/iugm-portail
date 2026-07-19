@@ -16,52 +16,58 @@ export type TaskKey =
   | "suppression_etudiant"
   | "validation_pedagogique"
   | "resultats"
-  | "conduite";
+  | "conduite"
+  | "communiquer";
 
-export const TASKS: Record<TaskKey, { label: string; role: string }> = {
+export const TASKS: Record<TaskKey, { label: string; roles: string[] }> = {
   // Tâches du domaine agent d'administration
   inscription: {
     label: "Inscrire de nouveaux étudiants",
-    role: "AGENT_ADMINISTRATION",
+    roles: ["AGENT_ADMINISTRATION"],
   },
   reinscription: {
     label: "Réinscrire les anciens étudiants",
-    role: "AGENT_ADMINISTRATION",
+    roles: ["AGENT_ADMINISTRATION"],
   },
   verification_paiement: {
     label: "Vérifier les reçus bancaires et valider l'inscription administrative",
-    role: "AGENT_ADMINISTRATION",
+    roles: ["AGENT_ADMINISTRATION"],
   },
   ecolage: {
     label: "Consulter la gestion d'écolage",
-    role: "AGENT_ADMINISTRATION",
+    roles: ["AGENT_ADMINISTRATION"],
   },
   csv: {
     label: "Exporter / importer les données CSV",
-    role: "AGENT_ADMINISTRATION",
+    roles: ["AGENT_ADMINISTRATION"],
   },
   suppression_etudiant: {
     label: "Supprimer des dossiers étudiants",
-    role: "AGENT_ADMINISTRATION",
+    roles: ["AGENT_ADMINISTRATION"],
   },
   // Tâches du domaine agent pédagogique
   validation_pedagogique: {
     label: "Valider les inscriptions pédagogiques et imprimer les reçus",
-    role: "AGENT_PEDAGOGIQUE",
+    roles: ["AGENT_PEDAGOGIQUE"],
   },
   resultats: {
     label: "Assigner les résultats académiques",
-    role: "AGENT_PEDAGOGIQUE",
+    roles: ["AGENT_PEDAGOGIQUE"],
   },
   conduite: {
     label: "Rédiger les appréciations de conduite",
-    role: "AGENT_PEDAGOGIQUE",
+    roles: ["AGENT_PEDAGOGIQUE"],
+  },
+  // Tâche commune aux deux rôles d'agents
+  communiquer: {
+    label: "Envoyer des communiqués aux étudiants",
+    roles: ["AGENT_ADMINISTRATION", "AGENT_PEDAGOGIQUE"],
   },
 };
 
 // Tâches disponibles pour un rôle donné
 export function tasksForRole(role: string): TaskKey[] {
-  return (Object.keys(TASKS) as TaskKey[]).filter((k) => TASKS[k].role === role);
+  return (Object.keys(TASKS) as TaskKey[]).filter((k) => TASKS[k].roles.includes(role));
 }
 
 // Vérifie qu'un utilisateur a la permission d'exécuter une tâche.
@@ -73,7 +79,7 @@ export async function hasTaskPermission(
   task: TaskKey,
 ): Promise<boolean> {
   if (role === "SUPERADMIN") return true;
-  if (TASKS[task].role !== role) return false;
+  if (!TASKS[task].roles.includes(role)) return false;
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { permissions: true },
@@ -83,3 +89,37 @@ export async function hasTaskPermission(
 
 export const PERMISSION_DENIED_MESSAGE =
   "Vous n'avez pas la permission d'effectuer cette tâche. Contactez le superadmin.";
+
+// ---------------------------------------------------------------------------
+// Périmètre par formation : une secrétaire affectée à une formation
+// (ex : "Management") ne voit et ne manipule que les dossiers de sa formation.
+// ---------------------------------------------------------------------------
+
+export const FORMATION_DENIED_MESSAGE =
+  "Ce dossier relève d'une autre formation : l'étudiant doit s'adresser au secrétaire de sa formation.";
+
+// Formation affectée à l'utilisateur (null = accès à toutes les formations)
+export async function getUserFormation(userId: string, role: string): Promise<string | null> {
+  if (role === "SUPERADMIN") return null;
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { formation: true },
+  });
+  return user?.formation ?? null;
+}
+
+// Vérifie qu'un dossier étudiant est dans le périmètre de l'agent
+export async function canManageStudent(
+  userId: string,
+  role: string,
+  studentId: string,
+): Promise<boolean> {
+  const formation = await getUserFormation(userId, role);
+  if (!formation) return true;
+  const student = await prisma.student.findUnique({
+    where: { id: studentId },
+    select: { mention: true, program: true },
+  });
+  if (!student) return true; // dossier inexistant : l'action échouera plus loin avec son propre message
+  return (student.mention ?? student.program) === formation;
+}

@@ -4,7 +4,12 @@ import { revalidatePath } from "next/cache";
 
 import { getSession } from "@/lib/auth";
 import { reenrollStudent } from "@/lib/students";
-import { hasTaskPermission, PERMISSION_DENIED_MESSAGE } from "@/lib/permissions";
+import {
+  hasTaskPermission,
+  canManageStudent,
+  PERMISSION_DENIED_MESSAGE,
+  FORMATION_DENIED_MESSAGE,
+} from "@/lib/permissions";
 
 export type ReenrollState = { success?: string; error?: string };
 
@@ -26,6 +31,9 @@ export async function reenrollAction(
   const level = String(formData.get("level") ?? "").trim();
   if (!studentId || !academicYear) {
     return { error: "Année universitaire obligatoire." };
+  }
+  if (!(await canManageStudent(session.sub, session.role, studentId))) {
+    return { error: FORMATION_DENIED_MESSAGE };
   }
 
   try {

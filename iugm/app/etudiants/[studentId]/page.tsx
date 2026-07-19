@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { getSession } from "@/lib/auth";
 import { getStudentProfile } from "@/lib/students";
-import { hasTaskPermission } from "@/lib/permissions";
+import { hasTaskPermission, canManageStudent } from "@/lib/permissions";
 import { AppShell } from "@/app/ui/app-shell";
 import {
   STATUS_LABELS,
@@ -52,6 +52,10 @@ export default async function StudentProfilePage({
   }
 
   const { studentId } = await params;
+  // Secrétaire de formation : accès refusé aux dossiers des autres formations
+  if (!(await canManageStudent(session.sub, session.role, studentId))) {
+    redirect("/etudiants");
+  }
   const student = await getStudentProfile(studentId);
   if (!student) notFound();
 

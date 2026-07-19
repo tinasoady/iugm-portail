@@ -31,6 +31,9 @@ model User {
   // Tâches autorisées pour cet utilisateur (clés du catalogue lib/permissions.ts).
   // Deux agents du même rôle peuvent avoir des permissions différentes.
   permissions String[] @default([])
+  // Formation affectée (ex : "Management") : l'agent ne voit et ne manipule
+  // que les dossiers de cette formation. Null = toutes les formations.
+  formation String?
   role         Role       @default(ETUDIANT)
   fullName     String?
   createdAt    DateTime   @default(now())
@@ -38,6 +41,9 @@ model User {
   auditLogs    AuditLog[]
   // Dossier étudiant lié si ce compte a été créé via la validation pédagogique
   studentFile  Student?
+  // Communiqués rédigés (agents) et marques de lecture (étudiants)
+  announcements     Announcement[]     @relation("AuthoredAnnouncements")
+  announcementReads AnnouncementRead[]
 }
 
 // Workflow d'inscription d'un étudiant
@@ -172,6 +178,34 @@ model AcademicResult {
 
   @@unique([studentId, academicYear, semester])
   @@index([mention])
+}
+
+// Communiqué envoyé par un agent aux étudiants (lecture seule côté étudiant).
+// Ciblage par groupe : filière et/ou niveau ; null = tous.
+model Announcement {
+  id        String             @id @default(cuid())
+  title     String
+  body      String
+  formation String? // filière ciblée (null = toutes)
+  level     String? // niveau ciblé (null = tous)
+  author    User?              @relation("AuthoredAnnouncements", fields: [authorId], references: [id], onDelete: SetNull)
+  authorId  String?
+  reads     AnnouncementRead[]
+  createdAt DateTime           @default(now())
+
+  @@index([createdAt])
+}
+
+// Marque de lecture d'un communiqué par un étudiant (badge « non lu »)
+model AnnouncementRead {
+  id             String       @id @default(cuid())
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  announcementId String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         String
+  readAt         DateTime     @default(now())
+
+  @@unique([announcementId, userId])
 }
 
 // Paramètres de l'établissement (clé/valeur) : nom, adresse, logo (data URL), etc.

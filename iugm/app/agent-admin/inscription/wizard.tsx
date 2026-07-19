@@ -12,16 +12,7 @@ const STEPS = [
   { title: "Récapitulatif", subtitle: "Vérification avant validation" },
 ];
 
-// Formations proposées à l'inscription
-const FORMATIONS = [
-  { code: "MGT", label: "Management" },
-  { code: "FC", label: "Finance-Comptabilité" },
-  { code: "CI", label: "Commerce International" },
-  { code: "PGI", label: "Progiciel de Gestion Intégrée (Informatique de gestion)" },
-  { code: "ECO", label: "Économie générale" },
-  { code: "GRH", label: "Gestion des Ressources Humaines" },
-  { code: "MC", label: "Marketing et Communication" },
-];
+import { FORMATIONS } from "@/lib/formations";
 
 // Pièces du dossier à vérifier à la réception
 const DOCUMENTS: Array<[string, string]> = [

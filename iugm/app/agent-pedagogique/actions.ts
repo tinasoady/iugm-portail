@@ -5,7 +5,13 @@ import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth";
 import { logAction } from "@/lib/audit";
 import { validatePedagoInscription, assignAcademicResult } from "@/lib/students";
-import { hasTaskPermission, PERMISSION_DENIED_MESSAGE, type TaskKey } from "@/lib/permissions";
+import {
+  hasTaskPermission,
+  canManageStudent,
+  PERMISSION_DENIED_MESSAGE,
+  FORMATION_DENIED_MESSAGE,
+  type TaskKey,
+} from "@/lib/permissions";
 
 // Garde commune : une Server Action reste appelable par POST direct,
 // et chaque agent n'a que les tâches que le superadmin lui a accordées
@@ -36,6 +42,9 @@ export async function validatePedagoAction(
 
   const studentId = String(formData.get("studentId") ?? "");
   if (!studentId) return { error: "Dossier manquant." };
+  if (!(await canManageStudent(session.sub, session.role, studentId))) {
+    return { error: FORMATION_DENIED_MESSAGE };
+  }
 
   try {
     const { student, email, password } = await validatePedagoInscription(studentId, session.sub);
@@ -63,6 +72,9 @@ export async function assignResultAction(
   if (session === "denied") return { error: PERMISSION_DENIED_MESSAGE };
 
   const studentId = String(formData.get("studentId") ?? "");
+  if (studentId && !(await canManageStudent(session.sub, session.role, studentId))) {
+    return { error: FORMATION_DENIED_MESSAGE };
+  }
   const academicYear = String(formData.get("academicYear") ?? "").trim();
   const semester = String(formData.get("semester") ?? "").trim();
   const average = Number(String(formData.get("average") ?? "").replace(",", "."));

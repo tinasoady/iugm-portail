@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { tasksForRole, TASKS } from "@/lib/permissions";
+import { FORMATIONS } from "@/lib/formations";
 import { AppShell } from "@/app/ui/app-shell";
 import { PermissionActions } from "./permission-row";
 import { TaskPermissionsForm, DeleteUserButton } from "./task-permissions-form";
@@ -41,6 +42,7 @@ export default async function PermissionsPage() {
       mustChangePassword: true,
       jobTitle: true,
       permissions: true,
+      formation: true,
     },
   });
 
@@ -86,6 +88,11 @@ export default async function PermissionsPage() {
                       {user.jobTitle}
                     </span>
                   )}
+                  {user.formation && (
+                    <span className="rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
+                      🔒 {user.formation}
+                    </span>
+                  )}
                   {user.active ? (
                     <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
                       ● Actif
@@ -127,6 +134,8 @@ export default async function PermissionsPage() {
                 <TaskPermissionsForm
                   userId={user.id}
                   jobTitle={user.jobTitle}
+                  formation={user.formation}
+                  formations={FORMATIONS.map((f) => f.label)}
                   permissions={user.permissions}
                   tasks={roleTasks}
                 />

@@ -4,7 +4,13 @@ import { revalidatePath } from "next/cache";
 
 import { getSession } from "@/lib/auth";
 import { verifyReceipt, validateAdminInscription, importStudentsCsv } from "@/lib/students";
-import { hasTaskPermission, PERMISSION_DENIED_MESSAGE, type TaskKey } from "@/lib/permissions";
+import {
+  hasTaskPermission,
+  canManageStudent,
+  PERMISSION_DENIED_MESSAGE,
+  FORMATION_DENIED_MESSAGE,
+  type TaskKey,
+} from "@/lib/permissions";
 
 export type ActionState = { success?: string; error?: string };
 
@@ -32,6 +38,9 @@ export async function verifyReceiptAction(
   if (!studentId || !receiptNumber) {
     return { error: "Numéro de reçu obligatoire." };
   }
+  if (!(await canManageStudent(session.sub, session.role, studentId))) {
+    return { error: FORMATION_DENIED_MESSAGE };
+  }
 
   try {
     const student = await verifyReceipt(studentId, receiptNumber, session.sub);
@@ -52,6 +61,9 @@ export async function validateAdminAction(
 
   const studentId = String(formData.get("studentId") ?? "");
   if (!studentId) return { error: "Dossier manquant." };
+  if (!(await canManageStudent(session.sub, session.role, studentId))) {
+    return { error: FORMATION_DENIED_MESSAGE };
+  }
 
   try {
     const student = await validateAdminInscription(studentId, session.sub);

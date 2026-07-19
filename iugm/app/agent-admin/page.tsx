@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { searchStudents } from "@/lib/students";
+import { getUserFormation } from "@/lib/permissions";
 import { AppShell } from "@/app/ui/app-shell";
 import { StatCard } from "@/app/ui/stat-card";
 import { IconFolder, IconClipboard, IconShield, IconCap } from "@/app/ui/icons";
@@ -22,9 +23,17 @@ export default async function AgentAdminPage({
   if (!["AGENT_ADMINISTRATION", "SUPERADMIN"].includes(session.role)) redirect("/");
 
   const { q } = await searchParams;
+  // Secrétaire de formation : dossiers limités à sa formation
+  const userFormation = await getUserFormation(session.sub, session.role);
   const [students, statusCounts] = await Promise.all([
-    searchStudents(q),
-    prisma.student.groupBy({ by: ["status"], _count: { _all: true } }),
+    searchStudents(q, userFormation),
+    prisma.student.groupBy({
+      by: ["status"],
+      _count: { _all: true },
+      ...(userFormation
+        ? { where: { OR: [{ mention: userFormation }, { program: userFormation }] } }
+        : {}),
+    }),
   ]);
   const countOf = (status: string) =>
     statusCounts.find((s) => s.status === status)?._count._all ?? 0;

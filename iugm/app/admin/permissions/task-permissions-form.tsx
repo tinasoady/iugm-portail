@@ -10,11 +10,15 @@ const initialState: PermissionState = {};
 export function TaskPermissionsForm({
   userId,
   jobTitle,
+  formation,
+  formations,
   permissions,
   tasks,
 }: {
   userId: string;
   jobTitle?: string | null;
+  formation?: string | null;
+  formations: string[];
   permissions: string[];
   tasks: Array<{ key: string; label: string }>;
 }) {
@@ -23,13 +27,28 @@ export function TaskPermissionsForm({
   return (
     <form action={formAction} className="space-y-2">
       <input type="hidden" name="userId" value={userId} />
-      <input
-        name="jobTitle"
-        type="text"
-        defaultValue={jobTitle ?? ""}
-        placeholder="Fonction (ex : Secrétaire, Chef de scolarité, Resp. finance...)"
-        className="w-full rounded-lg border border-black/10 bg-white px-2.5 py-1.5 text-xs text-zinc-900 outline-none focus:ring-2 focus:ring-indigo-500/40 dark:border-white/10 dark:bg-zinc-950 dark:text-zinc-50"
-      />
+      <div className="grid gap-2 sm:grid-cols-2">
+        <input
+          name="jobTitle"
+          type="text"
+          defaultValue={jobTitle ?? ""}
+          placeholder="Fonction (ex : Secrétaire, Chef de scolarité...)"
+          className="w-full rounded-lg border border-black/10 bg-white px-2.5 py-1.5 text-xs text-zinc-900 outline-none focus:ring-2 focus:ring-indigo-500/40 dark:border-white/10 dark:bg-zinc-950 dark:text-zinc-50"
+        />
+        <select
+          name="formation"
+          defaultValue={formation ?? ""}
+          title="Formation affectée : l'agent ne voit et ne manipule que les dossiers de cette formation"
+          className="w-full rounded-lg border border-black/10 bg-white px-2.5 py-1.5 text-xs text-zinc-900 outline-none focus:ring-2 focus:ring-indigo-500/40 dark:border-white/10 dark:bg-zinc-950 dark:text-zinc-50"
+        >
+          <option value="">Toutes les formations</option>
+          {formations.map((f) => (
+            <option key={f} value={f}>
+              Secrétaire de : {f}
+            </option>
+          ))}
+        </select>
+      </div>
       <div className="space-y-1">
         {tasks.map((t) => (
           <label

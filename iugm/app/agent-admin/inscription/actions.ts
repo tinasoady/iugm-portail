@@ -4,7 +4,11 @@ import { revalidatePath } from "next/cache";
 
 import { getSession } from "@/lib/auth";
 import { registerStudent } from "@/lib/students";
-import { hasTaskPermission, PERMISSION_DENIED_MESSAGE } from "@/lib/permissions";
+import {
+  hasTaskPermission,
+  getUserFormation,
+  PERMISSION_DENIED_MESSAGE,
+} from "@/lib/permissions";
 
 export type InscriptionState = {
   success?: string;
@@ -53,6 +57,14 @@ export async function registerInscriptionAction(
 
   for (const [field, label] of REQUIRED_FIELDS) {
     if (!get(field)) return { error: `Champ obligatoire manquant : ${label}.` };
+  }
+
+  // Secrétaire de formation : ne peut inscrire que dans SA formation
+  const userFormation = await getUserFormation(session.sub, session.role);
+  if (userFormation && get("formation") !== userFormation) {
+    return {
+      error: `Vous ne pouvez inscrire que dans votre formation (${userFormation}) : l'étudiant doit s'adresser au secrétaire de la formation choisie.`,
+    };
   }
 
   const birthDate = new Date(get("birthDate"));

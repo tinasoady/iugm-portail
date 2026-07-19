@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { defaultEnrollmentYear } from "@/lib/students";
-import { hasTaskPermission } from "@/lib/permissions";
+import { hasTaskPermission, getUserFormation } from "@/lib/permissions";
 import { AppShell } from "@/app/ui/app-shell";
 import { ReenrollForm } from "./reenroll-form";
 
@@ -21,19 +21,28 @@ export default async function ReinscriptionPage({
 
   const { q } = await searchParams;
   const query = q?.trim();
+  // Secrétaire de formation : réinscriptions limitées à sa formation
+  const userFormation = await getUserFormation(session.sub, session.role);
 
   // Anciens étudiants éligibles : inscription finalisée (compte + année terminée)
   const students = await prisma.student.findMany({
     where: {
-      status: "INSCRIT",
-      ...(query
-        ? {
-            OR: [
-              { fullName: { contains: query, mode: "insensitive" } },
-              { matricule: { contains: query, mode: "insensitive" } },
-            ],
-          }
-        : {}),
+      AND: [
+        { status: "INSCRIT" },
+        ...(userFormation
+          ? [{ OR: [{ mention: userFormation }, { program: userFormation }] }]
+          : []),
+        ...(query
+          ? [
+              {
+                OR: [
+                  { fullName: { contains: query, mode: "insensitive" as const } },
+                  { matricule: { contains: query, mode: "insensitive" as const } },
+                ],
+              },
+            ]
+          : []),
+      ],
     },
     orderBy: { fullName: "asc" },
     include: {

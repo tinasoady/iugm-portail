@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { logout } from "@/app/auth-actions";
 import { prisma } from "@/lib/prisma";
 import { getSettings } from "@/lib/settings";
+import { unreadAnnouncementsCount } from "@/lib/announcements";
 import type { TaskKey } from "@/lib/permissions";
 import {
   IconDashboard,
@@ -17,8 +18,10 @@ import {
   IconCash,
   IconShield,
   IconUser,
+  IconMegaphone,
 } from "./icons";
 import { ThemeToggle } from "./theme-toggle";
+import {BsClipboardData} from "react-icons/bs";
 
 const ROLE_LABELS: Record<string, string> = {
   SUPERADMIN: "Super administrateur",
@@ -83,6 +86,13 @@ const NAV_ITEMS: NavItem[] = [
     roles: ["SUPERADMIN", "AGENT_ADMINISTRATION", "AGENT_PEDAGOGIQUE"],
   },
   {
+    href: "/communiquer",
+    label: "Communiquer",
+    icon: <IconMegaphone />,
+    roles: ["SUPERADMIN", "AGENT_ADMINISTRATION", "AGENT_PEDAGOGIQUE"],
+    task: "communiquer",
+  },
+  {
     href: "/admin/permissions",
     label: "Permissions",
     icon: <IconShield />,
@@ -91,7 +101,7 @@ const NAV_ITEMS: NavItem[] = [
   {
     href: "/admin/journal",
     label: "Journaux d'activité",
-    icon: <IconClipboard />,
+    icon: <BsClipboardData />,
     roles: ["SUPERADMIN"],
   },
   {
@@ -104,6 +114,12 @@ const NAV_ITEMS: NavItem[] = [
     href: "/mon-profil",
     label: "Mon profil",
     icon: <IconUsers />,
+    roles: ["ETUDIANT"],
+  },
+  {
+    href: "/mes-communiques",
+    label: "Communiqués",
+    icon: <IconBell />,
     roles: ["ETUDIANT"],
   },
   // Gestion de son propre compte (photo, informations, mot de passe) — tous les rôles
@@ -141,7 +157,7 @@ export async function AppShell({
   // Photo de profil pour l'avatar + permissions pour filtrer le menu des agents
   const account = await prisma.user.findUnique({
     where: { email },
-    select: { permissions: true, photo: true },
+    select: { id: true, permissions: true, photo: true },
   });
   const permissions = account?.permissions ?? [];
   const nav = NAV_ITEMS.filter(
@@ -150,6 +166,9 @@ export async function AppShell({
       (!item.task || role === "SUPERADMIN" || permissions.includes(item.task)),
   );
   const settings = await getSettings();
+  // Badge de notifications : communiqués non lus (étudiants uniquement)
+  const unread =
+    role === "ETUDIANT" && account ? await unreadAnnouncementsCount(account.id) : 0;
 
   return (
     <div className="min-h-screen bg-zinc-100 dark:bg-zinc-950">
@@ -222,9 +241,24 @@ export async function AppShell({
             </h1>
             <div className="flex items-center gap-2 sm:gap-3">
               <ThemeToggle />
-              <span className="hidden rounded-full p-2 text-zinc-400 sm:block dark:text-zinc-500">
-                <IconBell />
-              </span>
+              {role === "ETUDIANT" ? (
+                <Link
+                  href="/mes-communiques"
+                  title={unread > 0 ? `${unread} communiqué(s) non lu(s)` : "Communiqués"}
+                  className="relative hidden rounded-full p-2 text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900 sm:block dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
+                >
+                  <IconBell />
+                  {unread > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white">
+                      {unread > 9 ? "9+" : unread}
+                    </span>
+                  )}
+                </Link>
+              ) : (
+                <span className="hidden rounded-full p-2 text-zinc-400 sm:block dark:text-zinc-500">
+                  <IconBell />
+                </span>
+              )}
               <div className="flex items-center gap-3">
                 {account?.photo ? (
                   // eslint-disable-next-line @next/next/no-img-element -- data URL, next/image inutile ici

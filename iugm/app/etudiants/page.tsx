@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 
 import { getSession } from "@/lib/auth";
 import { listStudents, getAcademicYears, getStudentFilterValues } from "@/lib/students";
-import { hasTaskPermission } from "@/lib/permissions";
+import { hasTaskPermission, getUserFormation } from "@/lib/permissions";
 import { AppShell } from "@/app/ui/app-shell";
 import { STATUS_LABELS, STATUS_BADGE_CLASSES, MENTION_LABELS } from "@/app/ui/student-status";
 import { DeleteStudentButton } from "./delete-button";
@@ -61,8 +61,10 @@ export default async function EtudiantsPage({
   }
 
   const params = await searchParams;
+  // Secrétaire de formation : la liste est limitée à sa formation, côté serveur
+  const userFormation = await getUserFormation(session.sub, session.role);
   const [students, years, filterValues] = await Promise.all([
-    listStudents(params),
+    listStudents(params, userFormation),
     getAcademicYears(),
     getStudentFilterValues(),
   ]);
@@ -141,18 +143,27 @@ export default async function EtudiantsPage({
               </option>
             ))}
           </select>
-          <select
-            name="filiere"
-            defaultValue={params.filiere ?? ""}
-            className="rounded-xl border border-black/10 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-indigo-500/40 dark:border-white/10 dark:bg-zinc-950 dark:text-zinc-50"
-          >
-            <option value="">Toutes les filières</option>
-            {filterValues.filieres.map((f) => (
-              <option key={f} value={f}>
-                {f}
-              </option>
-            ))}
-          </select>
+          {userFormation ? (
+            <span
+              className="rounded-xl bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300"
+              title="Votre accès est limité à cette formation"
+            >
+              🔒 Formation : {userFormation}
+            </span>
+          ) : (
+            <select
+              name="filiere"
+              defaultValue={params.filiere ?? ""}
+              className="rounded-xl border border-black/10 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-indigo-500/40 dark:border-white/10 dark:bg-zinc-950 dark:text-zinc-50"
+            >
+              <option value="">Toutes les filières</option>
+              {filterValues.filieres.map((f) => (
+                <option key={f} value={f}>
+                  {f}
+                </option>
+              ))}
+            </select>
+          )}
           <select
             name="niveau"
             defaultValue={params.niveau ?? ""}

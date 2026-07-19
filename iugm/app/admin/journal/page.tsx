@@ -27,6 +27,8 @@ const ACTION_LABELS: Record<string, string> = {
   STUDENT_REENROLLED: "Étudiant réinscrit",
   USER_DELETED: "Compte supprimé",
   PROFILE_UPDATED: "Profil mis à jour",
+  ANNOUNCEMENT_SENT: "Communiqué envoyé",
+  ANNOUNCEMENT_DELETED: "Communiqué supprimé",
 };
 
 const PAGE_SIZE = 50;

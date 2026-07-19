@@ -355,20 +355,26 @@ export async function assignAcademicResult(input: AssignResultInput, actorId: st
 // Recherche et listes filtrées
 // ---------------------------------------------------------------------------
 
-export async function searchStudents(query?: string) {
+// `formation` : restreint aux dossiers de cette formation (secrétaire de formation)
+export async function searchStudents(query?: string, formation?: string | null) {
   const q = query?.trim();
+  const conditions: object[] = [];
+  if (formation) {
+    conditions.push({ OR: [{ mention: formation }, { program: formation }] });
+  }
+  if (q) {
+    conditions.push({
+      OR: [
+        { fullName: { contains: q, mode: "insensitive" } },
+        { matricule: { contains: q, mode: "insensitive" } },
+        { receiptNumber: { contains: q, mode: "insensitive" } },
+        { program: { contains: q, mode: "insensitive" } },
+        { department: { contains: q, mode: "insensitive" } },
+      ],
+    });
+  }
   return prisma.student.findMany({
-    where: q
-      ? {
-          OR: [
-            { fullName: { contains: q, mode: "insensitive" } },
-            { matricule: { contains: q, mode: "insensitive" } },
-            { receiptNumber: { contains: q, mode: "insensitive" } },
-            { program: { contains: q, mode: "insensitive" } },
-            { department: { contains: q, mode: "insensitive" } },
-          ],
-        }
-      : undefined,
+    where: conditions.length > 0 ? { AND: conditions } : undefined,
     orderBy: { createdAt: "desc" },
     include: { account: { select: { email: true } } },
   });
@@ -383,8 +389,9 @@ export type InscritsFilters = {
 
 const VALID_MENTIONS: MentionValue[] = ["ECHEC", "PASSABLE", "ASSEZ_BIEN", "BIEN", "TRES_BIEN"];
 
-// Liste des étudiants inscrits, filtrable par filière, département et mention
-export async function listInscrits(filters: InscritsFilters = {}) {
+// Liste des étudiants inscrits, filtrable par filière, département et mention.
+// `formation` : périmètre imposé côté serveur (secrétaire de formation).
+export async function listInscrits(filters: InscritsFilters = {}, formation?: string | null) {
   const q = filters.q?.trim();
   const mention = VALID_MENTIONS.includes(filters.mention as MentionValue)
     ? (filters.mention as MentionValue)
@@ -393,6 +400,7 @@ export async function listInscrits(filters: InscritsFilters = {}) {
   return prisma.student.findMany({
     where: {
       status: "INSCRIT",
+      ...(formation ? { AND: [{ OR: [{ mention: formation }, { program: formation }] }] } : {}),
       ...(filters.program ? { program: filters.program } : {}),
       ...(filters.department ? { department: filters.department } : {}),
       ...(mention ? { results: { some: { mention } } } : {}),
@@ -435,13 +443,17 @@ export type StudentListParams = {
   dir?: string; // asc | desc
 };
 
-export async function listStudents(params: StudentListParams = {}) {
+// `formation` : périmètre imposé côté serveur (secrétaire de formation)
+export async function listStudents(params: StudentListParams = {}, formation?: string | null) {
   const q = params.q?.trim();
   const sortField = SORTABLE_FIELDS[(params.sort as StudentSortKey) ?? "nom"] ?? "fullName";
   const dir = params.dir === "desc" ? "desc" : "asc";
 
   // Conditions cumulées (AND) : chaque filtre peut contenir son propre OR
   const conditions: object[] = [];
+  if (formation) {
+    conditions.push({ OR: [{ mention: formation }, { program: formation }] });
+  }
   if (params.year) conditions.push({ academicYear: params.year });
   if (params.filiere) {
     conditions.push({ OR: [{ mention: params.filiere }, { program: params.filiere }] });

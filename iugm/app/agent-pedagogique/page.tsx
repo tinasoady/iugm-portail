@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { searchStudents, listInscrits, getFilterOptions } from "@/lib/students";
+import { getUserFormation } from "@/lib/permissions";
 import { AppShell } from "@/app/ui/app-shell";
 import { StatCard } from "@/app/ui/stat-card";
 import { IconClipboard, IconCap, IconChart, IconFolder } from "@/app/ui/icons";
@@ -42,9 +43,11 @@ export default async function AgentPedagogiquePage({
 
   const { q, qi, program, department, mention } = await searchParams;
 
+  // Secrétaire de formation : tout est limité à sa formation, côté serveur
+  const userFormation = await getUserFormation(session.sub, session.role);
   const [allStudents, inscrits, filterOptions, statusCounts, resultCount] = await Promise.all([
-    searchStudents(q),
-    listInscrits({ q: qi, program, department, mention }),
+    searchStudents(q, userFormation),
+    listInscrits({ q: qi, program, department, mention }, userFormation),
     getFilterOptions(),
     prisma.student.groupBy({ by: ["status"], _count: { _all: true } }),
     prisma.academicResult.count(),
