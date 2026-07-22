@@ -5,8 +5,9 @@ import { getSession } from "@/lib/auth";
 import { listStudents, getAcademicYears, getStudentFilterValues } from "@/lib/students";
 import { hasTaskPermission, getUserFormation } from "@/lib/permissions";
 import { AppShell } from "@/app/ui/app-shell";
-import { STATUS_LABELS, STATUS_BADGE_CLASSES, MENTION_LABELS } from "@/app/ui/student-status";
-import { DeleteStudentButton } from "./delete-button";
+import { STATUS_LABELS, STATUS_BADGE_CLASSES } from "@/app/ui/student-status";
+import { DeleteStudentButton, EditStudentLink } from "./delete-button";
+import { GROUP_OPTIONS, resolveGroup, groupStudents } from "./group-students";
 
 const dateFormatter = new Intl.DateTimeFormat("fr-FR", { dateStyle: "short" });
 
@@ -18,19 +19,23 @@ type Params = {
   sort?: string;
   dir?: string;
   group?: string;
+  page?: string;
 };
 
-// Modes de classement des blocs
-const GROUP_OPTIONS: Record<string, string> = {
-  annee: "Année universitaire",
-  filiere: "Filière",
-  niveau: "Niveau",
-  "filiere-niveau": "Filière / Niveau",
-  domaine: "Domaine",
-  mention: "Mention",
-};
+// Requête (hors page) à transmettre telle quelle à l'export et à l'impression
+function filterQueryString(params: Params): string {
+  const search = new URLSearchParams();
+  if (params.q) search.set("q", params.q);
+  if (params.year) search.set("year", params.year);
+  if (params.filiere) search.set("filiere", params.filiere);
+  if (params.niveau) search.set("niveau", params.niveau);
+  if (params.group) search.set("group", params.group);
+  if (params.sort) search.set("sort", params.sort);
+  if (params.dir) search.set("dir", params.dir);
+  return search.toString();
+}
 
-// Lien d'en-tête de colonne : re-cliquer inverse le sens du tri
+// Lien d'en-tête de colonne : re-cliquer inverse le sens du tri (repart en page 1)
 function sortHref(params: Params, key: string): string {
   const dir = params.sort === key && params.dir !== "desc" ? "desc" : "asc";
   const search = new URLSearchParams();
@@ -49,6 +54,21 @@ function sortArrow(params: Params, key: string): string {
   return params.dir === "desc" ? " ↓" : " ↑";
 }
 
+// Lien de pagination : conserve tous les filtres/tri actifs
+function pageHref(params: Params, page: number): string {
+  const search = new URLSearchParams();
+  if (params.q) search.set("q", params.q);
+  if (params.year) search.set("year", params.year);
+  if (params.filiere) search.set("filiere", params.filiere);
+  if (params.niveau) search.set("niveau", params.niveau);
+  if (params.group) search.set("group", params.group);
+  if (params.sort) search.set("sort", params.sort);
+  if (params.dir) search.set("dir", params.dir);
+  if (page > 1) search.set("page", String(page));
+  const qs = search.toString();
+  return `/etudiants${qs ? `?${qs}` : ""}`;
+}
+
 export default async function EtudiantsPage({
   searchParams,
 }: {
@@ -63,53 +83,24 @@ export default async function EtudiantsPage({
   const params = await searchParams;
   // Secrétaire de formation : la liste est limitée à sa formation, côté serveur
   const userFormation = await getUserFormation(session.sub, session.role);
-  const [students, years, filterValues] = await Promise.all([
-    listStudents(params, userFormation),
+  const [{ students, total, page, totalPages }, years, filterValues] = await Promise.all([
+    listStudents({ ...params, page: Number(params.page) || 1 }, userFormation),
     getAcademicYears(),
     getStudentFilterValues(),
   ]);
 
-  // La suppression est réservée au superadmin et aux agents d'administration
-  // ayant la tâche « suppression_etudiant » dans leurs permissions
-  const canDelete = await hasTaskPermission(session.sub, session.role, "suppression_etudiant");
+  // Suppression et modification sont réservées au superadmin et aux agents
+  // d'administration ayant la tâche correspondante dans leurs permissions
+  const [canDelete, canEdit] = await Promise.all([
+    hasTaskPermission(session.sub, session.role, "suppression_etudiant"),
+    hasTaskPermission(session.sub, session.role, "modification_dossier"),
+  ]);
+  const canManageActions = canDelete || canEdit;
 
   // Classement des blocs selon le critère choisi (année par défaut)
-  const group = GROUP_OPTIONS[params.group ?? ""] ? (params.group as string) : "annee";
-  const UNSET = "Non renseigné(e)";
-  const keyOf = (s: (typeof students)[number]): string => {
-    switch (group) {
-      case "filiere":
-        return s.mention ?? s.program ?? UNSET;
-      case "niveau":
-        return s.level ?? s.track ?? UNSET;
-      case "filiere-niveau":
-        // ex : "Management / L3"
-        return `${s.mention ?? s.program ?? "Filière non renseignée"} / ${s.level ?? s.track ?? "niveau ?"}`;
-      case "domaine":
-        return s.domain ?? s.department ?? UNSET;
-      case "mention":
-        // Mention du résultat le plus récent
-        return s.results[0] ? (MENTION_LABELS[s.results[0].mention] ?? s.results[0].mention) : "Sans résultat";
-      default:
-        return s.academicYear ?? UNSET;
-    }
-  };
-
-  const map = new Map<string, typeof students>();
-  for (const s of students) {
-    const key = keyOf(s);
-    if (!map.has(key)) map.set(key, []);
-    map.get(key)!.push(s);
-  }
-  const keys = [...map.keys()].sort((a, b) => {
-    // Les blocs "non renseigné" / "sans résultat" passent en dernier
-    const aLast = a === UNSET || a === "Sans résultat";
-    const bLast = b === UNSET || b === "Sans résultat";
-    if (aLast !== bLast) return aLast ? 1 : -1;
-    // Années : la plus récente d'abord ; autres critères : ordre alphabétique
-    return group === "annee" ? b.localeCompare(a) : a.localeCompare(b);
-  });
-  const groups: Array<[string, typeof students]> = keys.map((k) => [k, map.get(k)!]);
+  const group = resolveGroup(params.group);
+  const groups = groupStudents(students, group);
+  const exportQuery = filterQueryString(params);
 
   const headerLinkClass =
     "font-semibold text-zinc-400 hover:text-indigo-600 dark:text-zinc-500 dark:hover:text-indigo-400";
@@ -205,8 +196,31 @@ export default async function EtudiantsPage({
             </Link>
           )}
         </form>
-        <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-          {students.length} étudiant(s) — cliquez sur un en-tête de colonne pour trier.
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">
+            {total} étudiant(s) au total — page {page} / {totalPages} — cliquez sur un en-tête de
+            colonne pour trier.
+          </p>
+          <div className="flex items-center gap-2">
+            <a
+              href={`/etudiants/imprimer${exportQuery ? `?${exportQuery}` : ""}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-lg border border-black/10 px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-white/10 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            >
+              🖨 Imprimer la liste
+            </a>
+            <a
+              href={`/api/students/export-filtered${exportQuery ? `?${exportQuery}` : ""}`}
+              className="rounded-lg border border-black/10 px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-white/10 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            >
+              ⬇ Exporter (CSV)
+            </a>
+          </div>
+        </div>
+        <p className="mt-1 text-[11px] text-zinc-400 dark:text-zinc-500">
+          Impression et export portent sur l&apos;ensemble des étudiants correspondant aux
+          critères ci-dessus (pas seulement la page affichée).
         </p>
       </section>
 
@@ -263,7 +277,7 @@ export default async function EtudiantsPage({
                   <th className="py-2.5 pr-4 font-semibold text-zinc-400 dark:text-zinc-500">
                     Compte
                   </th>
-                  {canDelete && (
+                  {canManageActions && (
                     <th className="py-2.5 font-semibold text-zinc-400 dark:text-zinc-500">
                       Actions
                     </th>
@@ -303,13 +317,18 @@ export default async function EtudiantsPage({
                     <td className="py-2.5 pr-4 text-xs text-zinc-600 dark:text-zinc-400">
                       {s.account?.email ?? "—"}
                     </td>
-                    {canDelete && (
+                    {canManageActions && (
                       <td className="py-2.5">
-                        <DeleteStudentButton
-                          studentId={s.id}
-                          matricule={s.matricule}
-                          fullName={s.fullName}
-                        />
+                        <div className="flex items-center gap-1.5">
+                          {canEdit && <EditStudentLink studentId={s.id} />}
+                          {canDelete && (
+                            <DeleteStudentButton
+                              studentId={s.id}
+                              matricule={s.matricule}
+                              fullName={s.fullName}
+                            />
+                          )}
+                        </div>
                       </td>
                     )}
                   </tr>
@@ -319,6 +338,37 @@ export default async function EtudiantsPage({
           </div>
         </section>
       ))}
+
+      {/* Pagination : 50 dossiers par page, tous filtres/tri conservés */}
+      {totalPages > 1 && (
+        <section className="rounded-2xl border border-black/5 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-zinc-900">
+          <div className="flex items-center justify-between">
+            {page > 1 ? (
+              <Link
+                href={pageHref(params, page - 1)}
+                className="rounded-xl border border-black/10 px-3 py-1.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-white/10 dark:text-zinc-200 dark:hover:bg-zinc-800"
+              >
+                ← Page précédente
+              </Link>
+            ) : (
+              <span />
+            )}
+            <span className="text-sm text-zinc-500 dark:text-zinc-400">
+              Page {page} / {totalPages}
+            </span>
+            {page < totalPages ? (
+              <Link
+                href={pageHref(params, page + 1)}
+                className="rounded-xl border border-black/10 px-3 py-1.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-white/10 dark:text-zinc-200 dark:hover:bg-zinc-800"
+              >
+                Page suivante →
+              </Link>
+            ) : (
+              <span />
+            )}
+          </div>
+        </section>
+      )}
     </AppShell>
   );
 }

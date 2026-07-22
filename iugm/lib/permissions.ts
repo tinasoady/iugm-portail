@@ -14,6 +14,7 @@ export type TaskKey =
   | "ecolage"
   | "csv"
   | "suppression_etudiant"
+  | "modification_dossier"
   | "validation_pedagogique"
   | "resultats"
   | "conduite"
@@ -43,6 +44,10 @@ export const TASKS: Record<TaskKey, { label: string; roles: string[] }> = {
   },
   suppression_etudiant: {
     label: "Supprimer des dossiers étudiants",
+    roles: ["AGENT_ADMINISTRATION"],
+  },
+  modification_dossier: {
+    label: "Modifier les dossiers étudiants",
     roles: ["AGENT_ADMINISTRATION"],
   },
   // Tâches du domaine agent pédagogique

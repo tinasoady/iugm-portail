@@ -29,6 +29,7 @@ const ACTION_LABELS: Record<string, string> = {
   PROFILE_UPDATED: "Profil mis à jour",
   ANNOUNCEMENT_SENT: "Communiqué envoyé",
   ANNOUNCEMENT_DELETED: "Communiqué supprimé",
+  LOGIN_RATE_LIMITED: "Connexion bloquée (anti-bruteforce)",
 };
 
 const PAGE_SIZE = 50;
@@ -163,7 +164,7 @@ export default async function JournalPage({
                     <td className="py-2.5 pr-4">
                       <span
                         className={
-                          log.action === "LOGIN_FAILED"
+                          log.action === "LOGIN_FAILED" || log.action === "LOGIN_RATE_LIMITED"
                             ? "rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-medium text-red-700 dark:bg-red-950 dark:text-red-300"
                             : "rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
                         }

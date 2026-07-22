@@ -139,6 +139,10 @@ model Student {
   @@index([fullName])
   @@index([status])
   @@index([academicYear])
+  // + index trigram (pg_trgm/GIN) sur fullName, matricule, receiptNumber,
+  // program, department, cin, track pour les recherches "contains" — voir la
+  // migration 20260721153910_student_search_trgm_index (SQL brut : la syntaxe
+  // Prisma ne modélise pas l'opclass gin_trgm_ops).
 }
 
 // Année universitaire passée d'un étudiant, archivée lors de sa réinscription
@@ -235,4 +239,19 @@ model AuditLog {
   createdAt DateTime @default(now())
 
   @@index([createdAt])
+}
+
+// Tentatives de connexion (succès et échecs), utilisées uniquement pour le
+// blocage anti-bruteforce. Distinct de AuditLog (texte libre, lecture humaine) :
+// ici les colonnes sont indexées pour compter rapidement les échecs récents
+// par email et par IP.
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  email     String
+  ip        String?
+  success   Boolean
+  createdAt DateTime @default(now())
+
+  @@index([email, createdAt])
+  @@index([ip, createdAt])
 }

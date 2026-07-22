@@ -46,24 +46,27 @@ export async function changePasswordAction(
   const ok = await bcrypt.compare(currentPassword, user.passwordHash);
   if (!ok) return { error: "Mot de passe actuel incorrect." };
 
-  // Un étudiant ne doit pas reprendre son matricule (mot de passe initial prévisible)
+  // Un étudiant ne doit pas choisir son matricule seul (public, donc prévisible)
   const studentFile = await prisma.student.findFirst({ where: { accountId: user.id } });
   if (studentFile && newPassword === studentFile.matricule) {
     return { error: "Le nouveau mot de passe ne doit pas être votre numéro matricule." };
   }
 
   const passwordHash = await bcrypt.hash(newPassword, 10);
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { passwordHash, mustChangePassword: false },
-  });
-  // Le mot de passe initial imprimé n'est plus valable : on l'efface du dossier
-  if (studentFile) {
-    await prisma.student.update({
-      where: { id: studentFile.id },
-      data: { initialPassword: null },
+  // Les deux écritures (compte + dossier étudiant) doivent réussir ensemble
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: user.id },
+      data: { passwordHash, mustChangePassword: false },
     });
-  }
+    // Le mot de passe initial imprimé n'est plus valable : on l'efface du dossier
+    if (studentFile) {
+      await tx.student.update({
+        where: { id: studentFile.id },
+        data: { initialPassword: null },
+      });
+    }
+  });
 
   await logAction("PASSWORD_CHANGED", `Mot de passe changé par ${user.email}`, user.id);
 

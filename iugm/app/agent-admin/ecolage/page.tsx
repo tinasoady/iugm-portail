@@ -245,7 +245,7 @@ export default async function EcolagePage({
         </p>
         {unpaidStudents.length === 0 ? (
           <p className="text-sm text-emerald-700 dark:text-emerald-400">
-            ✓ Tous les étudiants n&apos;ont pas payé leur écolage.
+            ✓ Aucun étudiant n&apos;a encore payé son écolage.
           </p>
         ) : (
           <div className="overflow-x-auto">

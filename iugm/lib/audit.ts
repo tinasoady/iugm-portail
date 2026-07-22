@@ -25,7 +25,8 @@ export type AuditAction =
   | "USER_DELETED"
   | "PROFILE_UPDATED"
   | "ANNOUNCEMENT_SENT"
-  | "ANNOUNCEMENT_DELETED";
+  | "ANNOUNCEMENT_DELETED"
+  | "LOGIN_RATE_LIMITED";
 
 export async function logAction(action: AuditAction, details?: string, actorId?: string | null) {
   try {

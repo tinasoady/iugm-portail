@@ -27,7 +27,8 @@ export function ChangePasswordForm() {
           className={inputClass}
         />
         <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-          Pour votre première connexion, c&apos;est votre numéro matricule.
+          Pour votre première connexion, c&apos;est le mot de passe imprimé sur votre reçu
+          d&apos;inscription.
         </p>
       </div>
 
@@ -45,7 +46,7 @@ export function ChangePasswordForm() {
           className={inputClass}
         />
         <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-          Au moins 8 caractères, différent de votre matricule.
+          Au moins 8 caractères, différent de votre matricule seul.
         </p>
       </div>
 

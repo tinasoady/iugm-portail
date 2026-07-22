@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { logAction } from "@/lib/audit";
-import { generatePassword } from "@/lib/students";
+import { generatePassword, generateInitialPassword } from "@/lib/students";
 import { TASKS, tasksForRole, type TaskKey } from "@/lib/permissions";
 import { FORMATIONS } from "@/lib/formations";
 
@@ -111,21 +111,27 @@ export async function resetPasswordAction(
   });
   if (!user) return { error: "Utilisateur introuvable." };
 
-  // Étudiant : retour au matricule (cohérent avec le reçu d'inscription) ;
-  // personnel : mot de passe temporaire aléatoire, affiché une seule fois
-  const tempPassword = user.studentFile?.matricule ?? generatePassword();
+  // Étudiant : matricule + suffixe aléatoire (même format qu'à l'inscription,
+  // jamais le matricule seul) ; personnel : mot de passe temporaire aléatoire.
+  // Dans les deux cas, affiché une seule fois et changement forcé à la reconnexion.
+  const tempPassword = user.studentFile
+    ? generateInitialPassword(user.studentFile.matricule)
+    : generatePassword();
   const passwordHash = await bcrypt.hash(tempPassword, 10);
 
-  await prisma.user.update({
-    where: { id: userId },
-    data: { passwordHash, mustChangePassword: true },
-  });
-  if (user.studentFile) {
-    await prisma.student.update({
-      where: { id: user.studentFile.id },
-      data: { initialPassword: tempPassword },
+  // Les deux écritures (compte + dossier étudiant) doivent réussir ensemble
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: userId },
+      data: { passwordHash, mustChangePassword: true },
     });
-  }
+    if (user.studentFile) {
+      await tx.student.update({
+        where: { id: user.studentFile.id },
+        data: { initialPassword: tempPassword },
+      });
+    }
+  });
 
   await logAction("PASSWORD_RESET", `Mot de passe réinitialisé pour ${user.email}`, session.sub);
   revalidatePath("/admin/permissions");

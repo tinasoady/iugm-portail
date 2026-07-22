@@ -26,9 +26,9 @@ export default async function ChangePasswordPage() {
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
             <p className="font-semibold">⚠️ Changement de mot de passe obligatoire</p>
             <p className="mt-1">
-              Votre mot de passe initial est votre numéro matricule, imprimé sur votre reçu
-              d&apos;inscription : il est prévisible. Choisissez un mot de passe personnel pour
-              sécuriser votre compte avant d&apos;accéder à votre profil.
+              Votre mot de passe initial est celui imprimé sur votre reçu d&apos;inscription.
+              Choisissez un mot de passe personnel pour sécuriser votre compte avant
+              d&apos;accéder à votre profil.
             </p>
           </div>
         )}

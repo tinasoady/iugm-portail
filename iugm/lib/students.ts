@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
+import { Prisma } from "@prisma/client";
 
 import { prisma } from "./prisma";
 import { logAction } from "./audit";
@@ -16,17 +17,38 @@ export function defaultEnrollmentYear(): string {
   return `${y}-${y + 1}`;
 }
 
-// Génère un matricule unique au format FI2026-1, FI2026-2...
-// (FI + année de début de l'année universitaire + numéro séquentiel)
-async function nextMatricule(academicYear?: string): Promise<string> {
+// Vrai si l'erreur est un conflit d'unicité sur la colonne matricule.
+// Avec l'adaptateur pg de Prisma 7, `meta.target` (nom de colonne) n'est pas
+// toujours renseigné de façon fiable : le code P2002 suffit ici, puisque
+// `matricule` est le seul champ unique fourni à la création du Student.
+function isMatriculeConflict(e: unknown): boolean {
+  return e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002";
+}
+
+// Crée un enregistrement dont le matricule est généré séquentiellement
+// (FI + année de début de l'année universitaire + numéro), en réessayant avec
+// le numéro suivant en cas de conflit : deux inscriptions lancées en même
+// temps ne peuvent plus se disputer le même matricule (la contrainte unique
+// de la base est l'arbitre final, pas le compteur lu en mémoire).
+async function createWithGeneratedMatricule<T>(
+  academicYear: string | undefined,
+  create: (matricule: string) => Promise<T>,
+): Promise<T> {
   const startYear = (academicYear ?? defaultEnrollmentYear()).split("-")[0];
   const prefix = `FI${startYear}-`;
-  const count = await prisma.student.count({ where: { matricule: { startsWith: prefix } } });
-  for (let seq = count + 1; ; seq++) {
-    const candidate = `${prefix}${seq}`;
-    const exists = await prisma.student.findUnique({ where: { matricule: candidate } });
-    if (!exists) return candidate;
+  const startSeq =
+    (await prisma.student.count({ where: { matricule: { startsWith: prefix } } })) + 1;
+
+  const maxAttempts = 20;
+  for (let seq = startSeq; seq < startSeq + maxAttempts; seq++) {
+    try {
+      return await create(`${prefix}${seq}`);
+    } catch (e) {
+      if (!isMatriculeConflict(e)) throw e;
+      // Un autre agent vient de prendre ce numéro : on retente avec le suivant
+    }
   }
+  throw new Error("Impossible de générer un matricule unique après plusieurs tentatives, réessayez.");
 }
 
 // Normalise un nom pour en faire un identifiant email : "RAKOTO Jean" -> "rakoto"
@@ -59,6 +81,16 @@ export function generatePassword(length = 10): string {
     out += alphabet[byte % alphabet.length];
   }
   return out;
+}
+
+// Mot de passe initial d'un étudiant : matricule + suffixe aléatoire.
+// Le matricule seul est prévisible (numéroté séquentiellement et déjà affiché
+// partout en clair) ; y accoler un suffixe aléatoire garde le mot de passe
+// facile à imprimer/communiquer tout en le rendant impossible à deviner à
+// partir du seul matricule public. Reste soumis au changement obligatoire à
+// la première connexion.
+export function generateInitialPassword(matricule: string): string {
+  return `${matricule}-${generatePassword(5)}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -125,21 +157,22 @@ export async function registerStudent(input: RegisterStudentInput, actorId: stri
     throw new Error("La personne à contacter d'urgence est obligatoire.");
   }
 
-  const matricule = await nextMatricule(input.academicYear);
   const fullName = `${input.lastName.toUpperCase()} ${input.firstName}`;
 
-  const student = await prisma.student.create({
-    data: {
-      ...input,
-      matricule,
-      fullName,
-      // Champ hérité, alimenté pour les filtres et listes existants
-      program: input.mention,
-    },
-  });
+  const student = await createWithGeneratedMatricule(input.academicYear, (matricule) =>
+    prisma.student.create({
+      data: {
+        ...input,
+        matricule,
+        fullName,
+        // Champ hérité, alimenté pour les filtres et listes existants
+        program: input.mention,
+      },
+    }),
+  );
   await logAction(
     "STUDENT_REGISTERED",
-    `Dossier ${matricule} créé pour ${fullName} (${input.academicYear}) — formation ${input.mention}`,
+    `Dossier ${student.matricule} créé pour ${fullName} (${input.academicYear}) — formation ${input.mention}`,
     actorId,
   );
   return student;
@@ -211,18 +244,31 @@ export async function validatePedagoInscription(studentId: string, actorId: stri
   }
 
   const email = await availableStudentEmail(student.fullName);
-  // Le mot de passe initial est le numéro d'inscription (matricule) de l'étudiant
-  const password = student.matricule;
+  // Mot de passe initial : matricule + suffixe aléatoire (le matricule seul
+  // serait prévisible, puisqu'il est déjà affiché en clair partout)
+  const password = generateInitialPassword(student.matricule);
   const passwordHash = await bcrypt.hash(password, 10);
 
-  const account = await prisma.user.create({
-    // Mot de passe initial prévisible (matricule) : changement forcé à la première connexion
-    data: { email, fullName: student.fullName, role: "ETUDIANT", passwordHash, mustChangePassword: true },
-  });
-  await prisma.student.update({
-    where: { id: studentId },
-    // Le mot de passe initial est conservé pour être imprimé sur le reçu d'inscription
-    data: { status: "INSCRIT", accountId: account.id, initialPassword: password },
+  // Création du compte + mise à jour du dossier dans une seule transaction :
+  // si l'une des deux écritures échoue, l'autre est annulée (pas de compte
+  // orphelin ni de dossier "à moitié" inscrit).
+  await prisma.$transaction(async (tx) => {
+    const acc = await tx.user.create({
+      // Mot de passe initial imprimé sur papier : changement forcé à la première connexion
+      data: {
+        email,
+        fullName: student.fullName,
+        role: "ETUDIANT",
+        passwordHash,
+        mustChangePassword: true,
+      },
+    });
+    await tx.student.update({
+      where: { id: studentId },
+      // Le mot de passe initial est conservé pour être imprimé sur le reçu d'inscription
+      data: { status: "INSCRIT", accountId: acc.id, initialPassword: password },
+    });
+    return acc;
   });
 
   await logAction(
@@ -268,26 +314,30 @@ export async function reenrollStudent(
     throw new Error(`Cet étudiant a déjà une inscription archivée pour ${input.academicYear}.`);
   }
 
-  // Archive l'année qui se termine (avec le niveau suivi cette année-là)
-  await prisma.enrollmentHistory.create({
-    data: {
-      studentId,
-      academicYear: student.academicYear ?? "inconnue",
-      track: student.level ?? student.track,
-      status: student.status,
-      receiptNumber: student.receiptNumber,
-    },
-  });
+  // Archivage de l'année qui se termine + remise à zéro du dossier : les deux
+  // écritures doivent réussir ensemble, sinon on perdrait l'historique ou on
+  // le dupliquerait à la prochaine tentative.
+  const updated = await prisma.$transaction(async (tx) => {
+    await tx.enrollmentHistory.create({
+      data: {
+        studentId,
+        academicYear: student.academicYear ?? "inconnue",
+        track: student.level ?? student.track,
+        status: student.status,
+        receiptNumber: student.receiptNumber,
+      },
+    });
 
-  // Le dossier repart au début du workflow pour la nouvelle année
-  const updated = await prisma.student.update({
-    where: { id: studentId },
-    data: {
-      academicYear: input.academicYear,
-      level: input.level?.trim() || student.level,
-      status: "ENREGISTRE",
-      receiptNumber: null,
-    },
+    // Le dossier repart au début du workflow pour la nouvelle année
+    return tx.student.update({
+      where: { id: studentId },
+      data: {
+        academicYear: input.academicYear,
+        level: input.level?.trim() || student.level,
+        status: "ENREGISTRE",
+        receiptNumber: null,
+      },
+    });
   });
 
   await logAction(
@@ -441,10 +491,33 @@ export type StudentListParams = {
   niveau?: string; // L1, L2, L3, M1, M2
   sort?: string;
   dir?: string; // asc | desc
+  page?: number; // page affichée (1-indexée)
 };
 
-// `formation` : périmètre imposé côté serveur (secrétaire de formation)
-export async function listStudents(params: StudentListParams = {}, formation?: string | null) {
+export const STUDENT_PAGE_SIZE = 50;
+
+// Forme partagée par listStudents (paginé) ET getAllFilteredStudents (export
+// CSV / vue imprimable) : les deux utilisent le même `include`, donc le même
+// tableau peut être groupé en blocs (filière/niveau/année...) par la même
+// fonction — voir app/etudiants/group-students.ts.
+export type StudentWithAccountAndResults = Prisma.StudentGetPayload<{
+  include: {
+    account: { select: { email: true } };
+    results: true;
+  };
+}>;
+
+export type StudentListResult = {
+  students: StudentWithAccountAndResults[];
+  total: number;
+  page: number;
+  totalPages: number;
+};
+
+// Construit les conditions WHERE + le tri communs à l'affichage paginé, à
+// l'export CSV et à la vue imprimable — une seule définition du filtrage,
+// pour que les trois vues montrent toujours exactement le même ensemble.
+function buildStudentQuery(params: StudentListParams, formation?: string | null) {
   const q = params.q?.trim();
   const sortField = SORTABLE_FIELDS[(params.sort as StudentSortKey) ?? "nom"] ?? "fullName";
   const dir = params.dir === "desc" ? "desc" : "asc";
@@ -473,16 +546,115 @@ export async function listStudents(params: StudentListParams = {}, formation?: s
     });
   }
 
-  return prisma.student.findMany({
+  return {
     where: conditions.length > 0 ? { AND: conditions } : {},
-    orderBy: { [sortField]: dir },
+    orderBy: { [sortField]: dir } as const,
+  };
+}
+
+// `formation` : périmètre imposé côté serveur (secrétaire de formation).
+// Toujours paginé (STUDENT_PAGE_SIZE par page) : sur un grand établissement,
+// charger tous les dossiers en mémoire à chaque affichage ne passe pas à
+// l'échelle. Le classement par blocs (filière/niveau/année...) s'applique à
+// la page courante, pas à l'ensemble des dossiers.
+export async function listStudents(
+  params: StudentListParams = {},
+  formation?: string | null,
+): Promise<StudentListResult> {
+  const { where, orderBy } = buildStudentQuery(params, formation);
+  const page = Math.max(1, params.page ?? 1);
+
+  const [students, total] = await Promise.all([
+    prisma.student.findMany({
+      where,
+      orderBy,
+      skip: (page - 1) * STUDENT_PAGE_SIZE,
+      take: STUDENT_PAGE_SIZE,
+      include: {
+        account: { select: { email: true } },
+        // Nécessaire pour le classement par mention (dernier résultat en premier)
+        results: { orderBy: [{ academicYear: "desc" }, { semester: "desc" }] },
+      },
+    }),
+    prisma.student.count({ where }),
+  ]);
+
+  return { students, total, page, totalPages: Math.max(1, Math.ceil(total / STUDENT_PAGE_SIZE)) };
+}
+
+// Variante non paginée : renvoie TOUS les dossiers correspondant aux mêmes
+// filtres/tri que listStudents. Réservée aux actions volontaires et bornées
+// dans le temps (export CSV, vue imprimable) — jamais à l'affichage courant,
+// qui reste paginé pour rester scalable.
+export async function getAllFilteredStudents(
+  params: StudentListParams = {},
+  formation?: string | null,
+) {
+  const { where, orderBy } = buildStudentQuery(params, formation);
+  return prisma.student.findMany({
+    where,
+    orderBy,
     include: {
       account: { select: { email: true } },
-      // Nécessaire pour le classement par mention (dernier résultat en premier)
       results: { orderBy: [{ academicYear: "desc" }, { semester: "desc" }] },
     },
   });
 }
+
+// En-têtes de la liste imprimable/exportée : colonnes visibles à l'écran,
+// pas le schéma complet du dossier (réservé à exportStudentsCsv, la
+// sauvegarde/restauration complète).
+const FILTERED_EXPORT_HEADER = [
+  "matricule",
+  "fullName",
+  "program",
+  "level",
+  "status",
+  "academicYear",
+  "createdAt",
+  "accountEmail",
+] as const;
+
+// Export CSV de la liste filtrée/triée telle qu'affichée sur /etudiants
+// (pas de pagination : l'export porte toujours sur l'ensemble correspondant
+// aux critères, jamais sur la seule page à l'écran).
+export async function exportFilteredStudentsCsv(
+  params: StudentListParams,
+  formation: string | null | undefined,
+  actorId: string,
+): Promise<string> {
+  const students = await getAllFilteredStudents(params, formation);
+  const lines = [FILTERED_EXPORT_HEADER.join(",")];
+  for (const s of students) {
+    lines.push(
+      [
+        s.matricule,
+        s.fullName,
+        s.mention ?? s.program ?? "",
+        s.level ?? s.track ?? "",
+        STATUS_EXPORT_LABELS[s.status] ?? s.status,
+        s.academicYear ?? "",
+        s.createdAt.toISOString().slice(0, 10),
+        s.account?.email ?? "",
+      ]
+        .map((v) => csvEscape(String(v)))
+        .join(","),
+    );
+  }
+  await logAction(
+    "CSV_EXPORTED",
+    `${students.length} dossier(s) exporté(s) depuis la liste filtrée`,
+    actorId,
+  );
+  return lines.join("\r\n");
+}
+
+const STATUS_EXPORT_LABELS: Record<string, string> = {
+  ENREGISTRE: "Enregistré",
+  PAIEMENT_VERIFIE: "Paiement vérifié",
+  ADMIN_VALIDEE: "Inscr. administrative validée",
+  INSCRIT: "Inscrit",
+};
 
 // Valeurs distinctes pour les sélecteurs de filtres de la liste étudiants
 export async function getStudentFilterValues() {
@@ -528,12 +700,21 @@ export async function deleteStudent(studentId: string, actorId: string) {
   const student = await prisma.student.findUnique({ where: { id: studentId } });
   if (!student) throw new Error("Dossier introuvable.");
 
-  await prisma.student.delete({ where: { id: studentId } });
-  if (student.accountId) {
-    await prisma.user.delete({ where: { id: student.accountId } }).catch(() => {
-      // compte déjà supprimé : sans incidence
-    });
-  }
+  // Suppression du dossier + du compte lié dans une seule transaction : si la
+  // suppression du compte échoue pour une raison réelle (pas juste "déjà
+  // supprimé"), le dossier n'est pas supprimé non plus (pas de compte orphelin).
+  await prisma.$transaction(async (tx) => {
+    await tx.student.delete({ where: { id: studentId } });
+    if (student.accountId) {
+      try {
+        await tx.user.delete({ where: { id: student.accountId } });
+      } catch (e) {
+        const alreadyGone =
+          e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2025";
+        if (!alreadyGone) throw e; // compte déjà supprimé : sans incidence, sinon on annule tout
+      }
+    }
+  });
 
   await logAction(
     "STUDENT_DELETED",
@@ -541,6 +722,88 @@ export async function deleteStudent(studentId: string, actorId: string) {
     actorId,
   );
   return student;
+}
+
+// Champs modifiables après enregistrement (matricule, statut, année universitaire,
+// reçu, compte et conduite restent gérés par leurs actions dédiées)
+export type UpdateStudentInput = {
+  lastName: string;
+  firstName: string;
+  gender: string; // "M" | "F"
+  birthDate: Date;
+  birthPlace: string;
+  motherName?: string | null;
+  fatherName?: string | null;
+  nationality: string;
+  maritalStatus: string;
+  cin?: string | null;
+  cinIssueDate?: Date | null;
+  cinIssuePlace?: string | null;
+  baccNumber: string;
+  baccSeries: string;
+  baccMention: string;
+  baccYear: string;
+  baccCenter?: string | null;
+  baccCountry?: string | null;
+  previousSchool?: string | null;
+  previousUniversity?: string | null;
+  repeatCode?: string | null;
+  address: string;
+  phone: string;
+  personalEmail?: string | null;
+  parentsPhone?: string | null;
+  parentsAddress?: string | null;
+  parentsCity?: string | null;
+  guardianName: string;
+  guardianPhone: string;
+  guardianAddress?: string | null;
+  domain?: string | null;
+  mention: string;
+  track?: string | null;
+  trainingType?: string | null;
+  level: string;
+  docResidenceCert: boolean;
+  docCinCopy: boolean;
+  docParentCin: boolean;
+  docPhotos: boolean;
+  docPinkFolder: boolean;
+  docPaymentSlip: boolean;
+  docEngagementLetter: boolean;
+};
+
+// Agent d'administration : modifie un dossier existant (hors statut, année
+// universitaire, reçu, compte et conduite — chacun a son propre workflow)
+export async function updateStudent(
+  studentId: string,
+  input: UpdateStudentInput,
+  actorId: string,
+) {
+  const existing = await prisma.student.findUnique({ where: { id: studentId } });
+  if (!existing) throw new Error("Dossier introuvable.");
+  if (!["M", "F"].includes(input.gender)) {
+    throw new Error("Sexe invalide (M ou F).");
+  }
+  if (!input.guardianName || !input.guardianPhone) {
+    throw new Error("La personne à contacter d'urgence est obligatoire.");
+  }
+
+  const fullName = `${input.lastName.toUpperCase()} ${input.firstName}`;
+  const updated = await prisma.student.update({
+    where: { id: studentId },
+    data: {
+      ...input,
+      fullName,
+      // Champ hérité, gardé en cohérence avec la formation pour les filtres et le périmètre par formation
+      program: input.mention,
+    },
+  });
+
+  await logAction(
+    "STUDENT_UPDATED",
+    `Dossier ${updated.matricule} (${fullName}) modifié`,
+    actorId,
+  );
+  return updated;
 }
 
 // ---------------------------------------------------------------------------
@@ -765,10 +1028,13 @@ export async function importStudentsCsv(csv: string, actorId: string): Promise<I
       if (existing) {
         await prisma.student.update({ where: { matricule }, data });
         result.updated++;
+      } else if (matricule) {
+        await prisma.student.create({ data: { ...data, matricule } });
+        result.created++;
       } else {
-        await prisma.student.create({
-          data: { ...data, matricule: matricule || (await nextMatricule()) },
-        });
+        await createWithGeneratedMatricule(undefined, (m) =>
+          prisma.student.create({ data: { ...data, matricule: m } }),
+        );
         result.created++;
       }
     } catch (e) {

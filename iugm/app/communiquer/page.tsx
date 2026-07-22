@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { FaEye } from "react-icons/fa";
 
 import { getSession } from "@/lib/auth";
 import { hasTaskPermission, getUserFormation } from "@/lib/permissions";
@@ -84,7 +85,7 @@ export default async function CommuniquerPage() {
                         className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
                         title="Nombre d'étudiants ayant lu ce communiqué"
                       >
-                        👁 {a._count.reads} lecture(s)
+                        <FaEye className="inline" /> {a._count.reads} lecture(s)
                       </span>
                       <DeleteAnnouncementButton id={a.id} title={a.title} />
                     </div>

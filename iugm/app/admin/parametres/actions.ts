@@ -5,7 +5,8 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { logAction } from "@/lib/audit";
-import { saveSettings, INSTITUTION_KEYS } from "@/lib/settings";
+import { saveSettings, getSettings, INSTITUTION_KEYS } from "@/lib/settings";
+import { saveUploadedFile, deleteUploadedFile } from "@/lib/storage";
 
 export type SettingsState = { success?: string; error?: string };
 
@@ -63,8 +64,11 @@ export async function uploadLogoAction(
     return { error: "Image trop lourde (1 Mo maximum)." };
   }
 
-  const base64 = Buffer.from(await file.arrayBuffer()).toString("base64");
-  await saveSettings({ logo: `data:${file.type};base64,${base64}` });
+  const previousLogo = (await getSettings()).logo;
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const { url } = await saveUploadedFile(buffer, file.type, "settings");
+  await saveSettings({ logo: url });
+  await deleteUploadedFile(previousLogo); // évite d'accumuler les anciens logos remplacés
   await logAction("SETTINGS_UPDATED", "Logo de l'établissement mis à jour", session.sub);
   revalidateAll();
   return { success: "Logo enregistré." };
@@ -74,7 +78,9 @@ export async function removeLogoAction(): Promise<SettingsState> {
   const session = await requireSuperadmin();
   if (!session) return { error: "Accès refusé." };
 
+  const previousLogo = (await getSettings()).logo;
   await saveSettings({ logo: "" });
+  await deleteUploadedFile(previousLogo);
   await logAction("SETTINGS_UPDATED", "Logo de l'établissement supprimé", session.sub);
   revalidateAll();
   return { success: "Logo supprimé (retour au logo par défaut)." };

@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { logout } from "@/app/auth-actions";
 import { prisma } from "@/lib/prisma";
 import { getSettings } from "@/lib/settings";
+import { Footer } from "./footer";
 import { unreadAnnouncementsCount } from "@/lib/announcements";
 import type { TaskKey } from "@/lib/permissions";
 import {
@@ -309,6 +310,7 @@ export async function AppShell({
         </header>
 
         <main className="mx-auto w-full max-w-6xl flex-1 space-y-8 px-6 py-8">{children}</main>
+        <Footer institutionName={settings.institutionAcronym} />
       </div>
     </div>
   );

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { logAction } from "@/lib/audit";
+import { saveUploadedFile, deleteUploadedFile } from "@/lib/storage";
 
 export type ProfileState = { success?: string; error?: string };
 
@@ -48,11 +49,14 @@ export async function uploadPhotoAction(
     return { error: "Image trop lourde (1 Mo maximum)." };
   }
 
-  const base64 = Buffer.from(await file.arrayBuffer()).toString("base64");
-  await prisma.user.update({
+  const previous = await prisma.user.findUnique({
     where: { id: session.sub },
-    data: { photo: `data:${file.type};base64,${base64}` },
+    select: { photo: true },
   });
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const { url } = await saveUploadedFile(buffer, file.type, "avatars");
+  await prisma.user.update({ where: { id: session.sub }, data: { photo: url } });
+  await deleteUploadedFile(previous?.photo); // évite d'accumuler les anciennes photos remplacées
   await logAction("PROFILE_UPDATED", `Photo de profil mise à jour par ${session.email}`, session.sub);
   revalidatePath("/profil");
   return { success: "Photo de profil enregistrée." };
@@ -62,7 +66,12 @@ export async function removePhotoAction(): Promise<ProfileState> {
   const session = await getSession();
   if (!session) return { error: "Session expirée : reconnectez-vous." };
 
+  const previous = await prisma.user.findUnique({
+    where: { id: session.sub },
+    select: { photo: true },
+  });
   await prisma.user.update({ where: { id: session.sub }, data: { photo: null } });
+  await deleteUploadedFile(previous?.photo);
   await logAction("PROFILE_UPDATED", `Photo de profil retirée par ${session.email}`, session.sub);
   revalidatePath("/profil");
   return { success: "Photo retirée." };

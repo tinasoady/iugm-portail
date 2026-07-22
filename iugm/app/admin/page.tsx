@@ -2,8 +2,10 @@ import { redirect } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { getInscriptionTrend } from "@/lib/dashboard";
 import { AppShell } from "@/app/ui/app-shell";
 import { StatCard } from "@/app/ui/stat-card";
+import { LineChart } from "@/app/ui/line-chart";
 import { IconShield, IconFolder, IconCap, IconUsers } from "@/app/ui/icons";
 import { CreateUserForm } from "./create-user-form";
 
@@ -54,12 +56,13 @@ export default async function AdminPage() {
   if (!session) redirect("/login");
   if (session.role !== "SUPERADMIN") redirect("/");
 
-  const [users, roleCounts] = await Promise.all([
+  const [users, roleCounts, trend] = await Promise.all([
     prisma.user.findMany({
       orderBy: { createdAt: "desc" },
       select: { id: true, email: true, fullName: true, role: true, createdAt: true },
     }),
     prisma.user.groupBy({ by: ["role"], _count: { _all: true } }),
+    getInscriptionTrend(6),
   ]);
 
   const countOf = (role: string) =>
@@ -103,6 +106,43 @@ export default async function AdminPage() {
           icon={<IconUsers />}
         />
       </div>
+
+      {/* Évolution des inscriptions */}
+      <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-zinc-900">
+        <h2 className="mb-1 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+          Évolution des inscriptions
+        </h2>
+        <p className="mb-4 text-xs text-zinc-500 dark:text-zinc-400">
+          Sur les 6 derniers mois — dossiers enregistrés, reçus bancaires vérifiés, inscriptions
+          finalisées.
+        </p>
+        <LineChart
+          labels={trend.monthLabels}
+          series={[
+            {
+              key: "registrations",
+              label: "Enregistrés",
+              color: "#2a78d6",
+              darkColor: "#3987e5",
+              values: trend.registrations,
+            },
+            {
+              key: "payments",
+              label: "Écolage payé",
+              color: "#eb6834",
+              darkColor: "#d95926",
+              values: trend.payments,
+            },
+            {
+              key: "inscriptions",
+              label: "Inscriptions finalisées",
+              color: "#1baf7a",
+              darkColor: "#199e70",
+              values: trend.inscriptions,
+            },
+          ]}
+        />
+      </section>
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,380px)_1fr]">
         {/* Création d'utilisateur */}

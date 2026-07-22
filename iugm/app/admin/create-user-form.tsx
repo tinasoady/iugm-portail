@@ -4,7 +4,6 @@ import { useActionState } from "react";
 import { createUser, type CreateUserState } from "./actions";
 
 const ROLE_OPTIONS = [
-  { value: "ETUDIANT", label: "Étudiant" },
   { value: "AGENT_PEDAGOGIQUE", label: "Agent pédagogique" },
   { value: "AGENT_ADMINISTRATION", label: "Agent d'administration" },
   { value: "SUPERADMIN", label: "Super administrateur" },

@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# fichiers envoyés par les utilisateurs (logo, photos de profil) : données
+# d'exécution, pas du code — à sauvegarder séparément en production, jamais
+# via git
+/public/uploads/

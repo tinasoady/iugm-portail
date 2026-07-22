@@ -60,6 +60,7 @@ export default async function StudentProfilePage({
   if (!student) notFound();
 
   const canEditConduct = await hasTaskPermission(session.sub, session.role, "conduite");
+  const canEditDossier = await hasTaskPermission(session.sub, session.role, "modification_dossier");
   const canPrintReceipt = ["AGENT_PEDAGOGIQUE", "SUPERADMIN"].includes(session.role);
   // Écolage considéré payé dès que le reçu bancaire a été vérifié
   const feePaid = student.status !== "ENREGISTRE";
@@ -104,6 +105,14 @@ export default async function StudentProfilePage({
               >
                 🖨 Reçu d&apos;inscription
               </a>
+            )}
+            {canEditDossier && (
+              <Link
+                href={`/etudiants/${student.id}/modifier`}
+                className="rounded-lg border border-blue-200 px-3 py-1.5 text-xs font-semibold text-blue-600 transition hover:bg-blue-50 dark:border-blue-900 dark:text-blue-400 dark:hover:bg-blue-950"
+              >
+                ✎ Modifier le dossier
+              </Link>
             )}
             <Link
               href="/etudiants"

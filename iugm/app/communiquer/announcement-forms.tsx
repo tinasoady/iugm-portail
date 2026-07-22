@@ -1,11 +1,14 @@
 "use client";
 
 import { useActionState } from "react";
+
 import {
   sendAnnouncementAction,
   deleteAnnouncementAction,
   type AnnouncementState,
 } from "./actions";
+
+import {FaTrash} from "react-icons/fa";
 
 const inputClass =
   "mt-1 w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-indigo-500/40 dark:border-white/10 dark:bg-zinc-950 dark:text-zinc-50";
@@ -121,7 +124,7 @@ export function DeleteAnnouncementButton({ id, title }: { id: string; title: str
           disabled={pending}
           className="rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950"
         >
-          {pending ? "..." : "🗑"}
+          {pending ? "..." : <FaTrash className="inline" />}
         </button>
       </form>
       {state.error && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{state.error}</p>}
