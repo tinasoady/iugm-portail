@@ -159,6 +159,12 @@ model EnrollmentHistory {
   track         String? // parcours / classe suivie cette année-là
   status        String // statut au moment de l'archivage (normalement INSCRIT)
   receiptNumber String?
+  // Horodatages de l'année archivée, copiés depuis Student avant leur remise à
+  // zéro par reenrollStudent — sans cette copie, le graphique du tableau de
+  // bord (getInscriptionTrend) perdrait ces événements passés dès qu'un
+  // étudiant se réinscrit, alors qu'ils ont bien eu lieu.
+  receiptVerifiedAt DateTime?
+  pedagoValidatedAt DateTime?
   archivedAt    DateTime @default(now())
 
   @@index([studentId])

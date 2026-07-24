@@ -22,20 +22,35 @@ const monthLabelFormatter = new Intl.DateTimeFormat("fr-FR", { month: "short", y
 // Évolution sur les `monthsBack` derniers mois (mois courant inclus), avec
 // des zéros explicites pour les mois sans activité — le graphique garde
 // toujours la même largeur, qu'il y ait beaucoup de données ou presque pas.
+//
+// Les compteurs "payments"/"inscriptions" combinent les horodatages actuels
+// de Student ET ceux archivés dans EnrollmentHistory : une réinscription
+// remet receiptVerifiedAt/pedagoValidatedAt à zéro sur le dossier (pour
+// repartir sur l'année suivante), mais copie d'abord leur valeur dans
+// l'historique — sans cette union, les événements d'une année déjà
+// réinscrite disparaîtraient du graphique alors qu'ils ont bien eu lieu.
 export async function getInscriptionTrend(monthsBack = 6): Promise<InscriptionTrend> {
   const now = new Date();
   const start = new Date(now.getFullYear(), now.getMonth() - (monthsBack - 1), 1);
 
-  const students = await prisma.student.findMany({
-    where: {
-      OR: [
-        { createdAt: { gte: start } },
-        { receiptVerifiedAt: { gte: start } },
-        { pedagoValidatedAt: { gte: start } },
-      ],
-    },
-    select: { createdAt: true, receiptVerifiedAt: true, pedagoValidatedAt: true },
-  });
+  const [students, archived] = await Promise.all([
+    prisma.student.findMany({
+      where: {
+        OR: [
+          { createdAt: { gte: start } },
+          { receiptVerifiedAt: { gte: start } },
+          { pedagoValidatedAt: { gte: start } },
+        ],
+      },
+      select: { createdAt: true, receiptVerifiedAt: true, pedagoValidatedAt: true },
+    }),
+    prisma.enrollmentHistory.findMany({
+      where: {
+        OR: [{ receiptVerifiedAt: { gte: start } }, { pedagoValidatedAt: { gte: start } }],
+      },
+      select: { receiptVerifiedAt: true, pedagoValidatedAt: true },
+    }),
+  ]);
 
   const months: string[] = [];
   const monthLabels: string[] = [];
@@ -61,6 +76,10 @@ export async function getInscriptionTrend(monthsBack = 6): Promise<InscriptionTr
     bump(s.createdAt, "registrations");
     bump(s.receiptVerifiedAt, "payments");
     bump(s.pedagoValidatedAt, "inscriptions");
+  }
+  for (const a of archived) {
+    bump(a.receiptVerifiedAt, "payments");
+    bump(a.pedagoValidatedAt, "inscriptions");
   }
 
   return {

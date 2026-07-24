@@ -64,6 +64,29 @@ docker compose up -d
 ```
 2) Assurez-vous que votre `DATABASE_URL` pointe vers le conteneur Postgres (généralement via `localhost:5432` car le port est publié).
 
+### Tests
+La suite (Vitest) couvre deux niveaux :
+- **Tests unitaires** (`tests/unit/`) : logique pure, sans base de données (barème des mentions, construction des requêtes de liste, classement/groupement, catalogue des permissions).
+- **Tests d'intégration** (`tests/integration/`) : contre une **vraie base Postgres de test**, séparée de la base de développement — workflow d'inscription complet, réinscription (archivage de l'historique), anti-bruteforce de connexion, périmètre par formation, évolution du tableau de bord.
+
+Mise en place (une seule fois) :
+```bash
+cd iugm
+docker exec iugm_postgres_db createdb -U iugm_admin iugm_scolarite_test_db
+cp .env.test.example .env.test   # ajuster le mot de passe si besoin
+DATABASE_URL="<url de .env.test>" npx prisma migrate deploy
+```
+
+Lancer les tests :
+```bash
+cd iugm
+npm test              # une passe, sortie CI
+npm run test:watch    # mode interactif
+npm run test:coverage # rapport de couverture (iugm/coverage/index.html)
+```
+
+La CI GitHub Actions (`.github/workflows/ci.yml`) démarre son propre service Postgres éphémère et exécute la suite complète à chaque push/PR — voir le badge de statut sur le dépôt.
+
 ### Notes de sécurité
 - Les sessions sont stockées dans un **cookie HTTP-only** signé (voir `iugm/lib/auth.ts`).
 - En production, le cookie est marqué `secure`.
@@ -129,6 +152,29 @@ A `docker-compose.yml` is provided to run PostgreSQL.
 docker compose up -d
 ```
 Then ensure your `DATABASE_URL` points to the Postgres instance (typically `localhost:5432` since the port is exposed).
+
+### Tests
+The suite (Vitest) has two layers:
+- **Unit tests** (`tests/unit/`): pure logic, no database (mention grading, list-query building, grouping, permission catalog).
+- **Integration tests** (`tests/integration/`): against a **real Postgres test database**, separate from the dev one — full enrollment workflow, re-enrollment (history archiving), login rate limiting, per-formation scoping, dashboard trend.
+
+One-time setup:
+```bash
+cd iugm
+docker exec iugm_postgres_db createdb -U iugm_admin iugm_scolarite_test_db
+cp .env.test.example .env.test   # adjust the password if needed
+DATABASE_URL="<url from .env.test>" npx prisma migrate deploy
+```
+
+Running the tests:
+```bash
+cd iugm
+npm test              # single run, CI-style output
+npm run test:watch    # interactive mode
+npm run test:coverage # coverage report (iugm/coverage/index.html)
+```
+
+CI (`.github/workflows/ci.yml`) spins up its own ephemeral Postgres service and runs the full suite on every push/PR.
 
 ### Security notes
 - Sessions are stored in a signed **HTTP-only cookie** (see `iugm/lib/auth.ts`).

@@ -234,7 +234,7 @@ export async function validatePedagoInscription(studentId: string, actorId: stri
   // Réinscription d'un ancien étudiant : son compte existe déjà
   if (student.accountId) {
     const account = await prisma.user.findUnique({ where: { id: student.accountId } });
-    await prisma.student.update({
+    const updatedStudent = await prisma.student.update({
       where: { id: studentId },
       data: { status: "INSCRIT", pedagoValidatedAt: new Date() },
     });
@@ -243,7 +243,7 @@ export async function validatePedagoInscription(studentId: string, actorId: stri
       `Réinscription pédagogique validée pour ${student.fullName} (${student.matricule}, ${student.academicYear ?? "année inconnue"}) — compte existant conservé`,
       actorId,
     );
-    return { student, email: account?.email ?? "", password: null as string | null };
+    return { student: updatedStudent, email: account?.email ?? "", password: null as string | null };
   }
 
   const email = await availableStudentEmail(student.fullName);
@@ -255,7 +255,7 @@ export async function validatePedagoInscription(studentId: string, actorId: stri
   // Création du compte + mise à jour du dossier dans une seule transaction :
   // si l'une des deux écritures échoue, l'autre est annulée (pas de compte
   // orphelin ni de dossier "à moitié" inscrit).
-  await prisma.$transaction(async (tx) => {
+  const updatedStudent = await prisma.$transaction(async (tx) => {
     const acc = await tx.user.create({
       // Mot de passe initial imprimé sur papier : changement forcé à la première connexion
       data: {
@@ -266,7 +266,10 @@ export async function validatePedagoInscription(studentId: string, actorId: stri
         mustChangePassword: true,
       },
     });
-    await tx.student.update({
+    // Retournée directement : c'est cette version à jour (status INSCRIT,
+    // accountId, pedagoValidatedAt) que la fonction doit renvoyer à l'appelant,
+    // pas l'instantané `student` capturé avant la transaction.
+    return tx.student.update({
       where: { id: studentId },
       // Le mot de passe initial est conservé pour être imprimé sur le reçu d'inscription
       data: {
@@ -276,7 +279,6 @@ export async function validatePedagoInscription(studentId: string, actorId: stri
         pedagoValidatedAt: new Date(),
       },
     });
-    return acc;
   });
 
   await logAction(
@@ -287,7 +289,7 @@ export async function validatePedagoInscription(studentId: string, actorId: stri
   await logAction("USER_CREATED", `Compte étudiant ${email} créé automatiquement`, actorId);
 
   // Le mot de passe en clair n'est retourné qu'une seule fois, pour être transmis à l'étudiant
-  return { student, email, password: password as string | null };
+  return { student: updatedStudent, email, password: password as string | null };
 }
 
 // ---------------------------------------------------------------------------
@@ -333,6 +335,8 @@ export async function reenrollStudent(
         track: student.level ?? student.track,
         status: student.status,
         receiptNumber: student.receiptNumber,
+        receiptVerifiedAt: student.receiptVerifiedAt,
+        pedagoValidatedAt: student.pedagoValidatedAt,
       },
     });
 
@@ -527,7 +531,7 @@ export type StudentListResult = {
 // Construit les conditions WHERE + le tri communs à l'affichage paginé, à
 // l'export CSV et à la vue imprimable — une seule définition du filtrage,
 // pour que les trois vues montrent toujours exactement le même ensemble.
-function buildStudentQuery(params: StudentListParams, formation?: string | null) {
+export function buildStudentQuery(params: StudentListParams, formation?: string | null) {
   const q = params.q?.trim();
   const sortField = SORTABLE_FIELDS[(params.sort as StudentSortKey) ?? "nom"] ?? "fullName";
   const dir = params.dir === "desc" ? "desc" : "asc";

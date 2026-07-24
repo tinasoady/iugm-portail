@@ -10,6 +10,28 @@ jobs:
   build-and-check:
     runs-on: ubuntu-latest
 
+    # Base de test dédiée aux tests d'intégration (lib/*.test.ts) : les mêmes
+    # migrations Prisma que la prod, sur un service Postgres éphémère propre à
+    # ce run — jamais partagé avec une vraie base.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: iugm_test
+          POSTGRES_PASSWORD: iugm_test
+          POSTGRES_DB: iugm_scolarite_test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U iugm_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: "postgresql://iugm_test:iugm_test@localhost:5432/iugm_scolarite_test_db?schema=public"
+      AUTH_SECRET: "ci-secret-not-for-production-0000000000000000000000000000000000"
+
     # Indique à GitHub Actions que le projet est dans le dossier "iugm"
     defaults:
       run:
@@ -33,5 +55,14 @@ jobs:
       - name: 5. Vérifier les types TypeScript
         run: npx tsc --noEmit
 
-      - name: 6. Vérifier la compilation Next.js (Build)
+      - name: 6. Vérifier la qualité du code (ESLint)
+        run: npm run lint
+
+      - name: 7. Appliquer les migrations sur la base de test
+        run: npx prisma migrate deploy
+
+      - name: 8. Lancer la suite de tests (unitaires + intégration)
+        run: npm run test
+
+      - name: 9. Vérifier la compilation Next.js (Build)
         run: npm run build
