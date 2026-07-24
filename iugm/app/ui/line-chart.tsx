@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useSyncExternalStore, useCallback, useMemo } from "react";
+import { useRef, useState, useSyncExternalStore, useMemo } from "react";
 
 export type LineChartSeries = {
   key: string;

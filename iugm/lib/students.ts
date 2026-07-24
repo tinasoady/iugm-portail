@@ -188,7 +188,7 @@ export async function verifyReceipt(studentId: string, receiptNumber: string, ac
 
   const updated = await prisma.student.update({
     where: { id: studentId },
-    data: { receiptNumber, status: "PAIEMENT_VERIFIE" },
+    data: { receiptNumber, status: "PAIEMENT_VERIFIE", receiptVerifiedAt: new Date() },
   });
   await logAction(
     "RECEIPT_VERIFIED",
@@ -234,7 +234,10 @@ export async function validatePedagoInscription(studentId: string, actorId: stri
   // Réinscription d'un ancien étudiant : son compte existe déjà
   if (student.accountId) {
     const account = await prisma.user.findUnique({ where: { id: student.accountId } });
-    await prisma.student.update({ where: { id: studentId }, data: { status: "INSCRIT" } });
+    await prisma.student.update({
+      where: { id: studentId },
+      data: { status: "INSCRIT", pedagoValidatedAt: new Date() },
+    });
     await logAction(
       "PEDAGO_INSCRIPTION_VALIDATED",
       `Réinscription pédagogique validée pour ${student.fullName} (${student.matricule}, ${student.academicYear ?? "année inconnue"}) — compte existant conservé`,
@@ -266,7 +269,12 @@ export async function validatePedagoInscription(studentId: string, actorId: stri
     await tx.student.update({
       where: { id: studentId },
       // Le mot de passe initial est conservé pour être imprimé sur le reçu d'inscription
-      data: { status: "INSCRIT", accountId: acc.id, initialPassword: password },
+      data: {
+        status: "INSCRIT",
+        accountId: acc.id,
+        initialPassword: password,
+        pedagoValidatedAt: new Date(),
+      },
     });
     return acc;
   });
@@ -336,6 +344,8 @@ export async function reenrollStudent(
         level: input.level?.trim() || student.level,
         status: "ENREGISTRE",
         receiptNumber: null,
+        receiptVerifiedAt: null,
+        pedagoValidatedAt: null,
       },
     });
   });

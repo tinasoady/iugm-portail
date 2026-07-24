@@ -27,8 +27,11 @@ jobs:
       - name: 3. Installer les dépendances
         run: npm install
 
-      - name: 4. Vérifier les types TypeScript
+      - name: 4. Générer le client Prisma
+        run: npx prisma generate
+
+      - name: 5. Vérifier les types TypeScript
         run: npx tsc --noEmit
 
-      - name: 5. Vérifier la compilation Next.js (Build)
+      - name: 6. Vérifier la compilation Next.js (Build)
         run: npm run build

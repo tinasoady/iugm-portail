@@ -124,6 +124,11 @@ model Student {
   receiptNumber String? // numéro du reçu bancaire vérifié
   conduct       String? // appréciation de conduite (rédigée par l'agent pédagogique)
   status        StudentStatus @default(ENREGISTRE)
+  // Horodatages dédiés (au lieu de retrouver la date dans le journal d'audit,
+  // qui n'est pas lié au dossier et survit à sa suppression) : le graphique du
+  // tableau de bord doit refléter seulement les dossiers qui existent encore.
+  receiptVerifiedAt  DateTime?
+  pedagoValidatedAt  DateTime?
   // Compte de connexion créé automatiquement à la validation pédagogique
   account         User?   @relation(fields: [accountId], references: [id], onDelete: SetNull)
   accountId       String? @unique
