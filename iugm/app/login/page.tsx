@@ -2,6 +2,11 @@ import { getSettings } from "@/lib/settings";
 import { ThemeToggle } from "@/app/ui/theme-toggle";
 import { LoginForm } from "./login-form";
 
+// Page publique sans cookies()/getSession() : Next.js la traiterait sinon
+// comme statique et tenterait de lire les paramètres en base pendant le
+// build (échec si la DB n'est pas joignable à ce moment-là, ex. en CI).
+export const dynamic = "force-dynamic";
+
 export default async function LoginPage() {
   const settings = await getSettings();
 
