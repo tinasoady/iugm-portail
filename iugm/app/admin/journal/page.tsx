@@ -1,9 +1,14 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { AppShell } from "@/app/ui/app-shell";
+
+type AuditLogWithActor = Prisma.AuditLogGetPayload<{
+  include: { actor: { select: { email: true } } };
+}>;
 
 const ACTION_LABELS: Record<string, string> = {
   LOGIN_SUCCESS: "Connexion réussie",
@@ -153,7 +158,7 @@ export default async function JournalPage({
                 </tr>
               </thead>
               <tbody>
-                {logs.map((log) => (
+                {logs.map((log: AuditLogWithActor) => (
                   <tr
                     key={log.id}
                     className="border-b border-black/5 last:border-0 dark:border-white/5"

@@ -10,6 +10,7 @@ import { IconShield, IconFolder, IconCap, IconUsers } from "@/app/ui/icons";
 import { CreateUserForm } from "./create-user-form";
 import { MonthRangeSelector } from "./month-range-selector";
 
+
 const ROLE_LABELS: Record<string, string> = {
   SUPERADMIN: "Super administrateur",
   AGENT_ADMINISTRATION: "Agent d'administration",
