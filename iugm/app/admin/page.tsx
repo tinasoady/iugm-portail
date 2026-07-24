@@ -8,6 +8,7 @@ import { StatCard } from "@/app/ui/stat-card";
 import { LineChart } from "@/app/ui/line-chart";
 import { IconShield, IconFolder, IconCap, IconUsers } from "@/app/ui/icons";
 import { CreateUserForm } from "./create-user-form";
+import { MonthRangeSelector } from "./month-range-selector";
 
 const ROLE_LABELS: Record<string, string> = {
   SUPERADMIN: "Super administrateur",
@@ -51,10 +52,17 @@ function avatarGradient(key: string): string {
   return AVATAR_GRADIENTS[h];
 }
 
-export default async function AdminPage() {
+export default async function AdminPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ months?: string }>;
+}) {
   const session = await getSession();
   if (!session) redirect("/login");
   if (session.role !== "SUPERADMIN") redirect("/");
+
+  const params = await searchParams;
+  const monthsBack = Math.min(12, Math.max(3, Number(params.months) || 6));
 
   const [users, roleCounts, trend] = await Promise.all([
     prisma.user.findMany({
@@ -62,7 +70,7 @@ export default async function AdminPage() {
       select: { id: true, email: true, fullName: true, role: true, createdAt: true },
     }),
     prisma.user.groupBy({ by: ["role"], _count: { _all: true } }),
-    getInscriptionTrend(6),
+    getInscriptionTrend(monthsBack),
   ]);
 
   const countOf = (role: string) =>
@@ -76,13 +84,14 @@ export default async function AdminPage() {
       active="/admin"
     >
       {/* Cartes statistiques */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="Super administrateur"
           value={countOf("SUPERADMIN")}
           sublabel="utilisateurs"
           gradient="from-violet-500 to-purple-600"
           icon={<IconShield />}
+          compact
         />
         <StatCard
           label="Agents administration"
@@ -90,6 +99,7 @@ export default async function AdminPage() {
           sublabel="utilisateurs"
           gradient="from-sky-500 to-blue-600"
           icon={<IconFolder />}
+          compact
         />
         <StatCard
           label="Agents pédagogiques"
@@ -97,6 +107,7 @@ export default async function AdminPage() {
           sublabel="utilisateurs"
           gradient="from-emerald-500 to-teal-600"
           icon={<IconCap />}
+          compact
         />
         <StatCard
           label="Étudiants"
@@ -104,18 +115,24 @@ export default async function AdminPage() {
           sublabel="utilisateurs"
           gradient="from-amber-400 to-orange-500"
           icon={<IconUsers />}
+          compact
         />
       </div>
 
       {/* Évolution des inscriptions */}
       <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-zinc-900">
-        <h2 className="mb-1 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-          Évolution des inscriptions
-        </h2>
-        <p className="mb-4 text-xs text-zinc-500 dark:text-zinc-400">
-          Sur les 6 derniers mois — dossiers enregistrés, reçus bancaires vérifiés, inscriptions
-          finalisées.
-        </p>
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+              Évolution des inscriptions
+            </h2>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              Sur les {monthsBack} derniers mois — dossiers enregistrés, reçus bancaires vérifiés,
+              inscriptions finalisées.
+            </p>
+          </div>
+          <MonthRangeSelector />
+        </div>
         <LineChart
           labels={trend.monthLabels}
           series={[
