@@ -10,6 +10,11 @@ jobs:
   build-and-check:
     runs-on: ubuntu-latest
 
+    # Indique à GitHub Actions que le projet est dans le dossier "iugm"
+    defaults:
+      run:
+        working-directory: ./iugm
+
     steps:
       - name: 1. Récupérer le code source
         uses: actions/checkout@v4
