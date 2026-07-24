@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { verifyReceiptAction, validateAdminAction, type ActionState } from "./actions";
+import { recordEcolagePaymentAction, validateAdminAction, type ActionState } from "./actions";
 
 const initialState: ActionState = {};
 
@@ -18,8 +18,8 @@ export function DossierActions({
   status: string;
   accountEmail?: string | null;
 }) {
-  const [verifyState, verifyFormAction, verifyPending] = useActionState(
-    verifyReceiptAction,
+  const [paymentState, paymentFormAction, paymentPending] = useActionState(
+    recordEcolagePaymentAction,
     initialState,
   );
   const [validateState, validateFormAction, validatePending] = useActionState(
@@ -30,21 +30,40 @@ export function DossierActions({
   if (status === "ENREGISTRE") {
     return (
       <div className="space-y-1">
-        <form action={verifyFormAction} className="flex items-center gap-2">
+        <form action={paymentFormAction} className="flex flex-wrap items-center gap-1.5">
           <input type="hidden" name="studentId" value={studentId} />
           <input
             name="receiptNumber"
             type="text"
             required
             placeholder="N° du reçu"
-            className="w-32 rounded-lg border border-black/10 bg-white px-2 py-1.5 text-xs text-zinc-900 outline-none focus:ring-2 focus:ring-black/20 dark:border-white/10 dark:bg-black dark:text-zinc-50"
+            className="w-28 rounded-lg border border-black/10 bg-white px-2 py-1.5 text-xs text-zinc-900 outline-none focus:ring-2 focus:ring-black/20 dark:border-white/10 dark:bg-black dark:text-zinc-50"
           />
-          <button type="submit" disabled={verifyPending} className={smallButtonClass}>
-            {verifyPending ? "..." : "Vérifier reçu"}
+          {/* Deux boutons, un même formulaire : le montant (moitié ou totalité
+              du tarif de la filière) est calculé côté serveur, pas saisi ici. */}
+          <button
+            type="submit"
+            name="type"
+            value="TRANCHE_S1"
+            disabled={paymentPending}
+            title="1ère tranche : moitié du tarif annuel de la filière"
+            className={smallButtonClass}
+          >
+            {paymentPending ? "..." : "1ère tranche"}
+          </button>
+          <button
+            type="submit"
+            name="type"
+            value="TOTALITE"
+            disabled={paymentPending}
+            title="Paiement de la totalité de l'année en une fois"
+            className="rounded-lg border border-black/10 px-3 py-1.5 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100 disabled:opacity-50 dark:border-white/10 dark:text-zinc-200 dark:hover:bg-zinc-900"
+          >
+            Totalité
           </button>
         </form>
-        {verifyState.error && (
-          <p className="text-xs text-red-600 dark:text-red-400">{verifyState.error}</p>
+        {paymentState.error && (
+          <p className="text-xs text-red-600 dark:text-red-400">{paymentState.error}</p>
         )}
       </div>
     );

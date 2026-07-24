@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { searchStudents, listInscrits, getFilterOptions } from "@/lib/students";
 import { getUserFormation } from "@/lib/permissions";
+import { currentAcademicYear, getSelectedAcademicYear } from "@/lib/academic-year";
 import { AppShell } from "@/app/ui/app-shell";
 import { StatCard } from "@/app/ui/stat-card";
 import { IconClipboard, IconCap, IconChart, IconFolder } from "@/app/ui/icons";
@@ -18,13 +19,6 @@ import { AssignResultForm } from "./assign-result-form";
 
 const selectClass =
   "rounded-xl border border-black/10 bg-white px-3 py-1.5 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-black/20 dark:border-white/10 dark:bg-black dark:text-zinc-50";
-
-// Année universitaire par défaut : bascule au 1er septembre
-function currentAcademicYear(): string {
-  const now = new Date();
-  const start = now.getMonth() >= 8 ? now.getFullYear() : now.getFullYear() - 1;
-  return `${start}-${start + 1}`;
-}
 
 export default async function AgentPedagogiquePage({
   searchParams,
@@ -45,12 +39,20 @@ export default async function AgentPedagogiquePage({
 
   // Secrétaire de formation : tout est limité à sa formation, côté serveur
   const userFormation = await getUserFormation(session.sub, session.role);
+  // Sélecteur global d'année universitaire (en-tête)
+  const selectedYear = await getSelectedAcademicYear();
   const [allStudents, inscrits, filterOptions, statusCounts, resultCount] = await Promise.all([
-    searchStudents(q, userFormation),
-    listInscrits({ q: qi, program, department, mention }, userFormation),
-    getFilterOptions(),
-    prisma.student.groupBy({ by: ["status"], _count: { _all: true } }),
-    prisma.academicResult.count(),
+    searchStudents(q, userFormation, selectedYear),
+    listInscrits({ q: qi, program, department, mention, year: selectedYear }, userFormation),
+    getFilterOptions(selectedYear),
+    prisma.student.groupBy({
+      by: ["status"],
+      _count: { _all: true },
+      ...(selectedYear ? { where: { academicYear: selectedYear } } : {}),
+    }),
+    prisma.academicResult.count({
+      ...(selectedYear ? { where: { academicYear: selectedYear } } : {}),
+    }),
   ]);
   const countOf = (status: string) =>
     statusCounts.find((s) => s.status === status)?._count._all ?? 0;
@@ -61,7 +63,9 @@ export default async function AgentPedagogiquePage({
   const upstream = allStudents.filter((s) =>
     ["ENREGISTRE", "PAIEMENT_VERIFIE"].includes(s.status),
   );
-  const defaultYear = currentAcademicYear();
+  // Résultat par défaut proposé : l'année consultée (sélecteur global), sinon
+  // l'année universitaire en cours
+  const defaultYear = selectedYear ?? currentAcademicYear();
 
   return (
     <AppShell

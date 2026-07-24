@@ -3,22 +3,25 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import {
   registerStudent,
-  verifyReceipt,
+  recordEcolagePayment,
   validateAdminInscription,
   validatePedagoInscription,
   reenrollStudent,
 } from "@/lib/students";
 import { disconnectDb, resetDb } from "../setup/db";
-import { createActor, validRegisterInput } from "../setup/factories";
+import { createActor, createTariff, validRegisterInput } from "../setup/factories";
 
-beforeEach(resetDb);
+beforeEach(async () => {
+  await resetDb();
+  await createTariff(); // "Management", filière par défaut de validRegisterInput
+});
 afterAll(disconnectDb);
 
 // Fait passer un dossier fraîchement enregistré jusqu'au statut INSCRIT
 // (compte étudiant créé), pour tester la réinscription à partir d'un état réaliste.
 async function enrollToInscrit(actorId: string) {
   const student = await registerStudent(validRegisterInput(), actorId);
-  await verifyReceipt(student.id, "REC-001", actorId);
+  await recordEcolagePayment(student.id, "TRANCHE_S1", "REC-001", actorId);
   await validateAdminInscription(student.id, actorId);
   const { student: inscrit } = await validatePedagoInscription(student.id, actorId);
   return inscrit;
@@ -85,7 +88,7 @@ describe("reenrollStudent", () => {
     // Nouveau cycle jusqu'à INSCRIT pour 2027-2028, puis tentative de
     // réinscrire vers une année déjà présente dans l'historique (2026-2027)
     const secondActor = await createActor("AGENT_PEDAGOGIQUE");
-    await verifyReceipt(inscrit.id, "REC-002", actor.id);
+    await recordEcolagePayment(inscrit.id, "TRANCHE_S1", "REC-002", actor.id);
     await validateAdminInscription(inscrit.id, actor.id);
     await validatePedagoInscription(inscrit.id, secondActor.id);
 

@@ -4,15 +4,18 @@ import { prisma } from "@/lib/prisma";
 import { getInscriptionTrend } from "@/lib/dashboard";
 import {
   registerStudent,
-  verifyReceipt,
+  recordEcolagePayment,
   validateAdminInscription,
   validatePedagoInscription,
   reenrollStudent,
 } from "@/lib/students";
 import { disconnectDb, resetDb } from "../setup/db";
-import { createActor, validRegisterInput } from "../setup/factories";
+import { createActor, createTariff, validRegisterInput } from "../setup/factories";
 
-beforeEach(resetDb);
+beforeEach(async () => {
+  await resetDb();
+  await createTariff(); // "Management", filière par défaut de validRegisterInput
+});
 afterAll(disconnectDb);
 
 function monthsAgo(n: number): Date {
@@ -28,7 +31,7 @@ function monthKeyOf(d: Date): string {
 
 describe("getInscriptionTrend", () => {
   it("sans aucun dossier, renvoie des mois à zéro (pas des mois manquants)", async () => {
-    const trend = await getInscriptionTrend(6);
+    const trend = await getInscriptionTrend({ monthsBack: 6 });
     expect(trend.months).toHaveLength(6);
     expect(trend.registrations).toEqual([0, 0, 0, 0, 0, 0]);
     expect(trend.payments).toEqual([0, 0, 0, 0, 0, 0]);
@@ -38,12 +41,12 @@ describe("getInscriptionTrend", () => {
   it("compte les événements du mois courant", async () => {
     const actor = await createActor("AGENT_ADMINISTRATION");
     const student = await registerStudent(validRegisterInput(), actor.id);
-    await verifyReceipt(student.id, "REC-001", actor.id);
+    await recordEcolagePayment(student.id, "TRANCHE_S1", "REC-001", actor.id);
     await validateAdminInscription(student.id, actor.id);
     const pedagoActor = await createActor("AGENT_PEDAGOGIQUE");
     await validatePedagoInscription(student.id, pedagoActor.id);
 
-    const trend = await getInscriptionTrend(6);
+    const trend = await getInscriptionTrend({ monthsBack: 6 });
     const currentIndex = trend.months.length - 1;
     expect(trend.registrations[currentIndex]).toBe(1);
     expect(trend.payments[currentIndex]).toBe(1);
@@ -58,7 +61,7 @@ describe("getInscriptionTrend", () => {
   it("une réinscription ne fait pas disparaître les événements passés du graphique", async () => {
     const actor = await createActor("AGENT_ADMINISTRATION");
     const student = await registerStudent(validRegisterInput(), actor.id);
-    await verifyReceipt(student.id, "REC-001", actor.id);
+    await recordEcolagePayment(student.id, "TRANCHE_S1", "REC-001", actor.id);
     await validateAdminInscription(student.id, actor.id);
     const pedagoActor = await createActor("AGENT_PEDAGOGIQUE");
     const { student: inscrit } = await validatePedagoInscription(student.id, pedagoActor.id);
@@ -74,7 +77,7 @@ describe("getInscriptionTrend", () => {
       },
     });
 
-    const beforeReenroll = await getInscriptionTrend(6);
+    const beforeReenroll = await getInscriptionTrend({ monthsBack: 6 });
     const pastIndex = beforeReenroll.months.indexOf(monthKeyOf(pastDate));
     expect(pastIndex).toBeGreaterThanOrEqual(0);
     expect(beforeReenroll.payments[pastIndex]).toBe(1);
@@ -82,7 +85,7 @@ describe("getInscriptionTrend", () => {
 
     await reenrollStudent(inscrit.id, { academicYear: "2027-2028" }, actor.id);
 
-    const afterReenroll = await getInscriptionTrend(6);
+    const afterReenroll = await getInscriptionTrend({ monthsBack: 6 });
     // Même mois passé : toujours 1, pas 0 — l'événement a été archivé, pas perdu
     expect(afterReenroll.payments[pastIndex]).toBe(1);
     expect(afterReenroll.inscriptions[pastIndex]).toBe(1);
@@ -91,5 +94,46 @@ describe("getInscriptionTrend", () => {
     const currentIndex = afterReenroll.months.length - 1;
     expect(afterReenroll.payments[currentIndex]).toBe(0);
     expect(afterReenroll.inscriptions[currentIndex]).toBe(0);
+  });
+
+  it("mode année universitaire : fenêtre fixe de 12 mois, de septembre à août", async () => {
+    const trend = await getInscriptionTrend({ academicYear: "2026-2027" });
+    expect(trend.months).toEqual([
+      "2026-09",
+      "2026-10",
+      "2026-11",
+      "2026-12",
+      "2027-01",
+      "2027-02",
+      "2027-03",
+      "2027-04",
+      "2027-05",
+      "2027-06",
+      "2027-07",
+      "2027-08",
+    ]);
+  });
+
+  it("mode année universitaire : compte un événement archivé d'une année déjà terminée", async () => {
+    const actor = await createActor("AGENT_ADMINISTRATION");
+    const student = await registerStudent(validRegisterInput(), actor.id);
+    await recordEcolagePayment(student.id, "TRANCHE_S1", "REC-001", actor.id);
+    await validateAdminInscription(student.id, actor.id);
+    const pedagoActor = await createActor("AGENT_PEDAGOGIQUE");
+    const { student: inscrit } = await validatePedagoInscription(student.id, pedagoActor.id);
+
+    // Dossier traité en octobre 2024, une année universitaire déjà terminée
+    const eventDate = new Date(2024, 9, 15);
+    await prisma.student.update({
+      where: { id: inscrit.id },
+      data: { receiptVerifiedAt: eventDate, pedagoValidatedAt: eventDate },
+    });
+    await reenrollStudent(inscrit.id, { academicYear: "2025-2026" }, actor.id);
+
+    const trend = await getInscriptionTrend({ academicYear: "2024-2025" });
+    const index = trend.months.indexOf("2024-10");
+    expect(index).toBeGreaterThanOrEqual(0);
+    expect(trend.payments[index]).toBe(1);
+    expect(trend.inscriptions[index]).toBe(1);
   });
 });

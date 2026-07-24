@@ -16,34 +16,35 @@ enum Role {
 
 // Table centrale pour la gestion de l'authentification et des profils
 model User {
-  id           String     @id @default(cuid())
-  email        String     @unique
-  passwordHash String
+  id                      String             @id @default(cuid())
+  email                   String             @unique
+  passwordHash            String
   // Force le changement de mot de passe à la prochaine connexion
   // (vrai pour les comptes étudiants créés avec le matricule comme mot de passe)
-  mustChangePassword Boolean @default(false)
+  mustChangePassword      Boolean            @default(false)
   // Compte désactivé : connexion refusée (géré depuis la page Permissions)
-  active Boolean @default(true)
+  active                  Boolean            @default(true)
   // Fonction / poste (ex : Secrétaire, Chef de scolarité, Responsable finance...)
-  jobTitle String?
+  jobTitle                String?
   // Photo de profil (data URL, gérée par l'utilisateur sur sa page Mon compte)
-  photo String?
+  photo                   String?
   // Tâches autorisées pour cet utilisateur (clés du catalogue lib/permissions.ts).
   // Deux agents du même rôle peuvent avoir des permissions différentes.
-  permissions String[] @default([])
+  permissions             String[]           @default([])
   // Formation affectée (ex : "Management") : l'agent ne voit et ne manipule
   // que les dossiers de cette formation. Null = toutes les formations.
-  formation String?
-  role         Role       @default(ETUDIANT)
-  fullName     String?
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  auditLogs    AuditLog[]
+  formation               String?
+  role                    Role               @default(ETUDIANT)
+  fullName                String?
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+  auditLogs               AuditLog[]
   // Dossier étudiant lié si ce compte a été créé via la validation pédagogique
-  studentFile  Student?
+  studentFile             Student?
   // Communiqués rédigés (agents) et marques de lecture (étudiants)
-  announcements     Announcement[]     @relation("AuthoredAnnouncements")
-  announcementReads AnnouncementRead[]
+  announcements           Announcement[]     @relation("AuthoredAnnouncements")
+  announcementReads       AnnouncementRead[]
+  ecolagePaymentsVerified EcolagePayment[]
 }
 
 // Workflow d'inscription d'un étudiant
@@ -121,51 +122,52 @@ model Student {
   level        String? // hérité : niveau
   department   String? // hérité : département (alimenté avec le domaine)
 
-  receiptNumber String? // numéro du reçu bancaire vérifié
-  conduct       String? // appréciation de conduite (rédigée par l'agent pédagogique)
-  status        StudentStatus @default(ENREGISTRE)
+  receiptNumber     String? // numéro du reçu bancaire vérifié
+  conduct           String? // appréciation de conduite (rédigée par l'agent pédagogique)
+  status            StudentStatus       @default(ENREGISTRE)
   // Horodatages dédiés (au lieu de retrouver la date dans le journal d'audit,
   // qui n'est pas lié au dossier et survit à sa suppression) : le graphique du
   // tableau de bord doit refléter seulement les dossiers qui existent encore.
-  receiptVerifiedAt  DateTime?
-  pedagoValidatedAt  DateTime?
+  receiptVerifiedAt DateTime?
+  pedagoValidatedAt DateTime?
   // Compte de connexion créé automatiquement à la validation pédagogique
-  account         User?   @relation(fields: [accountId], references: [id], onDelete: SetNull)
-  accountId       String? @unique
+  account           User?               @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  accountId         String?             @unique
   // Mot de passe initial du compte, imprimé sur le reçu d'inscription pour être
   // remis à l'étudiant (à changer par l'étudiant à sa première connexion)
-  initialPassword String?
+  initialPassword   String?
   // Années universitaires précédentes (archivées à chaque réinscription)
   enrollmentHistory EnrollmentHistory[]
-  results       AcademicResult[]
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
-
-  @@index([fullName])
-  @@index([status])
-  @@index([academicYear])
+  results           AcademicResult[]
+  ecolagePayments   EcolagePayment[]
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
   // + index trigram (pg_trgm/GIN) sur fullName, matricule, receiptNumber,
   // program, department, cin, track pour les recherches "contains" — voir la
   // migration 20260721153910_student_search_trgm_index (SQL brut : la syntaxe
   // Prisma ne modélise pas l'opclass gin_trgm_ops).
+
+  @@index([fullName])
+  @@index([status])
+  @@index([academicYear])
 }
 
 // Année universitaire passée d'un étudiant, archivée lors de sa réinscription
 model EnrollmentHistory {
-  id            String   @id @default(cuid())
-  student       Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  studentId     String
-  academicYear  String
-  track         String? // parcours / classe suivie cette année-là
-  status        String // statut au moment de l'archivage (normalement INSCRIT)
-  receiptNumber String?
+  id                String    @id @default(cuid())
+  student           Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId         String
+  academicYear      String
+  track             String? // parcours / classe suivie cette année-là
+  status            String // statut au moment de l'archivage (normalement INSCRIT)
+  receiptNumber     String?
   // Horodatages de l'année archivée, copiés depuis Student avant leur remise à
   // zéro par reenrollStudent — sans cette copie, le graphique du tableau de
   // bord (getInscriptionTrend) perdrait ces événements passés dès qu'un
   // étudiant se réinscrit, alors qu'ils ont bien eu lieu.
   receiptVerifiedAt DateTime?
   pedagoValidatedAt DateTime?
-  archivedAt    DateTime @default(now())
+  archivedAt        DateTime  @default(now())
 
   @@index([studentId])
 }
@@ -235,8 +237,47 @@ model Tariff {
   id        String   @id @default(cuid())
   label     String
   amount    Int // montant en ariary
+  // Filière associée (correspond à Student.mention / program) : quand
+  // renseignée, ce tarif est le montant annuel d'écolage de cette filière et
+  // sert au calcul automatique des tranches (voir recordEcolagePayment dans
+  // lib/students.ts). Les tarifs sans filière (droits de dossier, etc.)
+  // restent une simple liste informative, non utilisée dans ce calcul.
+  formation String?  @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Type de versement d'écolage pour une année universitaire donnée : soit
+// deux tranches semestrielles (moitié du tarif annuel chacune), soit la
+// totalité en un seul versement. Les deux modes sont mutuellement exclusifs
+// pour une même année (voir recordEcolagePayment).
+enum EcolagePaymentType {
+  TRANCHE_S1
+  TRANCHE_S2
+  TOTALITE
+}
+
+// Versement d'écolage effectué par un étudiant pour une année universitaire.
+// Indépendant de Student.receiptNumber/receiptVerifiedAt (qui ne retiennent
+// que le tout premier versement, pour débloquer la suite du dossier) : ici,
+// chaque versement de chaque année reste une ligne d'historique à part,
+// jamais réinitialisée par une réinscription.
+model EcolagePayment {
+  id            String             @id @default(cuid())
+  student       Student            @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId     String
+  academicYear  String
+  type          EcolagePaymentType
+  amount        Int // montant calculé depuis le tarif de la filière, en ariary
+  receiptNumber String
+  verifiedBy    User?              @relation(fields: [verifiedById], references: [id], onDelete: SetNull)
+  verifiedById  String?
+  verifiedAt    DateTime           @default(now())
+
+  // Un seul versement par type et par année (pas de double 1ère tranche, etc.)
+  @@unique([studentId, academicYear, type])
+  @@index([studentId])
+  @@index([academicYear])
 }
 
 // Journal des actions sensibles (connexions, créations de comptes, etc.)

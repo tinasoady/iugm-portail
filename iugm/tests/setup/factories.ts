@@ -29,6 +29,14 @@ export async function createActor(role: ActorRole = "SUPERADMIN") {
 // Dossier d'inscription minimal mais valide vis-à-vis des règles de
 // registerStudent (année au format AAAA-AAAA, sexe M/F, personne à contacter
 // d'urgence obligatoire...).
+// Tarif annuel d'écolage pour une filière — requis par recordEcolagePayment
+// (le montant de chaque tranche est calculé depuis ce tarif, jamais saisi
+// librement). "Management" correspond à la filière par défaut de
+// validRegisterInput ci-dessous.
+export async function createTariff(formation = "Management", amount = 2_000_000) {
+  return prisma.tariff.create({ data: { label: `Écolage ${formation}`, amount, formation } });
+}
+
 export function validRegisterInput(
   overrides: Partial<RegisterStudentInput> = {},
 ): RegisterStudentInput {

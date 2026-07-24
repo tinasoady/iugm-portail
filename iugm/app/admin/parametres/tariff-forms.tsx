@@ -7,21 +7,40 @@ import {
   deleteTariffAction,
   type SettingsState,
 } from "./actions";
+import { FORMATIONS } from "@/lib/formations";
 
 const fieldClass =
   "rounded-lg border border-black/10 bg-white px-2.5 py-1.5 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-indigo-500/40 dark:border-white/10 dark:bg-zinc-950 dark:text-zinc-50";
 
 const initialState: SettingsState = {};
 
-// Ligne de tarif éditable : modifier le libellé/montant ou supprimer
+// Sélecteur de filière partagé par les deux formulaires ci-dessous : "Aucune"
+// laisse le tarif purement informatif (ex. droit de dossier), une filière
+// choisie en fait le tarif annuel d'écolage utilisé par recordEcolagePayment.
+function FormationSelect({ defaultValue }: { defaultValue?: string | null }) {
+  return (
+    <select name="formation" defaultValue={defaultValue ?? ""} className={fieldClass}>
+      <option value="">Aucune (tarif informatif)</option>
+      {FORMATIONS.map((f) => (
+        <option key={f.code} value={f.label}>
+          {f.label}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+// Ligne de tarif éditable : modifier le libellé/montant/filière ou supprimer
 export function TariffRow({
   id,
   label,
   amount,
+  formation,
 }: {
   id: string;
   label: string;
   amount: number;
+  formation?: string | null;
 }) {
   const [updateState, updateFormAction, updatePending] = useActionState(
     updateTariffAction,
@@ -57,6 +76,7 @@ export function TariffRow({
             />
             <span className="text-xs text-zinc-500 dark:text-zinc-400">Ar</span>
           </div>
+          <FormationSelect defaultValue={formation} />
           <button
             type="submit"
             disabled={updatePending}
@@ -113,6 +133,7 @@ export function AddTariffForm() {
           />
           <span className="text-xs text-zinc-500 dark:text-zinc-400">Ar</span>
         </div>
+        <FormationSelect />
         <button
           type="submit"
           disabled={pending}

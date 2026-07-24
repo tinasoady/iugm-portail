@@ -2,8 +2,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { getSession } from "@/lib/auth";
-import { listStudents, getAcademicYears, getStudentFilterValues } from "@/lib/students";
+import { listStudents, getStudentFilterValues } from "@/lib/students";
 import { hasTaskPermission, getUserFormation } from "@/lib/permissions";
+import { getSelectedAcademicYear } from "@/lib/academic-year";
 import { AppShell } from "@/app/ui/app-shell";
 import { STATUS_LABELS, STATUS_BADGE_CLASSES } from "@/app/ui/student-status";
 import { DeleteStudentButton, EditStudentLink } from "./delete-button";
@@ -13,7 +14,6 @@ const dateFormatter = new Intl.DateTimeFormat("fr-FR", { dateStyle: "short" });
 
 type Params = {
   q?: string;
-  year?: string;
   filiere?: string;
   niveau?: string;
   sort?: string;
@@ -22,11 +22,14 @@ type Params = {
   page?: string;
 };
 
-// Requête (hors page) à transmettre telle quelle à l'export et à l'impression
-function filterQueryString(params: Params): string {
+// Requête (hors page) à transmettre telle quelle à l'export et à l'impression.
+// `year` vient du sélecteur global de l'en-tête (cookie), pas d'un champ du
+// formulaire de cette page — mais reste transmis en paramètre pour que
+// l'impression et l'export CSV (routes indépendantes) filtrent pareil.
+function filterQueryString(params: Params, year: string | null): string {
   const search = new URLSearchParams();
   if (params.q) search.set("q", params.q);
-  if (params.year) search.set("year", params.year);
+  if (year) search.set("year", year);
   if (params.filiere) search.set("filiere", params.filiere);
   if (params.niveau) search.set("niveau", params.niveau);
   if (params.group) search.set("group", params.group);
@@ -36,11 +39,11 @@ function filterQueryString(params: Params): string {
 }
 
 // Lien d'en-tête de colonne : re-cliquer inverse le sens du tri (repart en page 1)
-function sortHref(params: Params, key: string): string {
+function sortHref(params: Params, year: string | null, key: string): string {
   const dir = params.sort === key && params.dir !== "desc" ? "desc" : "asc";
   const search = new URLSearchParams();
   if (params.q) search.set("q", params.q);
-  if (params.year) search.set("year", params.year);
+  if (year) search.set("year", year);
   if (params.filiere) search.set("filiere", params.filiere);
   if (params.niveau) search.set("niveau", params.niveau);
   if (params.group) search.set("group", params.group);
@@ -55,10 +58,10 @@ function sortArrow(params: Params, key: string): string {
 }
 
 // Lien de pagination : conserve tous les filtres/tri actifs
-function pageHref(params: Params, page: number): string {
+function pageHref(params: Params, year: string | null, page: number): string {
   const search = new URLSearchParams();
   if (params.q) search.set("q", params.q);
-  if (params.year) search.set("year", params.year);
+  if (year) search.set("year", year);
   if (params.filiere) search.set("filiere", params.filiere);
   if (params.niveau) search.set("niveau", params.niveau);
   if (params.group) search.set("group", params.group);
@@ -83,10 +86,14 @@ export default async function EtudiantsPage({
   const params = await searchParams;
   // Secrétaire de formation : la liste est limitée à sa formation, côté serveur
   const userFormation = await getUserFormation(session.sub, session.role);
-  const [{ students, total, page, totalPages }, years, filterValues] = await Promise.all([
-    listStudents({ ...params, page: Number(params.page) || 1 }, userFormation),
-    getAcademicYears(),
-    getStudentFilterValues(),
+  // Année universitaire pilotée par le sélecteur global de l'en-tête
+  const selectedYear = await getSelectedAcademicYear();
+  const [{ students, total, page, totalPages }, filterValues] = await Promise.all([
+    listStudents(
+      { ...params, year: selectedYear ?? undefined, page: Number(params.page) || 1 },
+      userFormation,
+    ),
+    getStudentFilterValues(selectedYear),
   ]);
 
   // Suppression et modification sont réservées au superadmin et aux agents
@@ -100,7 +107,7 @@ export default async function EtudiantsPage({
   // Classement des blocs selon le critère choisi (année par défaut)
   const group = resolveGroup(params.group);
   const groups = groupStudents(students, group);
-  const exportQuery = filterQueryString(params);
+  const exportQuery = filterQueryString(params, selectedYear);
 
   const headerLinkClass =
     "font-semibold text-zinc-400 hover:text-indigo-600 dark:text-zinc-500 dark:hover:text-indigo-400";
@@ -122,18 +129,6 @@ export default async function EtudiantsPage({
             placeholder="Nom, matricule, CIN, mention, parcours..."
             className="w-64 rounded-xl border border-black/10 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-indigo-500/40 dark:border-white/10 dark:bg-zinc-950 dark:text-zinc-50"
           />
-          <select
-            name="year"
-            defaultValue={params.year ?? ""}
-            className="rounded-xl border border-black/10 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-indigo-500/40 dark:border-white/10 dark:bg-zinc-950 dark:text-zinc-50"
-          >
-            <option value="">Toutes les années universitaires</option>
-            {years.map((y) => (
-              <option key={y} value={y}>
-                {y}
-              </option>
-            ))}
-          </select>
           {userFormation ? (
             <span
               className="rounded-xl bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300"
@@ -187,7 +182,7 @@ export default async function EtudiantsPage({
           >
             Rechercher
           </button>
-          {(params.q || params.year || params.filiere || params.niveau || params.group) && (
+          {(params.q || params.filiere || params.niveau || params.group) && (
             <Link
               href="/etudiants"
               className="rounded-xl border border-black/10 px-3 py-2 text-sm font-medium text-zinc-600 transition hover:bg-zinc-100 dark:border-white/10 dark:text-zinc-300 dark:hover:bg-zinc-800"
@@ -252,12 +247,12 @@ export default async function EtudiantsPage({
               <thead>
                 <tr className="border-b border-black/10 text-xs uppercase tracking-wider dark:border-white/10">
                   <th className="py-2.5 pr-4">
-                    <a href={sortHref(params, "matricule")} className={headerLinkClass}>
+                    <a href={sortHref(params, selectedYear, "matricule")} className={headerLinkClass}>
                       Matricule{sortArrow(params, "matricule")}
                     </a>
                   </th>
                   <th className="py-2.5 pr-4">
-                    <a href={sortHref(params, "nom")} className={headerLinkClass}>
+                    <a href={sortHref(params, selectedYear, "nom")} className={headerLinkClass}>
                       Nom{sortArrow(params, "nom")}
                     </a>
                   </th>
@@ -265,12 +260,12 @@ export default async function EtudiantsPage({
                     Filière / Niveau
                   </th>
                   <th className="py-2.5 pr-4">
-                    <a href={sortHref(params, "statut")} className={headerLinkClass}>
+                    <a href={sortHref(params, selectedYear, "statut")} className={headerLinkClass}>
                       Statut{sortArrow(params, "statut")}
                     </a>
                   </th>
                   <th className="py-2.5 pr-4">
-                    <a href={sortHref(params, "date")} className={headerLinkClass}>
+                    <a href={sortHref(params, selectedYear, "date")} className={headerLinkClass}>
                       Inscrit le{sortArrow(params, "date")}
                     </a>
                   </th>
@@ -345,7 +340,7 @@ export default async function EtudiantsPage({
           <div className="flex items-center justify-between">
             {page > 1 ? (
               <Link
-                href={pageHref(params, page - 1)}
+                href={pageHref(params, selectedYear, page - 1)}
                 className="rounded-xl border border-black/10 px-3 py-1.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-white/10 dark:text-zinc-200 dark:hover:bg-zinc-800"
               >
                 ← Page précédente
@@ -358,7 +353,7 @@ export default async function EtudiantsPage({
             </span>
             {page < totalPages ? (
               <Link
-                href={pageHref(params, page + 1)}
+                href={pageHref(params, selectedYear, page + 1)}
                 className="rounded-xl border border-black/10 px-3 py-1.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-white/10 dark:text-zinc-200 dark:hover:bg-zinc-800"
               >
                 Page suivante →

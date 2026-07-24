@@ -52,7 +52,10 @@ export default async function ParametresPage() {
         </h2>
         <p className="mb-4 text-xs text-zinc-500 dark:text-zinc-400">
           Droits d&apos;inscription, frais de scolarité par niveau ou type de formation... Montants
-          en ariary. Modifiez une ligne puis « Enregistrer », ou supprimez-la.
+          en ariary. Modifiez une ligne puis « Enregistrer », ou supprimez-la. Un tarif associé à
+          une filière sert de montant annuel d&apos;écolage pour cette filière : les agents
+          n&apos;ont plus qu&apos;à choisir « 1ère tranche » (moitié) ou « Totalité » lors de
+          l&apos;enregistrement d&apos;un versement — voir Gestion d&apos;écolage.
         </p>
 
         <div className="space-y-3">
@@ -62,7 +65,13 @@ export default async function ParametresPage() {
             </p>
           )}
           {tariffs.map((t) => (
-            <TariffRow key={t.id} id={t.id} label={t.label} amount={t.amount} />
+            <TariffRow
+              key={t.id}
+              id={t.id}
+              label={t.label}
+              amount={t.amount}
+              formation={t.formation}
+            />
           ))}
         </div>
 

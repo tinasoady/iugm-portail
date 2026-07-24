@@ -2,71 +2,84 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { getSession } from "@/lib/auth";
-import { getEcolageStats, listUnpaidStudents, getAcademicYears } from "@/lib/students";
+import { getEcolageStats, listStudentsWithBalanceDue } from "@/lib/students";
 import { hasTaskPermission } from "@/lib/permissions";
+import { getSelectedAcademicYear } from "@/lib/academic-year";
 import { AppShell } from "@/app/ui/app-shell";
 import { StatCard } from "@/app/ui/stat-card";
 import { Donut } from "@/app/ui/donut";
-import { IconUsers, IconCash, IconClipboard } from "@/app/ui/icons";
+import { IconUsers, IconCash, IconClipboard, IconFolder } from "@/app/ui/icons";
+import { Tranche2Form } from "./tranche2-form";
 
-const dateFormatter = new Intl.DateTimeFormat("fr-FR", { dateStyle: "short" });
+const amountFormatter = new Intl.NumberFormat("fr-FR");
 
 function pct(part: number, total: number): number {
   return total === 0 ? 0 : Math.round((part / total) * 100);
 }
 
-// Jauge payé / non payé : couleurs de statut validées (émeraude / ambre),
-// toujours accompagnées de libellés et d'effectifs — jamais la couleur seule.
+// Couleurs de statut réservées (voir app/ui/student-status.ts) : émeraude =
+// bon (payé intégralement), ambre = attention (partiel), rose = plus urgent
+// (rien payé). Toujours accompagnées de libellés/effectifs, jamais la
+// couleur seule.
 function PaymentMeter({
-  paid,
+  full,
+  partial,
   unpaid,
   height = "h-5",
 }: {
-  paid: number;
+  full: number;
+  partial: number;
   unpaid: number;
   height?: string;
 }) {
-  const total = paid + unpaid;
+  const total = full + partial + unpaid;
   if (total === 0) {
     return <div className={`${height} w-full rounded-full bg-zinc-100 dark:bg-zinc-800`} />;
   }
+  const segments = [
+    { value: full, className: "bg-emerald-600 dark:bg-emerald-500", label: "Payé intégralement" },
+    { value: partial, className: "bg-amber-500 dark:bg-amber-400", label: "Partiel (2e tranche due)" },
+    { value: unpaid, className: "bg-rose-600 dark:bg-rose-500", label: "Non payé" },
+  ].filter((s) => s.value > 0);
   return (
     <div className={`flex ${height} w-full gap-0.5 overflow-hidden rounded-full`}>
-      {paid > 0 && (
+      {segments.map((s, i) => (
         <div
-          className="rounded-l-full bg-emerald-600 dark:bg-emerald-500"
-          style={{ width: `${(paid / total) * 100}%` }}
-          title={`Payé : ${paid}`}
+          key={s.label}
+          className={`${i === 0 ? "rounded-l-full " : ""}${i === segments.length - 1 ? "rounded-r-full " : ""}${s.className}`}
+          style={{ width: `${(s.value / total) * 100}%` }}
+          title={`${s.label} : ${s.value}`}
         />
-      )}
-      {unpaid > 0 && (
-        <div
-          className={`${paid === 0 ? "rounded-l-full " : ""}rounded-r-full bg-amber-600 dark:bg-amber-400`}
-          style={{ width: `${(unpaid / total) * 100}%` }}
-          title={`Non payé : ${unpaid}`}
-        />
-      )}
+      ))}
     </div>
   );
 }
 
-export default async function EcolagePage({
-  searchParams,
-}: {
-  searchParams: Promise<{ year?: string }>;
-}) {
+const DUE_STATUS_BADGE: Record<"UNPAID" | "PARTIAL", string> = {
+  UNPAID:
+    "rounded-full bg-rose-50 px-2.5 py-0.5 text-xs font-medium text-rose-700 dark:bg-rose-950 dark:text-rose-300",
+  PARTIAL:
+    "rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-300",
+};
+const DUE_STATUS_LABEL: Record<"UNPAID" | "PARTIAL", string> = {
+  UNPAID: "Non payé",
+  PARTIAL: "2e tranche due",
+};
+
+export default async function EcolagePage() {
   const session = await getSession();
   if (!session) redirect("/login");
   if (!["AGENT_ADMINISTRATION", "SUPERADMIN"].includes(session.role)) redirect("/");
   if (!(await hasTaskPermission(session.sub, session.role, "ecolage"))) redirect("/agent-admin");
 
-  const { year } = await searchParams;
-  const [stats, unpaidStudents, years] = await Promise.all([
-    getEcolageStats(year),
-    listUnpaidStudents(year),
-    getAcademicYears(),
+  // Année universitaire pilotée par le sélecteur global de l'en-tête
+  const year = await getSelectedAcademicYear();
+  const [stats, due] = await Promise.all([
+    getEcolageStats(year ?? undefined),
+    listStudentsWithBalanceDue(year ?? undefined),
   ]);
-  const paidPct = pct(stats.paid, stats.total);
+  const fullPct = pct(stats.full, stats.total);
+  const partialPct = pct(stats.partial, stats.total);
   const unpaidPct = pct(stats.unpaid, stats.total);
 
   return (
@@ -76,36 +89,8 @@ export default async function EcolagePage({
       title="Gestion d'écolage"
       active="/agent-admin/ecolage"
     >
-      {/* Filtre par année universitaire */}
-      <section className="rounded-2xl border border-black/5 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-zinc-900">
-        <form method="get" className="flex flex-wrap items-center gap-2">
-          <label htmlFor="year" className="text-sm text-zinc-600 dark:text-zinc-300">
-            Année universitaire
-          </label>
-          <select
-            id="year"
-            name="year"
-            defaultValue={year ?? ""}
-            className="rounded-xl border border-black/10 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-indigo-500/40 dark:border-white/10 dark:bg-zinc-950 dark:text-zinc-50"
-          >
-            <option value="">Toutes les années</option>
-            {years.map((y) => (
-              <option key={y} value={y}>
-                {y}
-              </option>
-            ))}
-          </select>
-          <button
-            type="submit"
-            className="rounded-xl bg-linear-to-r from-indigo-600 to-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:from-indigo-500 hover:to-violet-500"
-          >
-            Afficher
-          </button>
-        </form>
-      </section>
-
       {/* Cartes statistiques */}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="Dossiers étudiants"
           value={stats.total}
@@ -114,17 +99,24 @@ export default async function EcolagePage({
           icon={<IconUsers />}
         />
         <StatCard
-          label="Écolage payé"
-          value={`${paidPct}%`}
-          sublabel={`${stats.paid} étudiant(s) — reçu bancaire vérifié`}
+          label="Payé intégralement"
+          value={`${fullPct}%`}
+          sublabel={`${stats.full} étudiant(s) — totalité ou 2 tranches`}
           gradient="from-emerald-500 to-teal-600"
           icon={<IconCash />}
         />
         <StatCard
-          label="Écolage non payé"
+          label="Paiement partiel"
+          value={`${partialPct}%`}
+          sublabel={`${stats.partial} étudiant(s) — 2e tranche due`}
+          gradient="from-amber-400 to-orange-500"
+          icon={<IconFolder />}
+        />
+        <StatCard
+          label="Non payé"
           value={`${unpaidPct}%`}
           sublabel={`${stats.unpaid} étudiant(s) en attente`}
-          gradient="from-amber-400 to-orange-500"
+          gradient="from-rose-500 to-red-600"
           icon={<IconClipboard />}
         />
       </div>
@@ -142,10 +134,11 @@ export default async function EcolagePage({
           <div className="flex flex-col items-center gap-8 sm:flex-row sm:justify-center sm:gap-14">
             <Donut
               segments={[
-                { value: stats.paid, className: "stroke-emerald-600 dark:stroke-emerald-500" },
-                { value: stats.unpaid, className: "stroke-amber-500 dark:stroke-amber-400" },
+                { value: stats.full, className: "stroke-emerald-600 dark:stroke-emerald-500" },
+                { value: stats.partial, className: "stroke-amber-500 dark:stroke-amber-400" },
+                { value: stats.unpaid, className: "stroke-rose-600 dark:stroke-rose-500" },
               ]}
-              centerValue={`${paidPct}%`}
+              centerValue={`${fullPct}%`}
               centerLabel="payé"
             />
 
@@ -155,14 +148,14 @@ export default async function EcolagePage({
                 <span className="h-4 w-4 shrink-0 rounded bg-emerald-600 dark:bg-emerald-500" />
                 <div className="flex-1">
                   <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                    ✓ Écolage payé
+                    ✓ Payé intégralement
                   </p>
                   <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                    {stats.paid} étudiant(s) — reçu bancaire vérifié
+                    {stats.full} étudiant(s) — totalité ou 2 tranches versées
                   </p>
                 </div>
                 <span className="text-lg font-bold text-emerald-700 dark:text-emerald-400">
-                  {paidPct}%
+                  {fullPct}%
                 </span>
               </div>
 
@@ -170,13 +163,28 @@ export default async function EcolagePage({
                 <span className="h-4 w-4 shrink-0 rounded bg-amber-500 dark:bg-amber-400" />
                 <div className="flex-1">
                   <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                    ⏳ Écolage non payé
+                    ⏳ Paiement partiel
                   </p>
                   <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                    {stats.unpaid} étudiant(s) en attente de paiement
+                    {stats.partial} étudiant(s) — 1ère tranche versée, 2e due
                   </p>
                 </div>
                 <span className="text-lg font-bold text-amber-700 dark:text-amber-400">
+                  {partialPct}%
+                </span>
+              </div>
+
+              <div className="flex items-center gap-3 rounded-xl border border-black/5 p-3 dark:border-white/10">
+                <span className="h-4 w-4 shrink-0 rounded bg-rose-600 dark:bg-rose-500" />
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                    ✗ Non payé
+                  </p>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    {stats.unpaid} étudiant(s) sans aucun versement
+                  </p>
+                </div>
+                <span className="text-lg font-bold text-rose-700 dark:text-rose-400">
                   {unpaidPct}%
                 </span>
               </div>
@@ -203,7 +211,7 @@ export default async function EcolagePage({
               <thead>
                 <tr className="border-b border-black/10 text-xs uppercase tracking-wider text-zinc-400 dark:border-white/10 dark:text-zinc-500">
                   <th className="py-2.5 pr-4 font-semibold">Formation</th>
-                  <th className="py-2.5 pr-4 font-semibold">Payé / Total</th>
+                  <th className="py-2.5 pr-4 font-semibold">Intégral / Partiel / Non payé</th>
                   <th className="py-2.5 pr-4 font-semibold">Taux</th>
                   <th className="w-1/3 py-2.5 font-semibold">Progression</th>
                 </tr>
@@ -218,13 +226,14 @@ export default async function EcolagePage({
                       {f.formation}
                     </td>
                     <td className="py-2.5 pr-4 text-zinc-600 dark:text-zinc-400">
-                      {f.paid} / {f.total}
+                      {f.full} / {f.partial} / {f.unpaid}{" "}
+                      <span className="text-zinc-400 dark:text-zinc-500">(sur {f.total})</span>
                     </td>
                     <td className="py-2.5 pr-4 font-semibold text-zinc-900 dark:text-zinc-50">
-                      {pct(f.paid, f.total)}%
+                      {pct(f.full, f.total)}%
                     </td>
                     <td className="py-2.5">
-                      <PaymentMeter paid={f.paid} unpaid={f.total - f.paid} height="h-2.5" />
+                      <PaymentMeter full={f.full} partial={f.partial} unpaid={f.unpaid} height="h-2.5" />
                     </td>
                   </tr>
                 ))}
@@ -237,15 +246,15 @@ export default async function EcolagePage({
       {/* Liste de relance */}
       <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-zinc-900">
         <h2 className="mb-1 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-          Étudiants n&apos;ayant pas encore payé ({unpaidStudents.length})
+          Écolage non soldé ({due.length})
         </h2>
         <p className="mb-4 text-xs text-zinc-500 dark:text-zinc-400">
-          Pour valider un paiement, vérifiez le reçu bancaire depuis la page « Dossiers
-          étudiants ».
+          « Non payé » : enregistrez la 1ère tranche ou la totalité depuis « Dossiers étudiants ».
+          « 2e tranche due » : enregistrez-la directement ci-dessous.
         </p>
-        {unpaidStudents.length === 0 ? (
+        {due.length === 0 ? (
           <p className="text-sm text-emerald-700 dark:text-emerald-400">
-            ✓ Aucun étudiant n&apos;a encore payé son écolage.
+            ✓ Tous les dossiers de cette sélection sont à jour.
           </p>
         ) : (
           <div className="overflow-x-auto">
@@ -255,17 +264,15 @@ export default async function EcolagePage({
                   <th className="py-2.5 pr-4 font-semibold">Matricule</th>
                   <th className="py-2.5 pr-4 font-semibold">Nom</th>
                   <th className="py-2.5 pr-4 font-semibold">Formation</th>
+                  <th className="py-2.5 pr-4 font-semibold">Statut</th>
+                  <th className="py-2.5 pr-4 font-semibold">Montant dû</th>
                   <th className="py-2.5 pr-4 font-semibold">Téléphone</th>
-                  <th className="py-2.5 font-semibold">Enregistré le</th>
+                  <th className="py-2.5 font-semibold">Action</th>
                 </tr>
               </thead>
-              
               <tbody>
-                {unpaidStudents.map((s) => (
-                  <tr
-                    key={s.id}
-                    className="border-b border-black/5 last:border-0 dark:border-white/5"
-                  >
+                {due.map((s) => (
+                  <tr key={s.id} className="border-b border-black/5 last:border-0 dark:border-white/5">
                     <td className="py-2.5 pr-4 whitespace-nowrap font-mono text-xs text-zinc-600 dark:text-zinc-400">
                       {s.matricule}
                       {s.academicYear && (
@@ -285,11 +292,32 @@ export default async function EcolagePage({
                     <td className="py-2.5 pr-4 text-zinc-600 dark:text-zinc-400">
                       {s.mention ?? s.program ?? "—"}
                     </td>
+                    <td className="py-2.5 pr-4">
+                      <span className={DUE_STATUS_BADGE[s.paymentStatus]}>
+                        {DUE_STATUS_LABEL[s.paymentStatus]}
+                      </span>
+                    </td>
+                    <td className="py-2.5 pr-4 whitespace-nowrap text-zinc-600 dark:text-zinc-400">
+                      {s.amountDue === null ? (
+                        <span title="Aucun tarif configuré pour cette filière">— (tarif manquant)</span>
+                      ) : (
+                        `${amountFormatter.format(s.amountDue)} Ar`
+                      )}
+                    </td>
                     <td className="py-2.5 pr-4 text-zinc-600 dark:text-zinc-400">
                       {s.phone ?? s.guardianPhone ?? "—"}
                     </td>
-                    <td className="py-2.5 text-zinc-600 dark:text-zinc-400">
-                      {dateFormatter.format(s.createdAt)}
+                    <td className="py-2.5">
+                      {s.paymentStatus === "PARTIAL" ? (
+                        <Tranche2Form studentId={s.id} />
+                      ) : (
+                        <Link
+                          href={`/agent-admin?q=${encodeURIComponent(s.matricule)}`}
+                          className="rounded-lg border border-black/10 px-2.5 py-1 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100 dark:border-white/10 dark:text-zinc-200 dark:hover:bg-zinc-900"
+                        >
+                          Enregistrer un versement
+                        </Link>
+                      )}
                     </td>
                   </tr>
                 ))}

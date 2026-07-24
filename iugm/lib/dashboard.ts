@@ -19,7 +19,23 @@ export type InscriptionTrend = {
 
 const monthLabelFormatter = new Intl.DateTimeFormat("fr-FR", { month: "short", year: "2-digit" });
 
-// Évolution sur les `monthsBack` derniers mois (mois courant inclus), avec
+// Fenêtre de mois à afficher : soit les `monthsBack` derniers mois (mode
+// "toutes les années", piloté par MonthRangeSelector), soit les 12 mois de
+// l'année universitaire sélectionnée (1er septembre -> 31 août), quand le
+// sélecteur global d'année (en-tête) impose une année précise.
+function monthWindow(opts: { monthsBack: number; academicYear: string | null }) {
+  if (opts.academicYear) {
+    const startYear = Number(opts.academicYear.split("-")[0]);
+    return { start: new Date(startYear, 8, 1), span: 12 };
+  }
+  const now = new Date();
+  return {
+    start: new Date(now.getFullYear(), now.getMonth() - (opts.monthsBack - 1), 1),
+    span: opts.monthsBack,
+  };
+}
+
+// Évolution mois par mois (voir monthWindow ci-dessus pour la fenêtre), avec
 // des zéros explicites pour les mois sans activité — le graphique garde
 // toujours la même largeur, qu'il y ait beaucoup de données ou presque pas.
 //
@@ -29,24 +45,30 @@ const monthLabelFormatter = new Intl.DateTimeFormat("fr-FR", { month: "short", y
 // repartir sur l'année suivante), mais copie d'abord leur valeur dans
 // l'historique — sans cette union, les événements d'une année déjà
 // réinscrite disparaîtraient du graphique alors qu'ils ont bien eu lieu.
-export async function getInscriptionTrend(monthsBack = 6): Promise<InscriptionTrend> {
-  const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth() - (monthsBack - 1), 1);
+export async function getInscriptionTrend(
+  opts: { monthsBack?: number; academicYear?: string | null } = {},
+): Promise<InscriptionTrend> {
+  const { monthsBack = 6, academicYear = null } = opts;
+  const { start, span } = monthWindow({ monthsBack, academicYear });
+  const end = new Date(start.getFullYear(), start.getMonth() + span, 1); // borne haute exclusive
 
   const [students, archived] = await Promise.all([
     prisma.student.findMany({
       where: {
         OR: [
-          { createdAt: { gte: start } },
-          { receiptVerifiedAt: { gte: start } },
-          { pedagoValidatedAt: { gte: start } },
+          { createdAt: { gte: start, lt: end } },
+          { receiptVerifiedAt: { gte: start, lt: end } },
+          { pedagoValidatedAt: { gte: start, lt: end } },
         ],
       },
       select: { createdAt: true, receiptVerifiedAt: true, pedagoValidatedAt: true },
     }),
     prisma.enrollmentHistory.findMany({
       where: {
-        OR: [{ receiptVerifiedAt: { gte: start } }, { pedagoValidatedAt: { gte: start } }],
+        OR: [
+          { receiptVerifiedAt: { gte: start, lt: end } },
+          { pedagoValidatedAt: { gte: start, lt: end } },
+        ],
       },
       select: { receiptVerifiedAt: true, pedagoValidatedAt: true },
     }),
@@ -54,7 +76,7 @@ export async function getInscriptionTrend(monthsBack = 6): Promise<InscriptionTr
 
   const months: string[] = [];
   const monthLabels: string[] = [];
-  for (let i = 0; i < monthsBack; i++) {
+  for (let i = 0; i < span; i++) {
     const d = new Date(start.getFullYear(), start.getMonth() + i, 1);
     months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
     monthLabels.push(monthLabelFormatter.format(d));

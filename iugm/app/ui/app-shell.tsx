@@ -6,6 +6,9 @@ import { prisma } from "@/lib/prisma";
 import { getSettings } from "@/lib/settings";
 import { Footer } from "./footer";
 import { unreadAnnouncementsCount } from "@/lib/announcements";
+import { getAcademicYears } from "@/lib/students";
+import { getSelectedAcademicYear } from "@/lib/academic-year";
+import { AcademicYearSelector } from "./academic-year-selector";
 import type { TaskKey } from "@/lib/permissions";
 import {
   IconDashboard,
@@ -171,6 +174,21 @@ export async function AppShell({
   const unread =
     role === "ETUDIANT" && account ? await unreadAnnouncementsCount(account.id) : 0;
 
+  // Sélecteur global d'année universitaire : pertinent uniquement pour les
+  // rôles qui consultent des données/statistiques d'étudiants (pas pour un
+  // étudiant, dont l'espace ne montre que son propre dossier).
+  const showAcademicYearSelector = role !== "ETUDIANT";
+  let academicYearYears: string[] = [];
+  let selectedAcademicYear: string | null = null;
+  if (showAcademicYearSelector) {
+    const [years, selected] = await Promise.all([getAcademicYears(), getSelectedAcademicYear()]);
+    // L'année sélectionnée par défaut (année en cours) peut ne pas encore
+    // avoir de dossier en base — on l'ajoute quand même à la liste pour que
+    // le <select> l'affiche correctement dès la première visite.
+    academicYearYears = selected && !years.includes(selected) ? [selected, ...years] : years;
+    selectedAcademicYear = selected;
+  }
+
   return (
     <div className="min-h-screen bg-zinc-100 dark:bg-zinc-950">
       {/* Sidebar */}
@@ -241,6 +259,9 @@ export async function AppShell({
               {title}
             </h1>
             <div className="flex items-center gap-2 sm:gap-3">
+              {showAcademicYearSelector && (
+                <AcademicYearSelector years={academicYearYears} selected={selectedAcademicYear} />
+              )}
               <ThemeToggle />
               {role === "ETUDIANT" ? (
                 <Link

@@ -3,7 +3,12 @@
 import { revalidatePath } from "next/cache";
 
 import { getSession } from "@/lib/auth";
-import { verifyReceipt, validateAdminInscription, importStudentsCsv } from "@/lib/students";
+import {
+  recordEcolagePayment,
+  validateAdminInscription,
+  importStudentsCsv,
+  type EcolagePaymentTypeValue,
+} from "@/lib/students";
 import {
   hasTaskPermission,
   canManageStudent,
@@ -25,7 +30,9 @@ async function requireAgentAdmin(task: TaskKey) {
   return session;
 }
 
-export async function verifyReceiptAction(
+const VALID_PAYMENT_TYPES: EcolagePaymentTypeValue[] = ["TRANCHE_S1", "TRANCHE_S2", "TOTALITE"];
+
+export async function recordEcolagePaymentAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -35,19 +42,29 @@ export async function verifyReceiptAction(
 
   const studentId = String(formData.get("studentId") ?? "");
   const receiptNumber = String(formData.get("receiptNumber") ?? "").trim();
+  const type = String(formData.get("type") ?? "");
   if (!studentId || !receiptNumber) {
     return { error: "Numéro de reçu obligatoire." };
+  }
+  if (!VALID_PAYMENT_TYPES.includes(type as EcolagePaymentTypeValue)) {
+    return { error: "Type de versement invalide." };
   }
   if (!(await canManageStudent(session.sub, session.role, studentId))) {
     return { error: FORMATION_DENIED_MESSAGE };
   }
 
   try {
-    const student = await verifyReceipt(studentId, receiptNumber, session.sub);
+    const payment = await recordEcolagePayment(
+      studentId,
+      type as EcolagePaymentTypeValue,
+      receiptNumber,
+      session.sub,
+    );
     revalidatePath("/agent-admin");
-    return { success: `Reçu ${receiptNumber} vérifié pour ${student.fullName}.` };
+    revalidatePath("/agent-admin/ecolage");
+    return { success: `Reçu ${receiptNumber} enregistré (${payment.amount.toLocaleString("fr-FR")} Ar).` };
   } catch (e) {
-    return { error: e instanceof Error ? e.message : "Erreur lors de la vérification." };
+    return { error: e instanceof Error ? e.message : "Erreur lors de l'enregistrement." };
   }
 }
 

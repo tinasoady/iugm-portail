@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { searchStudents } from "@/lib/students";
 import { getUserFormation } from "@/lib/permissions";
+import { getSelectedAcademicYear } from "@/lib/academic-year";
 import { AppShell } from "@/app/ui/app-shell";
 import { StatCard } from "@/app/ui/stat-card";
 import { IconFolder, IconClipboard, IconShield, IconCap } from "@/app/ui/icons";
@@ -25,14 +26,18 @@ export default async function AgentAdminPage({
   const { q } = await searchParams;
   // Secrétaire de formation : dossiers limités à sa formation
   const userFormation = await getUserFormation(session.sub, session.role);
+  // Sélecteur global d'année universitaire (en-tête)
+  const selectedYear = await getSelectedAcademicYear();
+  const statusWhere = {
+    ...(userFormation ? { OR: [{ mention: userFormation }, { program: userFormation }] } : {}),
+    ...(selectedYear ? { academicYear: selectedYear } : {}),
+  };
   const [students, statusCounts] = await Promise.all([
-    searchStudents(q, userFormation),
+    searchStudents(q, userFormation, selectedYear),
     prisma.student.groupBy({
       by: ["status"],
       _count: { _all: true },
-      ...(userFormation
-        ? { where: { OR: [{ mention: userFormation }, { program: userFormation }] } }
-        : {}),
+      ...(userFormation || selectedYear ? { where: statusWhere } : {}),
     }),
   ]);
   const countOf = (status: string) =>

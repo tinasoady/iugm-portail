@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 
+import { Prisma } from "@prisma/client";
+
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { logAction } from "@/lib/audit";
@@ -96,6 +98,13 @@ function parseAmount(formData: FormData): number | null {
   return amount;
 }
 
+// Filière associée au tarif (utilisée pour le calcul automatique des
+// tranches d'écolage) : "" côté formulaire = aucune, stockée comme null.
+function parseFormation(formData: FormData): string | null {
+  const value = String(formData.get("formation") ?? "").trim();
+  return value || null;
+}
+
 export async function addTariffAction(
   _prev: SettingsState,
   formData: FormData,
@@ -105,10 +114,18 @@ export async function addTariffAction(
 
   const label = String(formData.get("label") ?? "").trim();
   const amount = parseAmount(formData);
+  const formation = parseFormation(formData);
   if (!label) return { error: "Le libellé du tarif est obligatoire." };
   if (amount === null) return { error: "Montant invalide (nombre entier en ariary)." };
 
-  await prisma.tariff.create({ data: { label, amount } });
+  try {
+    await prisma.tariff.create({ data: { label, amount, formation } });
+  } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+      return { error: `Un tarif est déjà associé à la filière « ${formation} ».` };
+    }
+    throw e;
+  }
   await logAction("SETTINGS_UPDATED", `Tarif ajouté : ${label} — ${amount} Ar`, session.sub);
   revalidatePath("/admin/parametres");
   return { success: `Tarif « ${label} » ajouté.` };
@@ -124,12 +141,16 @@ export async function updateTariffAction(
   const id = String(formData.get("id") ?? "");
   const label = String(formData.get("label") ?? "").trim();
   const amount = parseAmount(formData);
+  const formation = parseFormation(formData);
   if (!id || !label) return { error: "Libellé obligatoire." };
   if (amount === null) return { error: "Montant invalide." };
 
   try {
-    await prisma.tariff.update({ where: { id }, data: { label, amount } });
-  } catch {
+    await prisma.tariff.update({ where: { id }, data: { label, amount, formation } });
+  } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+      return { error: `Un tarif est déjà associé à la filière « ${formation} ».` };
+    }
     return { error: "Tarif introuvable." };
   }
   await logAction("SETTINGS_UPDATED", `Tarif modifié : ${label} — ${amount} Ar`, session.sub);
