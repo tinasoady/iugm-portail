@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useSyncExternalStore, useMemo } from "react";
+import { useId, useRef, useState, useSyncExternalStore, useMemo } from "react";
 
 export type LineChartSeries = {
   key: string;
@@ -26,14 +26,63 @@ function useIsDarkMode(): boolean {
   return useSyncExternalStore(subscribeToThemeChanges, getThemeSnapshot, getThemeServerSnapshot);
 }
 
-function niceMaxValue(maxValue: number): number {
-  const raw = maxValue * 1.15;
-  const magnitude = 10 ** Math.floor(Math.log10(Math.max(raw, 1)));
-  const steps = [1, 2, 2.5, 5, 10];
-  for (const step of steps) {
-    if (raw <= step * magnitude) return step * magnitude;
+/**
+ * Choisit un pas d'axe « rond » à partir de l'intervalle entre deux
+ * graduations plutôt que du sommet : arrondir le sommet seul laissait la
+ * courbe écrasée dans le bas du cadre (110 → axe à 200).
+ */
+function niceScale(maxValue: number, ticks: number): number {
+  const rawStep = (maxValue * 1.05) / ticks;
+  const magnitude = 10 ** Math.floor(Math.log10(Math.max(rawStep, 1)));
+  const steps = [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10];
+  let step = (steps.find((s) => rawStep <= s * magnitude) ?? 10) * magnitude;
+  // des décomptes n'ont pas de demi-unité : garder des graduations entières
+  if (step < 10) step = Math.ceil(step);
+  return step * ticks;
+}
+
+function formatTick(v: number): string {
+  if (v >= 1000) {
+    const k = v / 1000;
+    return `${Number.isInteger(k) ? k : k.toFixed(1)}k`;
   }
-  return 10 * magnitude;
+  return String(Math.round(v));
+}
+
+/**
+ * Courbe lissée monotone (Fritsch–Carlson) : les splines classiques
+ * dépassent sous zéro entre deux points bas, ce qui inventerait des
+ * valeurs négatives sur un décompte d'inscriptions.
+ */
+function smoothPath(points: [number, number][]): string {
+  const n = points.length;
+  if (n === 0) return "";
+  if (n === 1) return `M ${points[0][0]} ${points[0][1]}`;
+
+  const slopes: number[] = [];
+  for (let i = 0; i < n - 1; i++) {
+    const dx = points[i + 1][0] - points[i][0];
+    slopes.push(dx === 0 ? 0 : (points[i + 1][1] - points[i][1]) / dx);
+  }
+
+  const tangents: number[] = new Array(n);
+  tangents[0] = slopes[0];
+  tangents[n - 1] = slopes[n - 2];
+  for (let i = 1; i < n - 1; i++) {
+    tangents[i] =
+      slopes[i - 1] * slopes[i] <= 0 ? 0 : (slopes[i - 1] + slopes[i]) / 2;
+  }
+
+  let d = `M ${points[0][0].toFixed(2)} ${points[0][1].toFixed(2)}`;
+  for (let i = 0; i < n - 1; i++) {
+    const dx = points[i + 1][0] - points[i][0];
+    const c1x = points[i][0] + dx / 3;
+    const c1y = points[i][1] + (tangents[i] * dx) / 3;
+    const c2x = points[i + 1][0] - dx / 3;
+    const c2y = points[i + 1][1] - (tangents[i + 1] * dx) / 3;
+    d += ` C ${c1x.toFixed(2)} ${c1y.toFixed(2)}, ${c2x.toFixed(2)} ${c2y.toFixed(2)}, ${points[i + 1][0].toFixed(2)} ${points[i + 1][1].toFixed(2)}`;
+  }
+  return d;
 }
 
 function polar(cx: number, cy: number, r: number, angleDeg: number): [number, number] {
@@ -146,7 +195,7 @@ type ZoomState = { start: number; end: number } | null; // indices into labels
 export function LineChart({
   labels,
   series,
-  height = 200,
+  height = 240,
 }: {
   labels: string[];
   series: LineChartSeries[];
@@ -154,6 +203,8 @@ export function LineChart({
 }) {
   const isDark = useIsDarkMode();
   const colorOf = (s: LineChartSeries) => (isDark ? s.darkColor : s.color);
+  // useId contient des « : » que url(#…) ne sait pas résoudre
+  const gradientPrefix = `lc${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
 
   // --- Series visibility toggles ---
   const [visibleKeys, setVisibleKeys] = useState<Set<string>>(() => new Set(series.map((s) => s.key)));
@@ -195,11 +246,12 @@ export function LineChart({
   }, [series, visibleKeys, zoom]);
 
   // Compute max across visible series
+  const gridSteps = 4;
   const maxValue = Math.max(1, ...visibleSeries.flatMap((s) => s.values));
-  const niceMax = niceMaxValue(maxValue);
+  const niceMax = niceScale(maxValue, gridSteps);
 
   const width = 600;
-  const padding = { top: 12, right: 12, bottom: 24, left: 32 };
+  const padding = { top: 16, right: 16, bottom: 28, left: 40 };
   const plotW = width - padding.left - padding.right;
   const plotH = height - padding.top - padding.bottom;
 
@@ -210,11 +262,29 @@ export function LineChart({
       : plotW / 2);
   const yAt = (v: number) => padding.top + plotH - (v / niceMax) * plotH;
 
-  const gridSteps = 4;
   const gridValues = Array.from(
     { length: gridSteps + 1 },
     (_, i) => (niceMax / gridSteps) * i,
   );
+
+  const baselineY = padding.top + plotH;
+  const paths = visibleSeries.map((s) => {
+    const points = s.values.map((v, i) => [xAt(i), yAt(v)] as [number, number]);
+    const line = smoothPath(points);
+    const first = points[0];
+    const last = points[points.length - 1];
+    return {
+      key: s.key,
+      color: colorOf(s),
+      line,
+      area:
+        points.length > 1
+          ? `${line} L ${last[0].toFixed(2)} ${baselineY} L ${first[0].toFixed(2)} ${baselineY} Z`
+          : "",
+      endX: last[0],
+      endY: last[1],
+    };
+  });
 
   // --- Hover state ---
   const [hover, setHover] = useState<number | null>(null);
@@ -342,8 +412,8 @@ export function LineChart({
     <div>
       {/* Controls row: series toggles + zoom buttons */}
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        {/* Series toggles */}
-        <div className="flex flex-wrap gap-x-4 gap-y-1">
+        {/* Légende / bascule de séries */}
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5">
           {series.map((s) => {
             const isVisible = visibleKeys.has(s.key);
             return (
@@ -351,14 +421,15 @@ export function LineChart({
                 key={s.key}
                 type="button"
                 onClick={() => toggleSeries(s.key)}
-                className={`flex items-center gap-1.5 text-xs transition-opacity ${
+                aria-pressed={isVisible}
+                className={`flex items-center gap-2 text-xs font-medium transition ${
                   isVisible
-                    ? "text-zinc-700 dark:text-zinc-200"
-                    : "text-zinc-400 opacity-50 dark:text-zinc-600"
+                    ? "text-zinc-600 dark:text-zinc-300"
+                    : "text-zinc-400 opacity-60 dark:text-zinc-600"
                 }`}
               >
                 <span
-                  className="inline-block h-0.5 w-3 rounded-full"
+                  className="inline-block h-2.5 w-2.5 rounded-full"
                   style={{ backgroundColor: isVisible ? colorOf(s) : "currentColor" }}
                 />
                 {s.label}
@@ -367,34 +438,34 @@ export function LineChart({
           })}
         </div>
 
-        {/* Zoom controls */}
-        <div className="flex items-center gap-1">
+        {/* Contrôles de zoom */}
+        <div className="flex items-center gap-1 rounded-full bg-zinc-100 p-0.5 dark:bg-zinc-800">
           <button
             type="button"
             onClick={zoomIn}
             disabled={zoom !== null && zoom.end - zoom.start <= 2}
-            className="rounded-md border border-black/10 px-2 py-0.5 text-[11px] font-medium text-zinc-600 transition hover:bg-zinc-100 disabled:opacity-30 dark:border-white/10 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            className="rounded-full px-2.5 py-1 text-[11px] font-semibold text-zinc-500 transition hover:bg-white hover:text-zinc-900 disabled:opacity-30 disabled:hover:bg-transparent dark:text-zinc-400 dark:hover:bg-zinc-700 dark:hover:text-zinc-50"
             title="Zoom avant"
           >
-            🔍+
+            +
           </button>
           <button
             type="button"
             onClick={zoomOut}
             disabled={zoom === null}
-            className="rounded-md border border-black/10 px-2 py-0.5 text-[11px] font-medium text-zinc-600 transition hover:bg-zinc-100 disabled:opacity-30 dark:border-white/10 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            className="rounded-full px-2.5 py-1 text-[11px] font-semibold text-zinc-500 transition hover:bg-white hover:text-zinc-900 disabled:opacity-30 disabled:hover:bg-transparent dark:text-zinc-400 dark:hover:bg-zinc-700 dark:hover:text-zinc-50"
             title="Zoom arrière"
           >
-            🔍−
+            −
           </button>
           <button
             type="button"
             onClick={resetZoom}
             disabled={zoom === null}
-            className="rounded-md border border-black/10 px-2 py-0.5 text-[11px] font-medium text-zinc-600 transition hover:bg-zinc-100 disabled:opacity-30 dark:border-white/10 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            className="rounded-full px-2.5 py-1 text-[11px] font-medium text-zinc-500 transition hover:bg-white hover:text-zinc-900 disabled:opacity-30 disabled:hover:bg-transparent dark:text-zinc-400 dark:hover:bg-zinc-700 dark:hover:text-zinc-50"
             title="Réinitialiser le zoom"
           >
-            ↔
+            Tout
           </button>
         </div>
       </div>
@@ -408,6 +479,26 @@ export function LineChart({
           role="img"
           aria-label="Évolution mensuelle"
         >
+          <defs>
+            {visibleSeries.map((s) => (
+              <linearGradient
+                key={s.key}
+                id={`${gradientPrefix}-${s.key}`}
+                x1="0"
+                y1="0"
+                x2="0"
+                y2="1"
+              >
+                <stop
+                  offset="0%"
+                  stopColor={colorOf(s)}
+                  stopOpacity={isDark ? 0.22 : 0.28}
+                />
+                <stop offset="100%" stopColor={colorOf(s)} stopOpacity={0} />
+              </linearGradient>
+            ))}
+          </defs>
+
           {/* Grid lines */}
           {gridValues.map((v, i) => (
             <g key={i}>
@@ -416,17 +507,17 @@ export function LineChart({
                 x2={width - padding.right}
                 y1={yAt(v)}
                 y2={yAt(v)}
-                className="stroke-zinc-200 dark:stroke-zinc-800"
+                className="stroke-zinc-100 dark:stroke-zinc-800"
                 strokeWidth={1}
               />
               <text
-                x={padding.left - 6}
+                x={padding.left - 10}
                 y={yAt(v)}
                 textAnchor="end"
                 dominantBaseline="middle"
-                className="fill-zinc-400 text-[9px] dark:fill-zinc-500"
+                className="fill-zinc-400 text-[10px] tabular-nums dark:fill-zinc-500"
               >
-                {Math.round(v)}
+                {formatTick(v)}
               </text>
             </g>
           ))}
@@ -436,9 +527,9 @@ export function LineChart({
             <text
               key={label}
               x={xAt(i)}
-              y={height - 6}
+              y={height - 8}
               textAnchor="middle"
-              className="fill-zinc-400 text-[9px] dark:fill-zinc-500"
+              className="fill-zinc-400 text-[10px] dark:fill-zinc-500"
             >
               {label}
             </text>
@@ -456,38 +547,38 @@ export function LineChart({
             />
           )}
 
-          {/* Curves */}
-          {visibleSeries.map((s) => {
-            const d = s.values
-              .map(
-                (v, i) =>
-                  `${i === 0 ? "M" : "L"} ${xAt(i)} ${yAt(v)}`,
-              )
-              .join(" ");
-            const last = s.values.length - 1;
-            const color = colorOf(s);
-            return (
-              <g key={s.key}>
-                <path
-                  d={d}
-                  fill="none"
-                  stroke={color}
-                  strokeWidth={2}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="transition-all duration-300"
-                />
-                {/* Endpoint dot */}
-                <circle
-                  cx={xAt(last)}
-                  cy={yAt(s.values[last])}
-                  r={5}
-                  className="fill-white dark:fill-zinc-900"
-                />
-                <circle cx={xAt(last)} cy={yAt(s.values[last])} r={3} fill={color} />
-              </g>
-            );
-          })}
+          {/* Aires dégradées — toutes peintes d'abord pour qu'aucun
+              remplissage ne recouvre la courbe d'une autre série */}
+          {paths.map((p) =>
+            p.area ? (
+              <path
+                key={`area-${p.key}`}
+                d={p.area}
+                fill={`url(#${gradientPrefix}-${p.key})`}
+              />
+            ) : null,
+          )}
+
+          {/* Courbes lissées + point de fin */}
+          {paths.map((p) => (
+            <g key={`line-${p.key}`}>
+              <path
+                d={p.line}
+                fill="none"
+                stroke={p.color}
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <circle
+                cx={p.endX}
+                cy={p.endY}
+                r={5.5}
+                className="fill-white dark:fill-zinc-900"
+              />
+              <circle cx={p.endX} cy={p.endY} r={3.5} fill={p.color} />
+            </g>
+          ))}
 
           {/* Hover vertical line */}
           {hoverX !== null && (
@@ -496,10 +587,29 @@ export function LineChart({
               x2={hoverX}
               y1={padding.top}
               y2={padding.top + plotH}
-              className="stroke-zinc-300 dark:stroke-zinc-700"
+              className="stroke-zinc-300 dark:stroke-zinc-600"
               strokeWidth={1}
             />
           )}
+
+          {/* Marqueurs sur le point survolé */}
+          {hover !== null &&
+            visibleSeries.map((s) => (
+              <g key={`hover-${s.key}`} className="pointer-events-none">
+                <circle
+                  cx={xAt(hover)}
+                  cy={yAt(s.values[hover])}
+                  r={5.5}
+                  className="fill-white dark:fill-zinc-900"
+                />
+                <circle
+                  cx={xAt(hover)}
+                  cy={yAt(s.values[hover])}
+                  r={3.5}
+                  fill={colorOf(s)}
+                />
+              </g>
+            ))}
 
           {/* Interaction layer: hover + brush */}
           <rect
@@ -523,24 +633,26 @@ export function LineChart({
         {/* Tooltip */}
         {hover !== null && (
           <div
-            className="pointer-events-none absolute top-1 z-10 -translate-x-1/2 rounded-lg border border-black/10 bg-white px-2.5 py-1.5 text-xs whitespace-nowrap shadow-lg dark:border-white/10 dark:bg-zinc-800"
-            style={{ left: `${(hoverX! / width) * 100}%` }}
+            className="pointer-events-none absolute top-1 z-10 -translate-x-1/2 rounded-xl border border-black/5 bg-white px-3 py-2 text-xs whitespace-nowrap shadow-xl ring-1 ring-black/5 dark:border-white/10 dark:bg-zinc-800 dark:ring-white/5"
+            style={{
+              left: `${Math.min(88, Math.max(12, (hoverX! / width) * 100))}%`,
+            }}
           >
-            <p className="mb-0.5 font-semibold text-zinc-900 dark:text-zinc-50">
+            <p className="mb-1 font-semibold text-zinc-500 dark:text-zinc-400">
               {visibleLabels[hover]}
             </p>
             {visibleSeries.map((s) => (
               <p
                 key={s.key}
-                className="flex items-center gap-1 text-zinc-600 dark:text-zinc-300"
+                className="flex items-center gap-1.5 leading-5 text-zinc-500 dark:text-zinc-400"
               >
                 <span
-                  className="inline-block h-0.5 w-2.5 rounded-full"
+                  className="inline-block h-2 w-2 rounded-full"
                   style={{ backgroundColor: colorOf(s) }}
                 />
-                <span className="font-semibold text-zinc-900 dark:text-zinc-50">
+                <span className="font-semibold text-zinc-900 tabular-nums dark:text-zinc-50">
                   {s.values[hover]}
-                </span>{" "}
+                </span>
                 {s.label}
               </p>
             ))}
