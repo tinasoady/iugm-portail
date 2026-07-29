@@ -27,6 +27,14 @@ async function enrollToInscrit(actorId: string) {
   return inscrit;
 }
 
+describe("registerStudent", () => {
+  it("code un nouveau dossier N (nouvel étudiant)", async () => {
+    const actor = await createActor("AGENT_ADMINISTRATION");
+    const student = await registerStudent(validRegisterInput(), actor.id);
+    expect(student.repeatCode).toBe("N");
+  });
+});
+
 describe("reenrollStudent", () => {
   it("archive l'année qui se termine et remet le dossier au début du workflow", async () => {
     const actor = await createActor("AGENT_ADMINISTRATION");
@@ -43,6 +51,8 @@ describe("reenrollStudent", () => {
     expect(reenrolled.status).toBe("ENREGISTRE");
     expect(reenrolled.academicYear).toBe("2027-2028");
     expect(reenrolled.level).toBe("L2");
+    // Passage au niveau supérieur = étudiant "passant", codé N
+    expect(reenrolled.repeatCode).toBe("N");
     // Le matricule et le compte de connexion sont conservés d'une année sur l'autre
     expect(reenrolled.matricule).toBe(matricule);
     expect(reenrolled.accountId).toBe(accountId);
@@ -60,6 +70,30 @@ describe("reenrollStudent", () => {
     // il disparaît du graphique du tableau de bord (voir tests/integration/dashboard.test.ts)
     expect(history?.pedagoValidatedAt).toEqual(inscrit.pedagoValidatedAt);
     expect(history?.receiptVerifiedAt).toEqual(inscrit.receiptVerifiedAt);
+  });
+
+  it("code R (redoublant) quand le niveau ne change pas, puis T au redoublement suivant", async () => {
+    const actor = await createActor("AGENT_ADMINISTRATION");
+    const inscrit = await enrollToInscrit(actor.id);
+
+    const redoublant = await reenrollStudent(
+      inscrit.id,
+      { academicYear: "2027-2028", level: inscrit.level },
+      actor.id,
+    );
+    expect(redoublant.repeatCode).toBe("R");
+
+    // Deuxième cycle jusqu'à INSCRIT pour 2027-2028, puis réinscription au même niveau
+    await recordEcolagePayment(redoublant.id, "TRANCHE_S1", "REC-002", actor.id);
+    await validateAdminInscription(redoublant.id, actor.id);
+    await validatePedagoInscription(redoublant.id, actor.id);
+
+    const triplant = await reenrollStudent(
+      redoublant.id,
+      { academicYear: "2028-2029", level: redoublant.level },
+      actor.id,
+    );
+    expect(triplant.repeatCode).toBe("T");
   });
 
   it("refuse de réinscrire un dossier qui n'est pas encore INSCRIT", async () => {

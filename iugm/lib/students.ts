@@ -167,6 +167,9 @@ export async function registerStudent(input: RegisterStudentInput, actorId: stri
         fullName,
         // Champ hérité, alimenté pour les filtres et listes existants
         program: input.mention,
+        // Un dossier fraîchement créé est par définition un nouvel étudiant
+        // (un redoublant a déjà un dossier existant réutilisé via reenrollStudent)
+        repeatCode: "N",
       },
     }),
   );
@@ -176,6 +179,71 @@ export async function registerStudent(input: RegisterStudentInput, actorId: stri
     actorId,
   );
   return student;
+}
+
+// ---------------------------------------------------------------------------
+// Carte étudiante numérique (QR code)
+// ---------------------------------------------------------------------------
+
+// Champs affichés sur la carte publique (page scannée) : identité et cursus
+// uniquement, jamais les données sensibles du dossier (CIN, adresse,
+// téléphone, contacts des parents...) — la page n'exige pas de connexion.
+const QR_CARD_SELECT = {
+  matricule: true,
+  fullName: true,
+  academicYear: true,
+  program: true,
+  mention: true,
+  level: true,
+  track: true,
+  status: true,
+} as const;
+
+export type StudentQrCard = Prisma.StudentGetPayload<{ select: typeof QR_CARD_SELECT }>;
+
+function generateQrToken(): string {
+  return crypto.randomBytes(24).toString("base64url");
+}
+
+// Jeton opaque de la carte étudiante : créé au premier affichage plutôt qu'à
+// l'inscription, pour que les dossiers déjà existants (créés avant cette
+// fonctionnalité) en obtiennent un sans migration de données à part.
+export async function getOrCreateStudentQrToken(studentId: string): Promise<string> {
+  const student = await prisma.student.findUniqueOrThrow({
+    where: { id: studentId },
+    select: { qrToken: true },
+  });
+  if (student.qrToken) return student.qrToken;
+
+  const token = generateQrToken();
+  await prisma.student.update({ where: { id: studentId }, data: { qrToken: token } });
+  return token;
+}
+
+// Invalide l'ancien code (ex : capture d'écran partagée par erreur) et en
+// délivre un nouveau — l'ancien QR imprimé/enregistré cesse aussitôt de fonctionner.
+export async function regenerateStudentQrToken(studentId: string, actorId: string): Promise<string> {
+  const student = await prisma.student.findUniqueOrThrow({
+    where: { id: studentId },
+    select: { matricule: true },
+  });
+  const token = generateQrToken();
+  await prisma.student.update({ where: { id: studentId }, data: { qrToken: token } });
+  await logAction(
+    "QR_TOKEN_REGENERATED",
+    `Carte étudiante régénérée pour ${student.matricule}`,
+    actorId,
+  );
+  return token;
+}
+
+// Résout un jeton de QR code vers les informations publiques de la carte.
+// `select` explicite (plutôt qu'un `include` du dossier complet) : même si le
+// code d'affichage change plus tard, cette fonction ne peut techniquement pas
+// renvoyer un champ sensible qu'on aurait oublié de filtrer.
+export async function getStudentByQrToken(token: string): Promise<StudentQrCard | null> {
+  if (!token) return null;
+  return prisma.student.findUnique({ where: { qrToken: token }, select: QR_CARD_SELECT });
 }
 
 // ---------------------------------------------------------------------------
@@ -426,6 +494,17 @@ export async function reenrollStudent(
     throw new Error(`Cet étudiant a déjà une inscription archivée pour ${input.academicYear}.`);
   }
 
+  const nextLevel = input.level?.trim() || student.level;
+  // Redoublement = même niveau qu'avant la réinscription ; passage au niveau
+  // supérieur = étudiant "passant", codé N comme un nouvel étudiant. Un
+  // redoublement du redoublement (même niveau, déjà R) passe à T (triplant).
+  const repeatCode =
+    nextLevel !== student.level
+      ? "N"
+      : student.repeatCode === "R" || student.repeatCode === "T"
+        ? "T"
+        : "R";
+
   // Archivage de l'année qui se termine + remise à zéro du dossier : les deux
   // écritures doivent réussir ensemble, sinon on perdrait l'historique ou on
   // le dupliquerait à la prochaine tentative.
@@ -447,11 +526,12 @@ export async function reenrollStudent(
       where: { id: studentId },
       data: {
         academicYear: input.academicYear,
-        level: input.level?.trim() || student.level,
+        level: nextLevel,
         status: "ENREGISTRE",
         receiptNumber: null,
         receiptVerifiedAt: null,
         pedagoValidatedAt: null,
+        repeatCode,
       },
     });
   });
@@ -732,13 +812,27 @@ export async function getAllFilteredStudents(
 // sauvegarde/restauration complète).
 const FILTERED_EXPORT_HEADER = [
   "matricule",
-  "fullName",
+  "lastName",
+  "firstName",
+  "gender",
+  "birthDate",
+  "motherName",
+  "cin",
+  "cinIssueDate",
+  "cinIssuePlace",
+  "nationality",
+  "baccYear",
+  "baccSeries",
+  "repeatCode",
+  "address",
+  "phone",
+  "personalEmail",
+  "accountEmail",
   "program",
   "level",
   "status",
   "academicYear",
   "createdAt",
-  "accountEmail",
 ] as const;
 
 // Export CSV de la liste filtrée/triée telle qu'affichée sur /etudiants
@@ -755,13 +849,27 @@ export async function exportFilteredStudentsCsv(
     lines.push(
       [
         s.matricule,
-        s.fullName,
+        s.lastName ?? "",
+        s.firstName ?? "",
+        s.gender ?? "",
+        s.birthDate ? s.birthDate.toISOString().slice(0, 10) : "",
+        s.motherName ?? "",
+        s.cin ?? "",
+        s.cinIssueDate ? s.cinIssueDate.toISOString().slice(0, 10) : "",
+        s.cinIssuePlace ?? "",
+        s.nationality ?? "",
+        s.baccYear ?? "",
+        s.baccSeries ?? "",
+        s.repeatCode ?? "",
+        s.address ?? "",
+        s.phone ?? "",
+        s.personalEmail ?? "",
+        s.account?.email ?? "",
         s.mention ?? s.program ?? "",
         s.level ?? s.track ?? "",
         STATUS_EXPORT_LABELS[s.status] ?? s.status,
         s.academicYear ?? "",
         s.createdAt.toISOString().slice(0, 10),
-        s.account?.email ?? "",
       ]
         .map((v) => csvEscape(String(v)))
         .join(","),

@@ -10,18 +10,13 @@ import {
   STATUS_BADGE_CLASSES,
   MENTION_LABELS,
   MENTION_BADGE_CLASSES,
+  GENDER_LABELS,
+  REPEAT_LABELS,
 } from "@/app/ui/student-status";
 import { ConductForm } from "./conduct-form";
 
 const dateFormatter = new Intl.DateTimeFormat("fr-FR", { dateStyle: "long" });
 const shortDateFormatter = new Intl.DateTimeFormat("fr-FR", { dateStyle: "short" });
-
-const GENDER_LABELS: Record<string, string> = { M: "Masculin", F: "Féminin" };
-const REPEAT_LABELS: Record<string, string> = {
-  N: "N — Nouveau",
-  R: "R — Redoublant",
-  T: "T — Triplant",
-};
 
 function InfoRow({ label, value }: { label: string; value?: string | null }) {
   return (

@@ -1,3 +1,11 @@
+// Libellés du sexe et du code de redoublement (dossier étudiant)
+export const GENDER_LABELS: Record<string, string> = { M: "Masculin", F: "Féminin" };
+export const REPEAT_LABELS: Record<string, string> = {
+  N: "N — Nouveau",
+  R: "R — Redoublant",
+  T: "T — Triplant",
+};
+
 // Libellés et couleurs des statuts du workflow d'inscription
 export const STATUS_LABELS: Record<string, string> = {
   ENREGISTRE: "Enregistré",

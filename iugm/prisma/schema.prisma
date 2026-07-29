@@ -136,6 +136,11 @@ model Student {
   // Mot de passe initial du compte, imprimé sur le reçu d'inscription pour être
   // remis à l'étudiant (à changer par l'étudiant à sa première connexion)
   initialPassword   String?
+  // Jeton opaque (aléatoire, non devinable) encodé dans le QR code de la carte
+  // étudiante numérique — jamais le matricule ni l'id, tous deux trop
+  // prévisibles pour servir de clé à une page publique sans connexion.
+  // Régénérable par l'étudiant si le code a été partagé par erreur.
+  qrToken           String?             @unique
   // Années universitaires précédentes (archivées à chaque réinscription)
   enrollmentHistory EnrollmentHistory[]
   results           AcademicResult[]

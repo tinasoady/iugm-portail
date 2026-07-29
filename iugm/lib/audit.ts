@@ -27,7 +27,8 @@ export type AuditAction =
   | "PROFILE_UPDATED"
   | "ANNOUNCEMENT_SENT"
   | "ANNOUNCEMENT_DELETED"
-  | "LOGIN_RATE_LIMITED";
+  | "LOGIN_RATE_LIMITED"
+  | "QR_TOKEN_REGENERATED";
 
 export async function logAction(action: AuditAction, details?: string, actorId?: string | null) {
   try {

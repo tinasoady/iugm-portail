@@ -6,11 +6,26 @@ import { listStudents, getStudentFilterValues } from "@/lib/students";
 import { hasTaskPermission, getUserFormation } from "@/lib/permissions";
 import { getSelectedAcademicYear } from "@/lib/academic-year";
 import { AppShell } from "@/app/ui/app-shell";
-import { STATUS_LABELS, STATUS_BADGE_CLASSES } from "@/app/ui/student-status";
+import {
+  STATUS_LABELS,
+  STATUS_BADGE_CLASSES,
+  GENDER_LABELS,
+  REPEAT_LABELS,
+} from "@/app/ui/student-status";
 import { DeleteStudentButton, EditStudentLink } from "./delete-button";
 import { GROUP_OPTIONS, resolveGroup, groupStudents } from "./group-students";
 
 const dateFormatter = new Intl.DateTimeFormat("fr-FR", { dateStyle: "short" });
+
+// Cellule de détail administratif : tiret discret quand la valeur est absente,
+// pour ne pas laisser des cases vides sans repère visuel dans un tableau aussi large.
+function DetailCell({ value }: { value?: string | null }) {
+  return (
+    <td className="py-2.5 pr-4 whitespace-nowrap text-zinc-600 dark:text-zinc-400">
+      {value || <span className="text-zinc-300 dark:text-zinc-700">—</span>}
+    </td>
+  );
+}
 
 type Params = {
   q?: string;
@@ -253,8 +268,49 @@ export default async function EtudiantsPage({
                   </th>
                   <th className="py-2.5 pr-4">
                     <a href={sortHref(params, selectedYear, "nom")} className={headerLinkClass}>
-                      Nom{sortArrow(params, "nom")}
+                      Nom complet{sortArrow(params, "nom")}
                     </a>
+                  </th>
+                  <th className="py-2.5 pr-4 font-semibold text-zinc-400 dark:text-zinc-500">Nom</th>
+                  <th className="py-2.5 pr-4 font-semibold text-zinc-400 dark:text-zinc-500">
+                    Prénom
+                  </th>
+                  <th className="py-2.5 pr-4 font-semibold text-zinc-400 dark:text-zinc-500">Sexe</th>
+                  <th className="py-2.5 pr-4 font-semibold text-zinc-400 dark:text-zinc-500">
+                    Date de naissance
+                  </th>
+                  <th className="py-2.5 pr-4 font-semibold text-zinc-400 dark:text-zinc-500">
+                    Nom de la mère
+                  </th>
+                  <th className="py-2.5 pr-4 font-semibold text-zinc-400 dark:text-zinc-500">
+                    N° CIN
+                  </th>
+                  <th className="py-2.5 pr-4 font-semibold text-zinc-400 dark:text-zinc-500">
+                    CIN délivrée le
+                  </th>
+                  <th className="py-2.5 pr-4 font-semibold text-zinc-400 dark:text-zinc-500">
+                    CIN délivrée à
+                  </th>
+                  <th className="py-2.5 pr-4 font-semibold text-zinc-400 dark:text-zinc-500">
+                    Nationalité
+                  </th>
+                  <th className="py-2.5 pr-4 font-semibold text-zinc-400 dark:text-zinc-500">
+                    Année bacc
+                  </th>
+                  <th className="py-2.5 pr-4 font-semibold text-zinc-400 dark:text-zinc-500">
+                    Série bacc
+                  </th>
+                  <th className="py-2.5 pr-4 font-semibold text-zinc-400 dark:text-zinc-500">
+                    Redoublement
+                  </th>
+                  <th className="py-2.5 pr-4 font-semibold text-zinc-400 dark:text-zinc-500">
+                    Adresse
+                  </th>
+                  <th className="py-2.5 pr-4 font-semibold text-zinc-400 dark:text-zinc-500">
+                    Téléphone
+                  </th>
+                  <th className="py-2.5 pr-4 font-semibold text-zinc-400 dark:text-zinc-500">
+                    Email personnel
                   </th>
                   <th className="py-2.5 pr-4 font-semibold text-zinc-400 dark:text-zinc-500">
                     Filière / Niveau
@@ -297,6 +353,25 @@ export default async function EtudiantsPage({
                         {s.fullName}
                       </a>
                     </td>
+                    <DetailCell value={s.lastName} />
+                    <DetailCell value={s.firstName} />
+                    <DetailCell value={s.gender ? (GENDER_LABELS[s.gender] ?? s.gender) : null} />
+                    <DetailCell value={s.birthDate ? dateFormatter.format(s.birthDate) : null} />
+                    <DetailCell value={s.motherName} />
+                    <DetailCell value={s.cin} />
+                    <DetailCell
+                      value={s.cinIssueDate ? dateFormatter.format(s.cinIssueDate) : null}
+                    />
+                    <DetailCell value={s.cinIssuePlace} />
+                    <DetailCell value={s.nationality} />
+                    <DetailCell value={s.baccYear} />
+                    <DetailCell value={s.baccSeries} />
+                    <DetailCell
+                      value={s.repeatCode ? (REPEAT_LABELS[s.repeatCode] ?? s.repeatCode) : null}
+                    />
+                    <DetailCell value={s.address} />
+                    <DetailCell value={s.phone} />
+                    <DetailCell value={s.personalEmail} />
                     <td className="py-2.5 pr-4 text-zinc-600 dark:text-zinc-400">
                       {[s.mention ?? s.program, s.level ?? s.track].filter(Boolean).join(" / ") ||
                         "—"}

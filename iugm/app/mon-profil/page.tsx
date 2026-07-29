@@ -1,7 +1,10 @@
 import { redirect } from "next/navigation";
+import QRCode from "qrcode";
 
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { getOrCreateStudentQrToken } from "@/lib/students";
+import { getAppOrigin } from "@/lib/url";
 import { AppShell } from "@/app/ui/app-shell";
 import {
   STATUS_LABELS,
@@ -9,6 +12,7 @@ import {
   MENTION_LABELS,
   MENTION_BADGE_CLASSES,
 } from "@/app/ui/student-status";
+import { QrCodeCard } from "./qr-code-card";
 
 const dateFormatter = new Intl.DateTimeFormat("fr-FR", { dateStyle: "long" });
 
@@ -57,6 +61,17 @@ export default async function MonProfilPage() {
 
   const student = user.studentFile;
 
+  let qrDataUrl: string | null = null;
+  if (student) {
+    const token = await getOrCreateStudentQrToken(student.id);
+    const origin = await getAppOrigin();
+    qrDataUrl = await QRCode.toDataURL(`${origin}/carte-etudiant/${token}`, {
+      errorCorrectionLevel: "M",
+      margin: 1,
+      width: 320,
+    });
+  }
+
   return (
     <AppShell email={session.email} role={session.role} title="Mon profil" active="/mon-profil">
       {!student ? (
@@ -95,6 +110,8 @@ export default async function MonProfilPage() {
               </span>
             </div>
           </section>
+
+          {qrDataUrl && <QrCodeCard initialDataUrl={qrDataUrl} />}
 
           <div className="grid gap-8 lg:grid-cols-2">
             {/* Informations personnelles */}
