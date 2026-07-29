@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 
 import { logout } from "@/app/auth-actions";
 import { prisma } from "@/lib/prisma";
@@ -34,6 +34,11 @@ const ROLE_LABELS: Record<string, string> = {
   ETUDIANT: "Étudiant",
 };
 
+type NavChild = {
+  href: string;
+  label: string;
+};
+
 type NavItem = {
   href: string;
   label: string;
@@ -41,6 +46,8 @@ type NavItem = {
   roles: string[];
   // Si définie, l'entrée n'apparaît que si l'agent a cette tâche dans ses permissions
   task?: TaskKey;
+  // Sous-menu affiché sous cette entrée (même filtrage roles/task que le parent)
+  children?: NavChild[];
 };
 
 const NAV_ITEMS: NavItem[] = [
@@ -76,6 +83,7 @@ const NAV_ITEMS: NavItem[] = [
     icon: <IconCash />,
     roles: ["SUPERADMIN", "AGENT_ADMINISTRATION"],
     task: "ecolage",
+    children: [{ href: "/agent-admin/ecolage/tarifs", label: "Tarifs (service finance)" }],
   },
   {
     href: "/agent-pedagogique",
@@ -221,18 +229,39 @@ export async function AppShell({
           {nav.map((item) => {
             const isActive = item.href === active;
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={
-                  isActive
-                    ? "flex items-center gap-3 rounded-xl bg-linear-to-r from-indigo-600 to-violet-600 px-3 py-2.5 text-sm font-semibold text-white shadow-md"
-                    : "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-zinc-400 transition hover:bg-white/5 hover:text-white"
-                }
-              >
-                {item.icon}
-                {item.label}
-              </Link>
+              <div key={item.href}>
+                <Link
+                  href={item.href}
+                  className={
+                    isActive
+                      ? "flex items-center gap-3 rounded-xl bg-linear-to-r from-indigo-600 to-violet-600 px-3 py-2.5 text-sm font-semibold text-white shadow-md"
+                      : "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-zinc-400 transition hover:bg-white/5 hover:text-white"
+                  }
+                >
+                  {item.icon}
+                  {item.label}
+                </Link>
+                {item.children && (
+                  <div className="mt-1 ml-6 space-y-1 border-l border-white/10 pl-3">
+                    {item.children.map((child) => {
+                      const isChildActive = child.href === active;
+                      return (
+                        <Link
+                          key={child.href}
+                          href={child.href}
+                          className={
+                            isChildActive
+                              ? "block rounded-lg px-3 py-1.5 text-xs font-semibold text-white"
+                              : "block rounded-lg px-3 py-1.5 text-xs font-medium text-zinc-500 transition hover:bg-white/5 hover:text-white"
+                          }
+                        >
+                          {child.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             );
           })}
         </nav>
@@ -307,17 +336,31 @@ export async function AppShell({
           {/* Navigation mobile (sidebar masquée sous md) */}
           <nav className="flex gap-1 overflow-x-auto px-4 pb-2 md:hidden">
             {nav.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={
-                  item.href === active
-                    ? "flex shrink-0 items-center gap-2 rounded-full bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white"
-                    : "flex shrink-0 items-center gap-2 rounded-full bg-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
-                }
-              >
-                {item.label}
-              </Link>
+              <Fragment key={item.href}>
+                <Link
+                  href={item.href}
+                  className={
+                    item.href === active
+                      ? "flex shrink-0 items-center gap-2 rounded-full bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white"
+                      : "flex shrink-0 items-center gap-2 rounded-full bg-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+                  }
+                >
+                  {item.label}
+                </Link>
+                {item.children?.map((child) => (
+                  <Link
+                    key={child.href}
+                    href={child.href}
+                    className={
+                      child.href === active
+                        ? "flex shrink-0 items-center gap-2 rounded-full bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white"
+                        : "flex shrink-0 items-center gap-2 rounded-full bg-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+                    }
+                  >
+                    {child.label}
+                  </Link>
+                ))}
+              </Fragment>
             ))}
             <form action={logout}>
               <button

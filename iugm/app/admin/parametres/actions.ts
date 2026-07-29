@@ -7,16 +7,39 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { logAction } from "@/lib/audit";
+import { hasTaskPermission } from "@/lib/permissions";
 import { saveSettings, getSettings, INSTITUTION_KEYS } from "@/lib/settings";
 import { saveUploadedFile, deleteUploadedFile } from "@/lib/storage";
 
 export type SettingsState = { success?: string; error?: string };
 
-// Toutes les actions de cette page sont réservées au superadmin
+// Identité de l'établissement, logo : réservés au superadmin
 async function requireSuperadmin() {
   const session = await getSession();
   if (!session || session.role !== "SUPERADMIN") return null;
   return session;
+}
+
+// Tarifs : superadmin, ou agent d'administration avec la tâche "ecolage"
+// (service finance — voir /agent-admin/ecolage/tarifs, qui réutilise ces
+// mêmes actions que la page Paramètres).
+async function requireTariffAccess() {
+  const session = await getSession();
+  if (!session) return null;
+  if (session.role === "SUPERADMIN") return session;
+  if (
+    session.role === "AGENT_ADMINISTRATION" &&
+    (await hasTaskPermission(session.sub, session.role, "ecolage"))
+  ) {
+    return session;
+  }
+  return null;
+}
+
+// Les tarifs apparaissent sur les deux pages qui les affichent
+function revalidateTariffPages() {
+  revalidatePath("/admin/parametres");
+  revalidatePath("/agent-admin/ecolage/tarifs");
 }
 
 // Les paramètres apparaissent sur toutes les pages (sidebar, login, reçu)
@@ -109,7 +132,7 @@ export async function addTariffAction(
   _prev: SettingsState,
   formData: FormData,
 ): Promise<SettingsState> {
-  const session = await requireSuperadmin();
+  const session = await requireTariffAccess();
   if (!session) return { error: "Accès refusé." };
 
   const label = String(formData.get("label") ?? "").trim();
@@ -127,7 +150,7 @@ export async function addTariffAction(
     throw e;
   }
   await logAction("SETTINGS_UPDATED", `Tarif ajouté : ${label} — ${amount} Ar`, session.sub);
-  revalidatePath("/admin/parametres");
+  revalidateTariffPages();
   return { success: `Tarif « ${label} » ajouté.` };
 }
 
@@ -135,7 +158,7 @@ export async function updateTariffAction(
   _prev: SettingsState,
   formData: FormData,
 ): Promise<SettingsState> {
-  const session = await requireSuperadmin();
+  const session = await requireTariffAccess();
   if (!session) return { error: "Accès refusé." };
 
   const id = String(formData.get("id") ?? "");
@@ -154,7 +177,7 @@ export async function updateTariffAction(
     return { error: "Tarif introuvable." };
   }
   await logAction("SETTINGS_UPDATED", `Tarif modifié : ${label} — ${amount} Ar`, session.sub);
-  revalidatePath("/admin/parametres");
+  revalidateTariffPages();
   return { success: `Tarif « ${label} » mis à jour.` };
 }
 
@@ -162,7 +185,7 @@ export async function deleteTariffAction(
   _prev: SettingsState,
   formData: FormData,
 ): Promise<SettingsState> {
-  const session = await requireSuperadmin();
+  const session = await requireTariffAccess();
   if (!session) return { error: "Accès refusé." };
 
   const id = String(formData.get("id") ?? "");
@@ -174,6 +197,6 @@ export async function deleteTariffAction(
   } catch {
     return { error: "Tarif introuvable." };
   }
-  revalidatePath("/admin/parametres");
+  revalidateTariffPages();
   return { success: "Tarif supprimé." };
 }

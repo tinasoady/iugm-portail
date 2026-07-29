@@ -5,6 +5,7 @@ import {
   recordEcolagePayment,
   getEcolageStats,
   listStudentsWithBalanceDue,
+  getStudentBalanceDue,
 } from "@/lib/students";
 import { disconnectDb, resetDb } from "../setup/db";
 import { createActor, createTariff, validRegisterInput } from "../setup/factories";
@@ -106,5 +107,44 @@ describe("listStudentsWithBalanceDue", () => {
     const entry = due.find((d) => d.id === student.id)!;
     expect(entry.paymentStatus).toBe("UNPAID");
     expect(entry.amountDue).toBeNull();
+  });
+});
+
+describe("getStudentBalanceDue", () => {
+  it("montre la 2e tranche restante pour un dossier partiel", async () => {
+    await createTariff("Management", 2_000_000);
+    const actor = await createActor("AGENT_ADMINISTRATION");
+    const student = await registerStudent(validRegisterInput(), actor.id);
+    await recordEcolagePayment(student.id, "TRANCHE_S1", "REC-001", actor.id);
+
+    const balance = await getStudentBalanceDue(student.id);
+    expect(balance.status).toBe("PARTIAL");
+    expect(balance.annualAmount).toBe(2_000_000);
+    expect(balance.paidAmount).toBe(1_000_000);
+    expect(balance.amountDue).toBe(1_000_000);
+  });
+
+  it("montant dû à zéro une fois l'année soldée", async () => {
+    await createTariff("Management", 2_000_000);
+    const actor = await createActor("AGENT_ADMINISTRATION");
+    const student = await registerStudent(validRegisterInput(), actor.id);
+    await recordEcolagePayment(student.id, "TOTALITE", "REC-001", actor.id);
+
+    const balance = await getStudentBalanceDue(student.id);
+    expect(balance.status).toBe("FULL");
+    expect(balance.amountDue).toBe(0);
+  });
+
+  it("montant dû nul (pas zéro) quand aucun tarif n'est configuré", async () => {
+    const actor = await createActor("AGENT_ADMINISTRATION");
+    const student = await registerStudent(
+      validRegisterInput({ mention: "Filière sans tarif" }),
+      actor.id,
+    );
+
+    const balance = await getStudentBalanceDue(student.id);
+    expect(balance.status).toBe("UNPAID");
+    expect(balance.annualAmount).toBeNull();
+    expect(balance.amountDue).toBeNull();
   });
 });

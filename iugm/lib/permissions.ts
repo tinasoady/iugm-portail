@@ -35,7 +35,7 @@ export const TASKS: Record<TaskKey, { label: string; roles: string[] }> = {
     roles: ["AGENT_ADMINISTRATION"],
   },
   ecolage: {
-    label: "Consulter la gestion d'écolage",
+    label: "Gérer l'écolage (versements et tarifs de scolarité)",
     roles: ["AGENT_ADMINISTRATION"],
   },
   csv: {

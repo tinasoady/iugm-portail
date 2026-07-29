@@ -559,8 +559,14 @@ export function LineChart({
             ) : null,
           )}
 
-          {/* Courbes lissées + point de fin */}
-          {paths.map((p) => (
+          {/* Courbes lissées + point de fin — dessinées en ordre inverse de
+              la liste de séries : quand deux séries ont exactement la même
+              valeur à un point (ex. autant d'enregistrés que de payés ce
+              mois-là), leurs tracés se superposent pixel pour pixel et seul
+              le dernier dessiné resterait visible. La première série listée
+              étant la plus "englobante" (funnel : enregistrés ≥ payés ≥
+              inscriptions finalisées), elle doit rester au-dessus. */}
+          {[...paths].reverse().map((p) => (
             <g key={`line-${p.key}`}>
               <path
                 d={p.line}
@@ -592,9 +598,10 @@ export function LineChart({
             />
           )}
 
-          {/* Marqueurs sur le point survolé */}
+          {/* Marqueurs sur le point survolé — même ordre inversé que les
+              courbes, pour rester cohérent quand les valeurs coïncident */}
           {hover !== null &&
-            visibleSeries.map((s) => (
+            [...visibleSeries].reverse().map((s) => (
               <g key={`hover-${s.key}`} className="pointer-events-none">
                 <circle
                   cx={xAt(hover)}

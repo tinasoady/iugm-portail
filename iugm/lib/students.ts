@@ -1186,6 +1186,41 @@ export async function listStudentsWithBalanceDue(year?: string): Promise<Ecolage
   return due;
 }
 
+export type StudentBalanceDue = {
+  status: EcolagePaymentStatus;
+  academicYear: string | null;
+  annualAmount: number | null; // tarif annuel de la filière ; null si non configuré
+  paidAmount: number; // déjà versé pour l'année de rattachement actuelle
+  amountDue: number | null; // reste à payer ; null si tarif non configuré, 0 si soldé
+};
+
+// Reste à payer d'UN dossier pour son année de rattachement actuelle — sert à
+// l'avertir sur son profil (voir listStudentsWithBalanceDue ci-dessus pour la
+// version "liste de relance" côté agent, même logique de calcul).
+export async function getStudentBalanceDue(studentId: string): Promise<StudentBalanceDue> {
+  const student = await prisma.student.findUniqueOrThrow({
+    where: { id: studentId },
+    select: { academicYear: true, mention: true, program: true },
+  });
+
+  const payments = student.academicYear
+    ? await prisma.ecolagePayment.findMany({
+        where: { studentId, academicYear: student.academicYear },
+      })
+    : [];
+  const status = paymentStatusOf(new Set(payments.map((p) => p.type)));
+  const paidAmount = payments.reduce((sum, p) => sum + p.amount, 0);
+
+  const formation = student.mention ?? student.program;
+  const tariff = formation ? await prisma.tariff.findUnique({ where: { formation } }) : null;
+  const annualAmount = tariff?.amount ?? null;
+
+  const amountDue =
+    status === "FULL" ? 0 : annualAmount === null ? null : Math.max(annualAmount - paidAmount, 0);
+
+  return { status, academicYear: student.academicYear, annualAmount, paidAmount, amountDue };
+}
+
 // Valeurs distinctes pour alimenter les listes déroulantes de filtres
 // `year` : restreint aux options pertinentes pour cette année universitaire
 export async function getFilterOptions(year?: string | null) {

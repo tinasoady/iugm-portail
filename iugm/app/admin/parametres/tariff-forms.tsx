@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { FaTrash } from "react-icons/fa";
 import {
   addTariffAction,
   updateTariffAction,
@@ -96,9 +97,13 @@ export function TariffRow({
             type="submit"
             disabled={deletePending}
             title="Supprimer ce tarif"
-            className="rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950"
+            className="flex items-center justify-center rounded-lg border border-red-200 px-2.5 py-1.5 text-red-600 transition hover:bg-red-50 disabled:opacity-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950"
           >
-            {deletePending ? "..." : "🗑"}
+            {deletePending ? (
+              <span className="text-xs font-semibold">...</span>
+            ) : (
+              <FaTrash size={13} />
+            )}
           </button>
         </form>
       </div>

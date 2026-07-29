@@ -3,7 +3,7 @@ import QRCode from "qrcode";
 
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { getOrCreateStudentQrToken } from "@/lib/students";
+import { getOrCreateStudentQrToken, getStudentBalanceDue } from "@/lib/students";
 import { getAppOrigin } from "@/lib/url";
 import { AppShell } from "@/app/ui/app-shell";
 import {
@@ -15,6 +15,7 @@ import {
 import { QrCodeCard } from "./qr-code-card";
 
 const dateFormatter = new Intl.DateTimeFormat("fr-FR", { dateStyle: "long" });
+const amountFormatter = new Intl.NumberFormat("fr-FR");
 
 const GENDER_LABELS: Record<string, string> = { M: "Masculin", F: "Féminin" };
 
@@ -60,6 +61,7 @@ export default async function MonProfilPage() {
   if (user.mustChangePassword) redirect("/changer-mot-de-passe");
 
   const student = user.studentFile;
+  const balance = student ? await getStudentBalanceDue(student.id) : null;
 
   let qrDataUrl: string | null = null;
   if (student) {
@@ -111,6 +113,23 @@ export default async function MonProfilPage() {
             </div>
           </section>
 
+          {/* Reste à payer : alerte visible seulement s'il manque effectivement
+              une somme (tarif configuré) — un tarif manquant ne doit pas
+              afficher un montant inventé */}
+          {balance && balance.status !== "FULL" && balance.amountDue !== null && balance.amountDue > 0 && (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
+              <p className="font-semibold">
+                ⚠️ Écolage {balance.status === "PARTIAL" ? "partiellement payé" : "non payé"}
+              </p>
+              <p className="mt-1">
+                Il vous reste <strong>{amountFormatter.format(balance.amountDue)} Ar</strong>{" "}
+                à régler pour l&apos;année {balance.academicYear}
+                {balance.status === "PARTIAL" ? " (2e tranche)" : ""}. Adressez-vous au service
+                financier pour effectuer ce versement.
+              </p>
+            </div>
+          )}
+
           {qrDataUrl && <QrCodeCard initialDataUrl={qrDataUrl} />}
 
           <div className="grid gap-8 lg:grid-cols-2">
@@ -157,9 +176,15 @@ export default async function MonProfilPage() {
               <InfoRow
                 label="Écolage"
                 value={
-                  student.status !== "ENREGISTRE"
-                    ? `Payé — reçu ${student.receiptNumber ?? ""}`.trim()
-                    : "En attente de vérification"
+                  balance?.status === "FULL"
+                    ? `Payé intégralement — reçu ${student.receiptNumber ?? ""}`.trim()
+                    : balance?.status === "PARTIAL"
+                      ? balance.amountDue !== null
+                        ? `Partiel — reste ${amountFormatter.format(balance.amountDue)} Ar (2e tranche)`
+                        : "Partiel — 2e tranche due"
+                      : balance?.amountDue !== null && balance?.amountDue !== undefined
+                        ? `Non payé — ${amountFormatter.format(balance.amountDue)} Ar dus`
+                        : "En attente de vérification"
                 }
               />
               <InfoRow
