@@ -18,7 +18,6 @@ export type EditStudentState = { error?: string };
 // Champs obligatoires (libellés utilisés dans les messages d'erreur)
 const REQUIRED_FIELDS: Array<[string, string]> = [
   ["lastName", "Nom"],
-  ["firstName", "Prénom"],
   ["nationality", "Nationalité"],
   ["gender", "Sexe"],
   ["birthDate", "Date de naissance"],

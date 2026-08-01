@@ -111,8 +111,8 @@ export function EditStudentForm({
               <input id="lastName" name="lastName" type="text" required defaultValue={d.lastName} className={inputClass} />
             </div>
             <div>
-              <label className={labelClass} htmlFor="firstName">Prénom *</label>
-              <input id="firstName" name="firstName" type="text" required defaultValue={d.firstName} className={inputClass} />
+              <label className={labelClass} htmlFor="firstName">Prénom</label>
+              <input id="firstName" name="firstName" type="text" defaultValue={d.firstName} className={inputClass} />
             </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-3">

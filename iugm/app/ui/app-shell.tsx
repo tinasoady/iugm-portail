@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { Fragment, type ReactNode } from "react";
 
-import { logout } from "@/app/auth-actions";
 import { prisma } from "@/lib/prisma";
 import { getSettings } from "@/lib/settings";
 import { Footer } from "./footer";
@@ -9,13 +8,13 @@ import { unreadAnnouncementsCount } from "@/lib/announcements";
 import { getAcademicYears } from "@/lib/students";
 import { getSelectedAcademicYear } from "@/lib/academic-year";
 import { AcademicYearSelector } from "./academic-year-selector";
+import { AccountMenu } from "./account-menu";
 import type { TaskKey } from "@/lib/permissions";
 import {
   IconDashboard,
   IconFolder,
   IconCap,
   IconBell,
-  IconLogout,
   IconClipboard,
   IconUsers,
   IconGear,
@@ -25,7 +24,7 @@ import {
   IconMegaphone,
 } from "./icons";
 import { ThemeToggle } from "./theme-toggle";
-import {BsClipboardData} from "react-icons/bs";
+import { BsClipboardData, BsDatabase } from "react-icons/bs";
 
 const ROLE_LABELS: Record<string, string> = {
   SUPERADMIN: "Super administrateur",
@@ -105,6 +104,12 @@ const NAV_ITEMS: NavItem[] = [
     task: "communiquer",
   },
   {
+    href: "/admin/base-donnees",
+    label: "Base de données",
+    icon: <BsDatabase />,
+    roles: ["SUPERADMIN"],
+  },
+  {
     href: "/admin/permissions",
     label: "Permissions",
     icon: <IconShield />,
@@ -143,14 +148,6 @@ const NAV_ITEMS: NavItem[] = [
   },
 ];
 
-function initials(email: string): string {
-  const local = email.split("@")[0];
-  const parts = local.split(/[._-]/).filter(Boolean);
-  const chars =
-    parts.length >= 2 ? parts[0][0] + parts[1][0] : local.slice(0, 2);
-  return chars.toUpperCase();
-}
-
 // Coquille commune : sidebar verticale sombre + barre supérieure + contenu.
 // Composant serveur asynchrone : il lit les paramètres (logo, nom) en base.
 export async function AppShell({
@@ -166,10 +163,11 @@ export async function AppShell({
   active: string; // href de la page courante, pour surligner le menu
   children: ReactNode;
 }) {
-  // Photo de profil pour l'avatar + permissions pour filtrer le menu des agents
+  // Photo de profil pour l'avatar + permissions pour filtrer le menu des
+  // agents + formation affectée (secrétaire de formation, cantonnée à sa filière)
   const account = await prisma.user.findUnique({
     where: { email },
-    select: { id: true, permissions: true, photo: true },
+    select: { id: true, permissions: true, photo: true, formation: true },
   });
   const permissions = account?.permissions ?? [];
   const nav = NAV_ITEMS.filter(
@@ -265,18 +263,6 @@ export async function AppShell({
             );
           })}
         </nav>
-
-        <div className="border-t border-white/10 p-3">
-          <form action={logout}>
-            <button
-              type="submit"
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-zinc-400 transition hover:bg-white/5 hover:text-white"
-            >
-              <IconLogout />
-              Se déconnecter
-            </button>
-          </form>
-        </div>
       </aside>
 
       {/* Contenu */}
@@ -284,52 +270,28 @@ export async function AppShell({
         {/* Barre supérieure */}
         <header className="sticky top-0 z-30 border-b border-black/5 bg-white/80 backdrop-blur dark:border-white/10 dark:bg-zinc-950/80">
           <div className="flex items-center justify-between gap-4 px-6 py-3">
-            <h1 className="truncate text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-              {title}
-            </h1>
+            <div className="min-w-0">
+              <h1 className="truncate text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+                {title}
+              </h1>
+              {account?.formation && (
+                <p className="mt-0.5 truncate text-xs font-medium text-indigo-600 dark:text-indigo-400">
+                  Filière assignée : {account.formation}
+                </p>
+              )}
+            </div>
             <div className="flex items-center gap-2 sm:gap-3">
               {showAcademicYearSelector && (
                 <AcademicYearSelector years={academicYearYears} selected={selectedAcademicYear} />
               )}
               <ThemeToggle />
-              {role === "ETUDIANT" ? (
-                <Link
-                  href="/mes-communiques"
-                  title={unread > 0 ? `${unread} communiqué(s) non lu(s)` : "Communiqués"}
-                  className="relative hidden rounded-full p-2 text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900 sm:block dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
-                >
-                  <IconBell />
-                  {unread > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white">
-                      {unread > 9 ? "9+" : unread}
-                    </span>
-                  )}
-                </Link>
-              ) : (
-                <span className="hidden rounded-full p-2 text-zinc-400 sm:block dark:text-zinc-500">
-                  <IconBell />
-                </span>
-              )}
-              <div className="flex items-center gap-3">
-                {account?.photo ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- data URL, next/image inutile ici
-                  <img
-                    src={account.photo}
-                    alt="Photo de profil"
-                    className="h-9 w-9 rounded-full border border-black/10 object-cover dark:border-white/10"
-                  />
-                ) : (
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-linear-to-br from-indigo-500 to-violet-600 text-xs font-bold text-white">
-                    {initials(email)}
-                  </div>
-                )}
-                <div className="hidden text-right sm:block">
-                  <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">{email}</p>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                    {ROLE_LABELS[role] ?? role}
-                  </p>
-                </div>
-              </div>
+              <AccountMenu
+                email={email}
+                role={role}
+                roleLabel={ROLE_LABELS[role] ?? role}
+                photo={account?.photo}
+                unread={unread}
+              />
             </div>
           </div>
 
@@ -362,14 +324,6 @@ export async function AppShell({
                 ))}
               </Fragment>
             ))}
-            <form action={logout}>
-              <button
-                type="submit"
-                className="flex shrink-0 items-center gap-2 rounded-full bg-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
-              >
-                Déconnexion
-              </button>
-            </form>
           </nav>
         </header>
 

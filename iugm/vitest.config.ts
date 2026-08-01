@@ -14,7 +14,7 @@ export default defineConfig({
     fileParallelism: false,
     coverage: {
       provider: "v8",
-      reporter: ["text", "html"],
+      reporter: ["text", "html"], 
       include: ["lib/**/*.ts", "app/**/*.ts"],
       exclude: ["**/*.test.ts", "**/actions.ts", "**/route.ts"],
     },

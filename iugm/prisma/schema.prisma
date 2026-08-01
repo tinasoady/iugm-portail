@@ -16,35 +16,36 @@ enum Role {
 
 // Table centrale pour la gestion de l'authentification et des profils
 model User {
-  id                      String             @id @default(cuid())
-  email                   String             @unique
+  id                      String                  @id @default(cuid())
+  email                   String                  @unique
   passwordHash            String
   // Force le changement de mot de passe à la prochaine connexion
   // (vrai pour les comptes étudiants créés avec le matricule comme mot de passe)
-  mustChangePassword      Boolean            @default(false)
+  mustChangePassword      Boolean                 @default(false)
   // Compte désactivé : connexion refusée (géré depuis la page Permissions)
-  active                  Boolean            @default(true)
+  active                  Boolean                 @default(true)
   // Fonction / poste (ex : Secrétaire, Chef de scolarité, Responsable finance...)
   jobTitle                String?
   // Photo de profil (data URL, gérée par l'utilisateur sur sa page Mon compte)
   photo                   String?
   // Tâches autorisées pour cet utilisateur (clés du catalogue lib/permissions.ts).
   // Deux agents du même rôle peuvent avoir des permissions différentes.
-  permissions             String[]           @default([])
+  permissions             String[]                @default([])
   // Formation affectée (ex : "Management") : l'agent ne voit et ne manipule
   // que les dossiers de cette formation. Null = toutes les formations.
   formation               String?
-  role                    Role               @default(ETUDIANT)
+  role                    Role                    @default(ETUDIANT)
   fullName                String?
-  createdAt               DateTime           @default(now())
-  updatedAt               DateTime           @updatedAt
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
   auditLogs               AuditLog[]
   // Dossier étudiant lié si ce compte a été créé via la validation pédagogique
   studentFile             Student?
   // Communiqués rédigés (agents) et marques de lecture (étudiants)
-  announcements           Announcement[]     @relation("AuthoredAnnouncements")
+  announcements           Announcement[]          @relation("AuthoredAnnouncements")
   announcementReads       AnnouncementRead[]
   ecolagePaymentsVerified EcolagePayment[]
+  preselectionImports     PreselectionCandidate[]
 }
 
 // Workflow d'inscription d'un étudiant
@@ -124,15 +125,15 @@ model Student {
 
   receiptNumber     String? // numéro du reçu bancaire vérifié
   conduct           String? // appréciation de conduite (rédigée par l'agent pédagogique)
-  status            StudentStatus       @default(ENREGISTRE)
+  status            StudentStatus          @default(ENREGISTRE)
   // Horodatages dédiés (au lieu de retrouver la date dans le journal d'audit,
   // qui n'est pas lié au dossier et survit à sa suppression) : le graphique du
   // tableau de bord doit refléter seulement les dossiers qui existent encore.
   receiptVerifiedAt DateTime?
   pedagoValidatedAt DateTime?
   // Compte de connexion créé automatiquement à la validation pédagogique
-  account           User?               @relation(fields: [accountId], references: [id], onDelete: SetNull)
-  accountId         String?             @unique
+  account           User?                  @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  accountId         String?                @unique
   // Mot de passe initial du compte, imprimé sur le reçu d'inscription pour être
   // remis à l'étudiant (à changer par l'étudiant à sa première connexion)
   initialPassword   String?
@@ -140,13 +141,16 @@ model Student {
   // étudiante numérique — jamais le matricule ni l'id, tous deux trop
   // prévisibles pour servir de clé à une page publique sans connexion.
   // Régénérable par l'étudiant si le code a été partagé par erreur.
-  qrToken           String?             @unique
+  qrToken           String?                @unique
   // Années universitaires précédentes (archivées à chaque réinscription)
   enrollmentHistory EnrollmentHistory[]
   results           AcademicResult[]
   ecolagePayments   EcolagePayment[]
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
+  // Fiche de présélection (Université de Mahajanga) à partir de laquelle ce
+  // dossier a été créé, le cas échéant — voir PreselectionCandidate.
+  fromPreselection  PreselectionCandidate?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
   // + index trigram (pg_trgm/GIN) sur fullName, matricule, receiptNumber,
   // program, department, cin, track pour les recherches "contains" — voir la
   // migration 20260721153910_student_search_trgm_index (SQL brut : la syntaxe
@@ -175,6 +179,86 @@ model EnrollmentHistory {
   archivedAt        DateTime  @default(now())
 
   @@index([studentId])
+}
+
+// Deux origines possibles pour une fiche importée dans "Base de données" —
+// distinguer les deux évite qu'un ré-import de l'une n'efface l'autre (le
+// remplacement d'un lot est scopé par [academicYear, category], voir
+// importPreselectionFile dans lib/preselection.ts).
+enum PreselectionCategory {
+  PRESELECTION // nouveaux candidats L1 présélectionnés par l'Université de Mahajanga
+  EXISTING // dossiers d'étudiants déjà à l'université (tout niveau), pas encore saisis dans ce portail
+}
+
+// Fiche importée en lot par le superadmin depuis un fichier Excel déjà en
+// circulation à l'université (résultats de présélection de Mahajanga pour
+// les nouveaux L1, ou dossiers papier/Excel des étudiants déjà sur place à
+// un autre niveau) — voir PreselectionCategory. Sert uniquement à
+// pré-remplir le formulaire d'inscription (recherche par nom) pour que
+// l'agent d'administration n'ait plus qu'à vérifier les pièces et valider :
+// une entrée n'est jamais promue automatiquement en Student, la saisie
+// manuelle habituelle (registerStudent) reste le seul chemin de création.
+model PreselectionCandidate {
+  id String @id @default(cuid())
+
+  category PreselectionCategory @default(PRESELECTION)
+
+  // Lot d'import : année universitaire d'inscription visée (ex "2026-2027").
+  // Un ré-import pour la même année ET catégorie remplace le lot précédent
+  // (voir importPreselectionFile dans lib/preselection.ts) pour éviter
+  // d'accumuler des doublons à chaque nouvelle version du fichier reçu.
+  academicYear String
+
+  // Identité (mêmes champs que le formulaire d'inscription, pour un pré-remplissage direct)
+  lastName    String
+  firstName   String
+  fullName    String // "NOM Prénom", utilisé pour la recherche par nom
+  gender      String? // "M" | "F"
+  birthDate   DateTime?
+  birthPlace  String?
+  nationality String?
+
+  cin           String?
+  cinIssueDate  DateTime?
+  cinIssuePlace String?
+
+  phone         String?
+  personalEmail String?
+  address       String?
+
+  baccNumber  String?
+  baccSeries  String?
+  baccMention String?
+  baccYear    String?
+  baccCenter  String?
+  baccCountry String?
+
+  previousSchool String?
+
+  fatherName     String?
+  motherName     String?
+  parentsPhone   String?
+  parentsAddress String?
+  parentsCity    String?
+
+  // Filière affectée par la présélection (correspond à FORMATIONS / Student.mention)
+  formation String?
+  level     String? // niveau d'entrée visé, ex "L1"
+
+  // Dossier d'inscription créé à partir de cette ligne, une fois que l'agent
+  // l'a choisie dans la recherche et validée — la fiche reste visible dans la
+  // recherche mais affichée comme "déjà inscrit" plutôt que supprimée, pour
+  // garder une trace de correspondance avec le fichier de Mahajanga.
+  usedByStudent   Student?  @relation(fields: [usedByStudentId], references: [id], onDelete: SetNull)
+  usedByStudentId String?   @unique
+  usedAt          DateTime?
+
+  importedBy   User?    @relation(fields: [importedById], references: [id], onDelete: SetNull)
+  importedById String?
+  importedAt   DateTime @default(now())
+
+  @@index([academicYear, category])
+  @@index([fullName])
 }
 
 // Mention calculée automatiquement à partir de la moyenne (/20)

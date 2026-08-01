@@ -5,6 +5,12 @@ import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth";
 import { registerStudent } from "@/lib/students";
 import {
+  searchPreselectionCandidates,
+  getPreselectionCandidate,
+  markPreselectionUsed,
+  type PreselectionSearchResult,
+} from "@/lib/preselection";
+import {
   hasTaskPermission,
   getUserFormation,
   PERMISSION_DENIED_MESSAGE,
@@ -17,10 +23,77 @@ export type InscriptionState = {
   error?: string;
 };
 
+// Recherche appelée directement depuis le champ de recherche du client (pas
+// un <form> classique) : mêmes vérifications de session/tâche que les autres
+// actions, silencieuse (liste vide) plutôt qu'une erreur bloquante puisqu'elle
+// tourne à chaque frappe.
+export async function searchPreselectionAction(query: string): Promise<PreselectionSearchResult[]> {
+  const session = await getSession();
+  if (!session || !["AGENT_ADMINISTRATION", "SUPERADMIN"].includes(session.role)) return [];
+  if (!(await hasTaskPermission(session.sub, session.role, "inscription"))) return [];
+
+  const results = await searchPreselectionCandidates(query);
+  // Secrétaire de formation : ne propose que les candidats affectés à sa
+  // formation (ou pas encore affectés, laissé au jugement de l'agent — le
+  // dernier mot revient de toute façon à registerInscriptionAction).
+  const userFormation = await getUserFormation(session.sub, session.role);
+  if (!userFormation) return results;
+  return results.filter((r) => !r.formation || r.formation === userFormation);
+}
+
+export type PreselectionPrefill = { values: Record<string, string>; error?: string };
+
+const dateInput = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : "");
+
+// Récupère la fiche complète d'un candidat choisi dans la recherche, pour
+// pré-remplir le formulaire d'inscription (l'agent n'a plus qu'à vérifier).
+export async function getPreselectionPrefillAction(id: string): Promise<PreselectionPrefill> {
+  const session = await getSession();
+  if (!session || !["AGENT_ADMINISTRATION", "SUPERADMIN"].includes(session.role)) {
+    return { values: {}, error: "Accès refusé." };
+  }
+  if (!(await hasTaskPermission(session.sub, session.role, "inscription"))) {
+    return { values: {}, error: PERMISSION_DENIED_MESSAGE };
+  }
+
+  const c = await getPreselectionCandidate(id);
+  if (!c) return { values: {}, error: "Ce candidat n'existe plus dans la présélection." };
+
+  const values: Record<string, string> = {
+    lastName: c.lastName,
+    firstName: c.firstName,
+    nationality: c.nationality ?? "Malagasy",
+    gender: c.gender ?? "",
+    birthDate: dateInput(c.birthDate),
+    birthPlace: c.birthPlace ?? "",
+    cin: c.cin ?? "",
+    cinIssueDate: dateInput(c.cinIssueDate),
+    cinIssuePlace: c.cinIssuePlace ?? "",
+    phone: c.phone ?? "",
+    personalEmail: c.personalEmail ?? "",
+    address: c.address ?? "",
+    baccNumber: c.baccNumber ?? "",
+    baccSeries: c.baccSeries ?? "",
+    baccMention: c.baccMention ?? "",
+    baccYear: c.baccYear ?? "",
+    baccCenter: c.baccCenter ?? "",
+    baccCountry: c.baccCountry ?? "Madagascar",
+    previousSchool: c.previousSchool ?? "",
+    fatherName: c.fatherName ?? "",
+    motherName: c.motherName ?? "",
+    parentsPhone: c.parentsPhone ?? "",
+    parentsAddress: c.parentsAddress ?? "",
+    parentsCity: c.parentsCity ?? "",
+    formation: c.formation ?? "",
+    level: c.level ?? "L1",
+    academicYear: c.academicYear,
+  };
+  return { values };
+}
+
 // Champs obligatoires (libellés utilisés dans les messages d'erreur)
 const REQUIRED_FIELDS: Array<[string, string]> = [
   ["lastName", "Nom"],
-  ["firstName", "Prénom"],
   ["nationality", "Nationalité"],
   ["gender", "Sexe"],
   ["birthDate", "Date de naissance"],
@@ -128,7 +201,20 @@ export async function registerInscriptionAction(
       session.sub,
     );
 
+    // Si l'inscription part d'une fiche de présélection choisie dans la
+    // recherche, on la marque comme utilisée — sans bloquer l'inscription
+    // déjà enregistrée si cette étape échoue pour une raison quelconque.
+    const preselectionId = get("preselectionId");
+    if (preselectionId) {
+      try {
+        await markPreselectionUsed(preselectionId, student.id, session.sub);
+      } catch (e) {
+        console.error("Impossible de marquer la fiche de présélection comme utilisée :", e);
+      }
+    }
+
     revalidatePath("/agent-admin");
+    revalidatePath("/admin/base-donnees");
     return {
       success: `Inscription enregistrée pour l'année ${student.academicYear} — formation ${student.mention}.`,
       matricule: student.matricule,

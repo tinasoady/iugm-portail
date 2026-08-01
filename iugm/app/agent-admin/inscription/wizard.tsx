@@ -79,22 +79,75 @@ const primaryButtonClass =
 const secondaryButtonClass =
   "rounded-xl border border-black/10 px-5 py-2.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-white/10 dark:text-zinc-200 dark:hover:bg-zinc-800";
 
+// Bouton à choix unique (remplace les <select> pour ce formulaire) : un seul
+// clic direct sur le libellé suffit, plus rapide qu'ouvrir un menu déroulant
+// puis choisir une option — important pour des agents peu à l'aise avec l'informatique.
+const pillClass =
+  "cursor-pointer rounded-full border border-black/10 px-4 py-2 text-sm font-medium text-zinc-700 transition select-none has-checked:border-indigo-600 has-checked:bg-indigo-600 has-checked:text-white dark:border-white/10 dark:text-zinc-300 dark:has-checked:border-indigo-500 dark:has-checked:bg-indigo-600 dark:has-checked:text-white";
+
+function RadioPills({
+  name,
+  value,
+  options,
+  required = true,
+}: {
+  name: string;
+  value?: string;
+  options: Array<{ value: string; label: string }>;
+  required?: boolean;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((opt) => (
+        <label key={opt.value} className={pillClass}>
+          <input
+            type="radio"
+            name={name}
+            value={opt.value}
+            required={required}
+            defaultChecked={value === opt.value}
+            className="sr-only"
+          />
+          {opt.label}
+        </label>
+      ))}
+    </div>
+  );
+}
+
 const initialState: InscriptionState = {};
 
 export function InscriptionWizard({
   years,
   defaultYear,
+  initialValues,
+  preselectionId,
+  userFormation,
 }: {
   years: string[];
   defaultYear: string;
+  // Pré-remplissage depuis une fiche de présélection choisie dans la
+  // recherche (voir search-entry.tsx) ; absent pour une saisie manuelle.
+  initialValues?: Record<string, string>;
+  preselectionId?: string | null;
+  // Secrétaire de formation : seule cette filière reste sélectionnable dans
+  // le choix de formation, pour éviter d'inscrire par erreur dans une autre.
+  userFormation?: string | null;
 }) {
   const [step, setStep] = useState(0);
-  // Valeurs saisies, alimentées en continu pour le récapitulatif
+  // Valeurs saisies, alimentées en continu pour le récapitulatif — pré-remplies
+  // d'entrée si l'inscription part d'une fiche de présélection
   const [values, setValues] = useState<Record<string, string>>({
     nationality: "Malagasy",
     maritalStatus: "Célibataire",
     academicYear: defaultYear,
     level: "L1",
+    baccCountry: "Madagascar",
+    // Secrétaire de formation : sa filière est la seule sélectionnable, donc
+    // autant la présélectionner d'entrée (initialValues garde la priorité si
+    // une fiche de présélection précise déjà une formation).
+    ...(userFormation ? { formation: userFormation } : {}),
+    ...initialValues,
   });
   const formRef = useRef<HTMLFormElement>(null);
   const [state, formAction, pending] = useActionState(registerInscriptionAction, initialState);
@@ -143,6 +196,13 @@ export function InscriptionWizard({
 
   return (
     <div className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm sm:p-8 dark:border-white/10 dark:bg-zinc-900">
+      {preselectionId && (
+        <p className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300">
+          ✓ Dossier pré-rempli depuis la présélection — vérifiez chaque champ et les pièces avant de
+          valider.
+        </p>
+      )}
+
       {/* Barre de progression */}
       <ol className="mb-8 flex items-center gap-2">
         {STEPS.map((s, i) => (
@@ -197,57 +257,91 @@ export function InscriptionWizard({
           setValues((v) => ({ ...v, [target.name]: value }));
         }}
       >
+        {preselectionId && <input type="hidden" name="preselectionId" value={preselectionId} />}
+
         {/* Étape 1 : Renseignements sur l'étudiant */}
         <div data-step="0" className={step === 0 ? "space-y-4" : "hidden"}>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className={labelClass} htmlFor="lastName">Nom *</label>
-              <input id="lastName" name="lastName" type="text" required className={inputClass} />
+              <input
+                id="lastName"
+                name="lastName"
+                type="text"
+                required
+                defaultValue={values.lastName ?? ""}
+                className={inputClass}
+              />
             </div>
             <div>
-              <label className={labelClass} htmlFor="firstName">Prénom *</label>
-              <input id="firstName" name="firstName" type="text" required className={inputClass} />
+              <label className={labelClass} htmlFor="firstName">Prénom</label>
+              <input
+                id="firstName"
+                name="firstName"
+                type="text"
+                defaultValue={values.firstName ?? ""}
+                className={inputClass}
+              />
             </div>
           </div>
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="space-y-4">
             <div>
-              <label className={labelClass} htmlFor="nationality">Nationalité *</label>
-              <select id="nationality" name="nationality" required defaultValue="Malagasy" className={inputClass}>
-                <option value="Malagasy">Malagasy</option>
-                <option value="Étranger">Étranger</option>
-              </select>
+              <p className={labelClass}>Nationalité *</p>
+              <RadioPills
+                name="nationality"
+                value={values.nationality ?? "Malagasy"}
+                options={[
+                  { value: "Malagasy", label: "Malagasy" },
+                  { value: "Étranger", label: "Étranger" },
+                ]}
+              />
             </div>
             <div>
-              <label className={labelClass} htmlFor="gender">Sexe *</label>
-              <select id="gender" name="gender" required defaultValue="" className={inputClass}>
-                <option value="" disabled>Choisir...</option>
-                <option value="M">Masculin</option>
-                <option value="F">Féminin</option>
-              </select>
+              <p className={labelClass}>Sexe *</p>
+              <RadioPills
+                name="gender"
+                value={values.gender}
+                options={[
+                  { value: "M", label: "Masculin" },
+                  { value: "F", label: "Féminin" },
+                ]}
+              />
             </div>
             <div>
-              <label className={labelClass} htmlFor="maritalStatus">Situation familiale *</label>
-              <select
-                id="maritalStatus"
+              <p className={labelClass}>Situation familiale *</p>
+              <RadioPills
                 name="maritalStatus"
-                required
-                defaultValue="Célibataire"
-                className={inputClass}
-              >
-                <option value="Célibataire">Célibataire</option>
-                <option value="Marié(e)">Marié(e)</option>
-                <option value="Salarié(e)">Salarié(e)</option>
-              </select>
+                value={values.maritalStatus ?? "Célibataire"}
+                options={[
+                  { value: "Célibataire", label: "Célibataire" },
+                  { value: "Marié(e)", label: "Marié(e)" },
+                  { value: "Salarié(e)", label: "Salarié(e)" },
+                ]}
+              />
             </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className={labelClass} htmlFor="birthDate">Date de naissance *</label>
-              <input id="birthDate" name="birthDate" type="date" required className={inputClass} />
+              <input
+                id="birthDate"
+                name="birthDate"
+                type="date"
+                required
+                defaultValue={values.birthDate ?? ""}
+                className={inputClass}
+              />
             </div>
             <div>
               <label className={labelClass} htmlFor="birthPlace">Lieu de naissance *</label>
-              <input id="birthPlace" name="birthPlace" type="text" required className={inputClass} />
+              <input
+                id="birthPlace"
+                name="birthPlace"
+                type="text"
+                required
+                defaultValue={values.birthPlace ?? ""}
+                className={inputClass}
+              />
             </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-3">
@@ -258,16 +352,29 @@ export function InscriptionWizard({
                 name="cin"
                 type="text"
                 placeholder="ex : 101 011 123 456"
+                defaultValue={values.cin ?? ""}
                 className={inputClass}
               />
             </div>
             <div>
               <label className={labelClass} htmlFor="cinIssueDate">Date de délivrance</label>
-              <input id="cinIssueDate" name="cinIssueDate" type="date" className={inputClass} />
+              <input
+                id="cinIssueDate"
+                name="cinIssueDate"
+                type="date"
+                defaultValue={values.cinIssueDate ?? ""}
+                className={inputClass}
+              />
             </div>
             <div>
               <label className={labelClass} htmlFor="cinIssuePlace">Lieu de délivrance</label>
-              <input id="cinIssuePlace" name="cinIssuePlace" type="text" className={inputClass} />
+              <input
+                id="cinIssuePlace"
+                name="cinIssuePlace"
+                type="text"
+                defaultValue={values.cinIssuePlace ?? ""}
+                className={inputClass}
+              />
             </div>
           </div>
           <p className="text-xs text-zinc-500 dark:text-zinc-400">
@@ -283,17 +390,31 @@ export function InscriptionWizard({
                 type="tel"
                 required
                 placeholder="+261 34 00 000 00"
+                defaultValue={values.phone ?? ""}
                 className={inputClass}
               />
             </div>
             <div>
               <label className={labelClass} htmlFor="personalEmail">Email de l&apos;étudiant</label>
-              <input id="personalEmail" name="personalEmail" type="email" className={inputClass} />
+              <input
+                id="personalEmail"
+                name="personalEmail"
+                type="email"
+                defaultValue={values.personalEmail ?? ""}
+                className={inputClass}
+              />
             </div>
           </div>
           <div>
             <label className={labelClass} htmlFor="address">Adresse exacte de l&apos;étudiant *</label>
-            <input id="address" name="address" type="text" required className={inputClass} />
+            <input
+              id="address"
+              name="address"
+              type="text"
+              required
+              defaultValue={values.address ?? ""}
+              className={inputClass}
+            />
           </div>
         </div>
 
@@ -302,7 +423,14 @@ export function InscriptionWizard({
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className={labelClass} htmlFor="baccNumber">Numéro du bacc *</label>
-              <input id="baccNumber" name="baccNumber" type="text" required className={inputClass} />
+              <input
+                id="baccNumber"
+                name="baccNumber"
+                type="text"
+                required
+                defaultValue={values.baccNumber ?? ""}
+                className={inputClass}
+              />
             </div>
             <div>
               <label className={labelClass} htmlFor="baccSeries">Série *</label>
@@ -312,21 +440,25 @@ export function InscriptionWizard({
                 type="text"
                 required
                 placeholder="ex : A2, C, D, OSE..."
+                defaultValue={values.baccSeries ?? ""}
                 className={inputClass}
               />
             </div>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className={labelClass} htmlFor="baccMention">Mention *</label>
-              <select id="baccMention" name="baccMention" required defaultValue="" className={inputClass}>
-                <option value="" disabled>Choisir...</option>
-                <option value="Passable">Passable</option>
-                <option value="Assez bien">Assez bien</option>
-                <option value="Bien">Bien</option>
-                <option value="Très bien">Très bien</option>
-              </select>
-            </div>
+          <div>
+            <p className={labelClass}>Mention *</p>
+            <RadioPills
+              name="baccMention"
+              value={values.baccMention}
+              options={[
+                { value: "Passable", label: "Passable" },
+                { value: "Assez bien", label: "Assez bien" },
+                { value: "Bien", label: "Bien" },
+                { value: "Très bien", label: "Très bien" },
+              ]}
+            />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-3">
             <div>
               <label className={labelClass} htmlFor="baccYear">Année d&apos;obtention *</label>
               <input
@@ -337,14 +469,19 @@ export function InscriptionWizard({
                 min={1980}
                 max={2100}
                 placeholder="2025"
+                defaultValue={values.baccYear ?? ""}
                 className={inputClass}
               />
             </div>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className={labelClass} htmlFor="baccCenter">Centre d&apos;examen</label>
-              <input id="baccCenter" name="baccCenter" type="text" className={inputClass} />
+              <input
+                id="baccCenter"
+                name="baccCenter"
+                type="text"
+                defaultValue={values.baccCenter ?? ""}
+                className={inputClass}
+              />
             </div>
             <div>
               <label className={labelClass} htmlFor="baccCountry">Pays</label>
@@ -352,14 +489,20 @@ export function InscriptionWizard({
                 id="baccCountry"
                 name="baccCountry"
                 type="text"
-                defaultValue="Madagascar"
+                defaultValue={values.baccCountry ?? "Madagascar"}
                 className={inputClass}
               />
             </div>
           </div>
           <div>
             <label className={labelClass} htmlFor="previousSchool">Établissement d&apos;origine</label>
-            <input id="previousSchool" name="previousSchool" type="text" className={inputClass} />
+            <input
+              id="previousSchool"
+              name="previousSchool"
+              type="text"
+              defaultValue={values.previousSchool ?? ""}
+              className={inputClass}
+            />
           </div>
           <div>
             <label className={labelClass} htmlFor="previousUniversity">
@@ -370,6 +513,7 @@ export function InscriptionWizard({
               name="previousUniversity"
               type="text"
               placeholder="ex : Aucune, ou Université de Mahajanga (2024-2025)"
+              defaultValue={values.previousUniversity ?? ""}
               className={inputClass}
             />
           </div>
@@ -380,25 +524,55 @@ export function InscriptionWizard({
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className={labelClass} htmlFor="fatherName">Nom du père</label>
-              <input id="fatherName" name="fatherName" type="text" className={inputClass} />
+              <input
+                id="fatherName"
+                name="fatherName"
+                type="text"
+                defaultValue={values.fatherName ?? ""}
+                className={inputClass}
+              />
             </div>
             <div>
               <label className={labelClass} htmlFor="motherName">Nom de la mère</label>
-              <input id="motherName" name="motherName" type="text" className={inputClass} />
+              <input
+                id="motherName"
+                name="motherName"
+                type="text"
+                defaultValue={values.motherName ?? ""}
+                className={inputClass}
+              />
             </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-3">
             <div>
               <label className={labelClass} htmlFor="parentsPhone">Téléphone des parents</label>
-              <input id="parentsPhone" name="parentsPhone" type="tel" className={inputClass} />
+              <input
+                id="parentsPhone"
+                name="parentsPhone"
+                type="tel"
+                defaultValue={values.parentsPhone ?? ""}
+                className={inputClass}
+              />
             </div>
             <div>
               <label className={labelClass} htmlFor="parentsAddress">Adresse des parents</label>
-              <input id="parentsAddress" name="parentsAddress" type="text" className={inputClass} />
+              <input
+                id="parentsAddress"
+                name="parentsAddress"
+                type="text"
+                defaultValue={values.parentsAddress ?? ""}
+                className={inputClass}
+              />
             </div>
             <div>
               <label className={labelClass} htmlFor="parentsCity">Ville</label>
-              <input id="parentsCity" name="parentsCity" type="text" className={inputClass} />
+              <input
+                id="parentsCity"
+                name="parentsCity"
+                type="text"
+                defaultValue={values.parentsCity ?? ""}
+                className={inputClass}
+              />
             </div>
           </div>
 
@@ -427,54 +601,61 @@ export function InscriptionWizard({
 
         {/* Étape 4 : Inscription — année, niveau et formation */}
         <div data-step="3" className={step === 3 ? "space-y-4" : "hidden"}>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className={labelClass} htmlFor="academicYear">Année universitaire *</label>
-              <select
-                id="academicYear"
-                name="academicYear"
-                required
-                defaultValue={defaultYear}
-                className={inputClass}
-              >
-                {years.map((y) => (
-                  <option key={y} value={y}>{y}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className={labelClass} htmlFor="level">Niveau *</label>
-              <select id="level" name="level" required defaultValue="L1" className={inputClass}>
-                {LEVELS.map((l) => (
-                  <option key={l} value={l}>{l}</option>
-                ))}
-              </select>
-              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                Inscription directe en L2, L3, M1... possible selon le dossier.
-              </p>
-            </div>
+          <div>
+            <p className={labelClass}>Année universitaire *</p>
+            <RadioPills
+              name="academicYear"
+              value={values.academicYear ?? defaultYear}
+              options={years.map((y) => ({ value: y, label: y }))}
+            />
+          </div>
+          <div>
+            <p className={labelClass}>Niveau *</p>
+            <RadioPills
+              name="level"
+              value={values.level ?? "L1"}
+              options={LEVELS.map((l) => ({ value: l, label: l }))}
+            />
+            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+              Inscription directe en L2, L3, M1... possible selon le dossier.
+            </p>
           </div>
 
-          <p className={labelClass}>Choix de formation * (cocher une formation)</p>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {FORMATIONS.map((f) => (
-              <label
-                key={f.code}
-                className="flex cursor-pointer items-center gap-3 rounded-xl border border-black/10 px-4 py-3 transition has-checked:border-indigo-500 has-checked:bg-indigo-50 dark:border-white/10 dark:has-checked:border-indigo-500 dark:has-checked:bg-indigo-950/40"
-              >
-                <input
-                  type="radio"
-                  name="formation"
-                  value={f.label}
-                  required
-                  className="h-4 w-4 accent-indigo-600"
-                />
-                <span className="text-sm text-zinc-900 dark:text-zinc-50">{f.label}</span>
-                <span className="ml-auto rounded-full bg-zinc-100 px-2 py-0.5 font-mono text-[11px] font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
-                  {f.code}
-                </span>
-              </label>
-            ))}
+          <p className={labelClass}>Choix de formation * (cliquer sur une formation)</p>
+          {userFormation && (
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              Vous êtes rattaché(e) à la filière <strong>{userFormation}</strong> : les autres
+              filières sont désactivées pour éviter une erreur d&apos;inscription.
+            </p>
+          )}
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {FORMATIONS.map((f) => {
+              const disabled = !!userFormation && f.label !== userFormation;
+              return (
+                <label
+                  key={f.code}
+                  className={
+                    disabled
+                      ? "flex cursor-not-allowed items-center gap-3 rounded-xl border border-black/5 px-4 py-3 opacity-40 dark:border-white/5"
+                      : "flex cursor-pointer items-center gap-3 rounded-xl border border-black/10 px-4 py-3 transition has-checked:border-indigo-500 has-checked:bg-indigo-50 dark:border-white/10 dark:has-checked:border-indigo-500 dark:has-checked:bg-indigo-950/40"
+                  }
+                >
+                  <input
+                    type="radio"
+                    name="formation"
+                    value={f.label}
+                    required
+                    disabled={disabled}
+                    defaultChecked={values.formation === f.label}
+                    className="h-4 w-4 accent-indigo-600"
+                  />
+                  <span className="text-sm text-zinc-900 dark:text-zinc-50">{f.label}</span>
+                  <span className="ml-auto rounded-full bg-zinc-100 px-2 py-0.5 font-mono text-[11px] font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                    {f.code}
+                  </span>
+                </label>
+              );
+            })}
           </div>
         </div>
 

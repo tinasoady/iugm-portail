@@ -141,6 +141,7 @@ export default async function AdminPage({
           {!selectedYear && <MonthRangeSelector />}
         </div>
         <LineChart
+          height={190}
           labels={trend.monthLabels}
           series={[
             {

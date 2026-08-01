@@ -157,7 +157,10 @@ export async function registerStudent(input: RegisterStudentInput, actorId: stri
     throw new Error("La personne à contacter d'urgence est obligatoire.");
   }
 
-  const fullName = `${input.lastName.toUpperCase()} ${input.firstName}`;
+  // .trim() : certaines personnes n'ont pas de prénom (courant à Madagascar,
+  // le prénom n'est plus obligatoire à l'inscription) — sans quoi un prénom
+  // vide laisserait un espace final dans le nom affiché.
+  const fullName = `${input.lastName.toUpperCase()} ${input.firstName}`.trim();
 
   const student = await createWithGeneratedMatricule(input.academicYear, (matricule) =>
     prisma.student.create({
@@ -176,6 +179,108 @@ export async function registerStudent(input: RegisterStudentInput, actorId: stri
   await logAction(
     "STUDENT_REGISTERED",
     `Dossier ${student.matricule} créé pour ${fullName} (${input.academicYear}) — formation ${input.mention}`,
+    actorId,
+  );
+  return student;
+}
+
+// Champs d'un dossier d'étudiant déjà présent à l'université (import "Dossiers
+// existants", voir lib/preselection.ts) : contrairement à RegisterStudentInput
+// (saisie au guichet, dossier toujours complet), ces données viennent d'un
+// fichier externe potentiellement incomplet — seuls le nom et l'année sont
+// exigés, le reste se complète ensuite via la fiche de modification comme
+// pour n'importe quel dossier.
+export type ExistingStudentInput = {
+  academicYear: string;
+  lastName: string;
+  firstName?: string | null;
+  nationality?: string | null;
+  gender?: string | null;
+  birthDate?: Date | null;
+  birthPlace?: string | null;
+  cin?: string | null;
+  cinIssueDate?: Date | null;
+  cinIssuePlace?: string | null;
+  phone?: string | null;
+  personalEmail?: string | null;
+  address?: string | null;
+  maritalStatus?: string | null;
+  baccNumber?: string | null;
+  baccSeries?: string | null;
+  baccMention?: string | null;
+  baccYear?: string | null;
+  baccCenter?: string | null;
+  baccCountry?: string | null;
+  previousSchool?: string | null;
+  fatherName?: string | null;
+  motherName?: string | null;
+  parentsPhone?: string | null;
+  parentsAddress?: string | null;
+  parentsCity?: string | null;
+  mention?: string | null; // formation
+  level?: string | null;
+};
+
+// Crée directement un dossier "Enregistré" à partir d'une fiche déjà
+// existante à l'université (import en lot par le superadmin) : l'étudiant
+// n'a pas besoin de repasser par le guichet d'inscription, son dossier
+// apparaît tout de suite dans "Dossiers étudiants" pour que l'agent complète
+// les infos manquantes, vérifie l'écolage, valide et crée le compte —
+// exactement les mêmes démarches qu'après une inscription classique.
+export async function createStudentFromExistingRecord(input: ExistingStudentInput, actorId: string) {
+  if (!/^\d{4}-\d{4}$/.test(input.academicYear)) {
+    throw new Error("Année universitaire invalide (format attendu : 2026-2027).");
+  }
+  if (!input.lastName.trim()) {
+    throw new Error("Nom obligatoire.");
+  }
+  const gender = input.gender && ["M", "F"].includes(input.gender) ? input.gender : null;
+  const fullName = `${input.lastName.toUpperCase()} ${input.firstName ?? ""}`.trim();
+
+  const student = await createWithGeneratedMatricule(input.academicYear, (matricule) =>
+    prisma.student.create({
+      data: {
+        academicYear: input.academicYear,
+        matricule,
+        fullName,
+        lastName: input.lastName,
+        firstName: input.firstName || null,
+        nationality: input.nationality || null,
+        gender,
+        birthDate: input.birthDate ?? null,
+        birthPlace: input.birthPlace || null,
+        cin: input.cin || null,
+        cinIssueDate: input.cinIssueDate ?? null,
+        cinIssuePlace: input.cinIssuePlace || null,
+        phone: input.phone || null,
+        personalEmail: input.personalEmail || null,
+        address: input.address || null,
+        maritalStatus: input.maritalStatus || null,
+        baccNumber: input.baccNumber || null,
+        baccSeries: input.baccSeries || null,
+        baccMention: input.baccMention || null,
+        baccYear: input.baccYear || null,
+        baccCenter: input.baccCenter || null,
+        baccCountry: input.baccCountry || null,
+        previousSchool: input.previousSchool || null,
+        fatherName: input.fatherName || null,
+        motherName: input.motherName || null,
+        parentsPhone: input.parentsPhone || null,
+        parentsAddress: input.parentsAddress || null,
+        parentsCity: input.parentsCity || null,
+        mention: input.mention || null,
+        // Champ hérité, alimenté pour les filtres et listes existants
+        program: input.mention || null,
+        level: input.level || null,
+        repeatCode: "N",
+        status: "ENREGISTRE",
+      },
+    }),
+  );
+
+  await logAction(
+    "STUDENT_REGISTERED",
+    `Dossier ${student.matricule} créé pour ${fullName} depuis un import de dossiers existants (${input.academicYear})`,
     actorId,
   );
   return student;
@@ -1023,7 +1128,10 @@ export async function updateStudent(
     throw new Error("La personne à contacter d'urgence est obligatoire.");
   }
 
-  const fullName = `${input.lastName.toUpperCase()} ${input.firstName}`;
+  // .trim() : certaines personnes n'ont pas de prénom (courant à Madagascar,
+  // le prénom n'est plus obligatoire à l'inscription) — sans quoi un prénom
+  // vide laisserait un espace final dans le nom affiché.
+  const fullName = `${input.lastName.toUpperCase()} ${input.firstName}`.trim();
   const updated = await prisma.student.update({
     where: { id: studentId },
     data: {
