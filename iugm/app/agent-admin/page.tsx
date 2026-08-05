@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+﻿import { redirect } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
@@ -8,6 +8,7 @@ import { getSelectedAcademicYear } from "@/lib/academic-year";
 import { AppShell } from "@/app/ui/app-shell";
 import { StatCard } from "@/app/ui/stat-card";
 import { IconFolder, IconClipboard, IconShield, IconCap } from "@/app/ui/icons";
+import { FaDownload } from "react-icons/fa";
 import { STATUS_LABELS, STATUS_BADGE_CLASSES } from "@/app/ui/student-status";
 import { DossierActions } from "./dossier-actions";
 import { ImportCsvForm } from "./import-form";
@@ -56,28 +57,28 @@ export default async function AgentAdminPage({
             label="Enregistrés"
             value={countOf("ENREGISTRE")}
             sublabel="en attente de paiement"
-            gradient="from-violet-500 to-purple-600"
+            color="bg-indigo-600"
             icon={<IconFolder />}
           />
           <StatCard
             label="Paiement vérifié"
             value={countOf("PAIEMENT_VERIFIE")}
             sublabel="reçus bancaires contrôlés"
-            gradient="from-sky-500 to-blue-600"
+            color="bg-sky-600"
             icon={<IconClipboard />}
           />
           <StatCard
             label="Inscr. administrative"
             value={countOf("ADMIN_VALIDEE")}
             sublabel="en attente pédagogique"
-            gradient="from-amber-400 to-orange-500"
+            color="bg-amber-500"
             icon={<IconShield />}
           />
           <StatCard
             label="Inscrits"
             value={countOf("INSCRIT")}
             sublabel="inscription finalisée"
-            gradient="from-emerald-500 to-teal-600"
+            color="bg-emerald-600"
             icon={<IconCap />}
           />
         </div>
@@ -95,7 +96,7 @@ export default async function AgentAdminPage({
               </p>
               <a
                 href="/agent-admin/inscription"
-                className="inline-block rounded-xl bg-linear-to-r from-indigo-600 to-violet-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md transition hover:from-indigo-500 hover:to-violet-500"
+                className="inline-block rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-indigo-500"
               >
                 + Inscrire un étudiant
               </a>
@@ -111,9 +112,9 @@ export default async function AgentAdminPage({
               </p>
               <a
                 href="/api/students/export"
-                className="mb-4 inline-block rounded-lg border border-black/10 px-3 py-1.5 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100 dark:border-white/10 dark:text-zinc-200 dark:hover:bg-zinc-900"
+                className="mb-4 flex w-fit items-center gap-1.5 rounded-lg border border-black/10 px-3 py-1.5 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100 dark:border-white/10 dark:text-zinc-200 dark:hover:bg-zinc-900"
               >
-                ⬇ Exporter les dossiers (CSV)
+                <FaDownload size={11} /> Exporter les dossiers (CSV)
               </a>
               <ImportCsvForm />
             </section>

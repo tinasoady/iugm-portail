@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+﻿import { redirect } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
@@ -40,18 +40,18 @@ function initialsOf(name: string): string {
   return ((parts[0]?.[0] ?? "?") + (parts[1]?.[0] ?? "")).toUpperCase();
 }
 
-const AVATAR_GRADIENTS = [
-  "from-indigo-500 to-violet-600",
-  "from-sky-500 to-blue-600",
-  "from-emerald-500 to-teal-600",
-  "from-amber-400 to-orange-500",
-  "from-rose-500 to-pink-600",
+const AVATAR_COLORS = [
+  "bg-indigo-600",
+  "bg-sky-600",
+  "bg-emerald-600",
+  "bg-amber-500",
+  "bg-rose-600",
 ];
 
-function avatarGradient(key: string): string {
+function avatarColor(key: string): string {
   let h = 0;
-  for (const c of key) h = (h * 31 + c.charCodeAt(0)) % AVATAR_GRADIENTS.length;
-  return AVATAR_GRADIENTS[h];
+  for (const c of key) h = (h * 31 + c.charCodeAt(0)) % AVATAR_COLORS.length;
+  return AVATAR_COLORS[h];
 }
 
 export default async function AdminPage({
@@ -92,7 +92,7 @@ export default async function AdminPage({
           label="Super administrateur"
           value={countOf("SUPERADMIN")}
           sublabel="utilisateurs"
-          gradient="from-violet-500 to-purple-600"
+          color="bg-indigo-600"
           icon={<IconShield />}
           compact
         />
@@ -100,7 +100,7 @@ export default async function AdminPage({
           label="Agents administration"
           value={countOf("AGENT_ADMINISTRATION")}
           sublabel="utilisateurs"
-          gradient="from-sky-500 to-blue-600"
+          color="bg-sky-600"
           icon={<IconFolder />}
           compact
         />
@@ -108,7 +108,7 @@ export default async function AdminPage({
           label="Agents pédagogiques"
           value={countOf("AGENT_PEDAGOGIQUE")}
           sublabel="utilisateurs"
-          gradient="from-emerald-500 to-teal-600"
+          color="bg-emerald-600"
           icon={<IconCap />}
           compact
         />
@@ -116,7 +116,7 @@ export default async function AdminPage({
           label="Étudiants"
           value={countOf("ETUDIANT")}
           sublabel="utilisateurs"
-          gradient="from-amber-400 to-orange-500"
+          color="bg-amber-500"
           icon={<IconUsers />}
           compact
         />
@@ -203,7 +203,7 @@ export default async function AdminPage({
                       <td className="py-3 pr-4">
                         <div className="flex items-center gap-3">
                           <div
-                            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-linear-to-br ${avatarGradient(user.email)} text-xs font-bold text-white`}
+                            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${avatarColor(user.email)} text-xs font-bold text-white`}
                           >
                             {initialsOf(name)}
                           </div>

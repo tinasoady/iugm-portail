@@ -1,6 +1,7 @@
-"use client";
+﻿"use client";
 
 import { useActionState } from "react";
+import { FaTrash } from "react-icons/fa";
 import { updateTasksAction, deleteUserAction, type PermissionState } from "./actions";
 
 const initialState: PermissionState = {};
@@ -70,7 +71,7 @@ export function TaskPermissionsForm({
       <button
         type="submit"
         disabled={pending}
-        className="rounded-lg bg-linear-to-r from-indigo-600 to-violet-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:from-indigo-500 hover:to-violet-500 disabled:opacity-50"
+        className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-indigo-500 disabled:opacity-50"
       >
         {pending ? "..." : "Enregistrer les tâches"}
       </button>
@@ -99,9 +100,9 @@ export function DeleteUserButton({ userId, email }: { userId: string; email: str
         <button
           type="submit"
           disabled={pending}
-          className="rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950"
+          className="flex items-center gap-1.5 rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950"
         >
-          {pending ? "..." : "🗑 Supprimer le compte"}
+          {pending ? "..." : (<><FaTrash size={11} /> Supprimer le compte</>)}
         </button>
       </form>
       {state.error && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{state.error}</p>}

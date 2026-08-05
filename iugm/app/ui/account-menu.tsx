@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useRef } from "react";
 import Link from "next/link";
@@ -43,7 +43,7 @@ export function AccountMenu({
             className="h-9 w-9 rounded-full border border-black/10 object-cover dark:border-white/10"
           />
         ) : (
-          <div className="relative flex h-9 w-9 items-center justify-center rounded-full bg-linear-to-br from-indigo-500 to-violet-600 text-xs font-bold text-white">
+          <div className="relative flex h-9 w-9 items-center justify-center rounded-full bg-indigo-600 text-xs font-bold text-white">
             {initials(email)}
             {unread > 0 && (
               <span className="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-600 ring-2 ring-white dark:ring-zinc-950" />

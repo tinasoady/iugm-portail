@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { getSession } from "@/lib/auth";
@@ -9,6 +9,7 @@ import { AppShell } from "@/app/ui/app-shell";
 import { StatCard } from "@/app/ui/stat-card";
 import { Donut } from "@/app/ui/donut";
 import { IconUsers, IconCash, IconClipboard, IconFolder } from "@/app/ui/icons";
+import { FaCheck, FaTimes, FaHourglassHalf } from "react-icons/fa";
 import { Tranche2Form } from "./tranche2-form";
 
 const amountFormatter = new Intl.NumberFormat("fr-FR");
@@ -95,28 +96,28 @@ export default async function EcolagePage() {
           label="Dossiers étudiants"
           value={stats.total}
           sublabel={year ? `année ${year}` : "toutes années confondues"}
-          gradient="from-violet-500 to-purple-600"
+          color="bg-indigo-600"
           icon={<IconUsers />}
         />
         <StatCard
           label="Payé intégralement"
           value={`${fullPct}%`}
           sublabel={`${stats.full} étudiant(s) — totalité ou 2 tranches`}
-          gradient="from-emerald-500 to-teal-600"
+          color="bg-emerald-600"
           icon={<IconCash />}
         />
         <StatCard
           label="Paiement partiel"
           value={`${partialPct}%`}
           sublabel={`${stats.partial} étudiant(s) — 2e tranche due`}
-          gradient="from-amber-400 to-orange-500"
+          color="bg-amber-500"
           icon={<IconFolder />}
         />
         <StatCard
           label="Non payé"
           value={`${unpaidPct}%`}
           sublabel={`${stats.unpaid} étudiant(s) en attente`}
-          gradient="from-rose-500 to-red-600"
+          color="bg-rose-600"
           icon={<IconClipboard />}
         />
       </div>
@@ -147,8 +148,8 @@ export default async function EcolagePage() {
               <div className="flex items-center gap-3 rounded-xl border border-black/5 p-3 dark:border-white/10">
                 <span className="h-4 w-4 shrink-0 rounded bg-emerald-600 dark:bg-emerald-500" />
                 <div className="flex-1">
-                  <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                    ✓ Payé intégralement
+                  <p className="flex items-center gap-1.5 text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                    <FaCheck size={11} /> Payé intégralement
                   </p>
                   <p className="text-xs text-zinc-500 dark:text-zinc-400">
                     {stats.full} étudiant(s) — totalité ou 2 tranches versées
@@ -162,8 +163,8 @@ export default async function EcolagePage() {
               <div className="flex items-center gap-3 rounded-xl border border-black/5 p-3 dark:border-white/10">
                 <span className="h-4 w-4 shrink-0 rounded bg-amber-500 dark:bg-amber-400" />
                 <div className="flex-1">
-                  <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                    ⏳ Paiement partiel
+                  <p className="flex items-center gap-1.5 text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                    <FaHourglassHalf size={11} /> Paiement partiel
                   </p>
                   <p className="text-xs text-zinc-500 dark:text-zinc-400">
                     {stats.partial} étudiant(s) — 1ère tranche versée, 2e due
@@ -177,8 +178,8 @@ export default async function EcolagePage() {
               <div className="flex items-center gap-3 rounded-xl border border-black/5 p-3 dark:border-white/10">
                 <span className="h-4 w-4 shrink-0 rounded bg-rose-600 dark:bg-rose-500" />
                 <div className="flex-1">
-                  <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                    ✗ Non payé
+                  <p className="flex items-center gap-1.5 text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                    <FaTimes size={11} /> Non payé
                   </p>
                   <p className="text-xs text-zinc-500 dark:text-zinc-400">
                     {stats.unpaid} étudiant(s) sans aucun versement
@@ -253,8 +254,8 @@ export default async function EcolagePage() {
           « 2e tranche due » : enregistrez-la directement ci-dessous.
         </p>
         {due.length === 0 ? (
-          <p className="text-sm text-emerald-700 dark:text-emerald-400">
-            ✓ Tous les dossiers de cette sélection sont à jour.
+          <p className="flex items-center gap-1.5 text-sm text-emerald-700 dark:text-emerald-400">
+            <FaCheck size={12} /> Tous les dossiers de cette sélection sont à jour.
           </p>
         ) : (
           <div className="overflow-x-auto">

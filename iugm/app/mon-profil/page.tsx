@@ -1,5 +1,6 @@
-import { redirect } from "next/navigation";
+﻿import { redirect } from "next/navigation";
 import QRCode from "qrcode";
+import { FaExclamationTriangle } from "react-icons/fa";
 
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
@@ -89,7 +90,7 @@ export default async function MonProfilPage() {
           <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-zinc-900">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-4">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-linear-to-br from-indigo-500 to-violet-600 text-lg font-bold text-white">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-indigo-600 text-lg font-bold text-white">
                   {student.fullName
                     .split(/\s+/)
                     .slice(0, 2)
@@ -118,8 +119,8 @@ export default async function MonProfilPage() {
               afficher un montant inventé */}
           {balance && balance.status !== "FULL" && balance.amountDue !== null && balance.amountDue > 0 && (
             <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
-              <p className="font-semibold">
-                ⚠️ Écolage {balance.status === "PARTIAL" ? "partiellement payé" : "non payé"}
+              <p className="flex items-center gap-1.5 font-semibold">
+                <FaExclamationTriangle size={13} /> Écolage {balance.status === "PARTIAL" ? "partiellement payé" : "non payé"}
               </p>
               <p className="mt-1">
                 Il vous reste <strong>{amountFormatter.format(balance.amountDue)} Ar</strong>{" "}

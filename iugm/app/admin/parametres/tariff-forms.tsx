@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useActionState } from "react";
 import { FaTrash } from "react-icons/fa";
@@ -81,7 +81,7 @@ export function TariffRow({
           <button
             type="submit"
             disabled={updatePending}
-            className="rounded-lg bg-linear-to-r from-indigo-600 to-violet-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:from-indigo-500 hover:to-violet-500 disabled:opacity-50"
+            className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-indigo-500 disabled:opacity-50"
           >
             {updatePending ? "..." : "Enregistrer"}
           </button>
@@ -142,7 +142,7 @@ export function AddTariffForm() {
         <button
           type="submit"
           disabled={pending}
-          className="rounded-lg bg-linear-to-r from-indigo-600 to-violet-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:from-indigo-500 hover:to-violet-500 disabled:opacity-50"
+          className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-indigo-500 disabled:opacity-50"
         >
           {pending ? "..." : "+ Ajouter"}
         </button>

@@ -2,25 +2,25 @@
 
 import type { ReactNode } from "react";
 
-// Carte statistique en dégradé, façon tableau de bord moderne
+// Carte statistique, façon tableau de bord moderne
 export function StatCard({
   label,
   value,
   sublabel,
-  gradient,
+  color,
   icon,
   compact = false,
 }: {
   label: string;
   value: number | string;
   sublabel?: string;
-  gradient: string; // ex: "from-violet-500 to-purple-600"
+  color: string; // ex: "bg-violet-600"
   icon: ReactNode;
   compact?: boolean;
 }) {
   return (
     <div
-      className={`relative overflow-hidden rounded-2xl bg-linear-to-br ${gradient} text-white shadow-lg transition-transform duration-200 hover:scale-[1.02] hover:shadow-xl ${compact ? "p-3" : "p-5"}`}
+      className={`relative overflow-hidden rounded-2xl ${color} text-white shadow-lg transition-transform duration-200 hover:scale-[1.02] hover:shadow-xl ${compact ? "p-3" : "p-5"}`}
     >
       <div className="flex items-start justify-between gap-2">
         <p className={`font-semibold uppercase tracking-wider text-white/85 ${compact ? "text-[10px]" : "text-xs"}`}>{label}</p>

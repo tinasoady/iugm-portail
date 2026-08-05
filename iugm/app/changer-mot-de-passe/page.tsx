@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { FaExclamationTriangle } from "react-icons/fa";
 
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
@@ -24,7 +25,9 @@ export default async function ChangePasswordPage() {
       <div className="mx-auto w-full max-w-md space-y-4">
         {user?.mustChangePassword && (
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
-            <p className="font-semibold">⚠️ Changement de mot de passe obligatoire</p>
+            <p className="flex items-center gap-1.5 font-semibold">
+              <FaExclamationTriangle size={13} /> Changement de mot de passe obligatoire
+            </p>
             <p className="mt-1">
               Votre mot de passe initial est celui imprimé sur votre reçu d&apos;inscription.
               Choisissez un mot de passe personnel pour sécuriser votre compte avant

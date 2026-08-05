@@ -1,5 +1,6 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { redirect } from "next/navigation";
+import { FaLock, FaPrint, FaDownload } from "react-icons/fa";
 
 import { getSession } from "@/lib/auth";
 import { listStudents, getStudentFilterValues } from "@/lib/students";
@@ -146,10 +147,10 @@ export default async function EtudiantsPage({
           />
           {userFormation ? (
             <span
-              className="rounded-xl bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300"
+              className="flex items-center gap-1.5 rounded-xl bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300"
               title="Votre accès est limité à cette formation"
             >
-              🔒 Formation : {userFormation}
+              <FaLock size={12} /> Formation : {userFormation}
             </span>
           ) : (
             <select
@@ -193,7 +194,7 @@ export default async function EtudiantsPage({
           </label>
           <button
             type="submit"
-            className="rounded-xl bg-linear-to-r from-indigo-600 to-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:from-indigo-500 hover:to-violet-500"
+            className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500"
           >
             Rechercher
           </button>
@@ -216,15 +217,15 @@ export default async function EtudiantsPage({
               href={`/etudiants/imprimer${exportQuery ? `?${exportQuery}` : ""}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded-lg border border-black/10 px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-white/10 dark:text-zinc-200 dark:hover:bg-zinc-800"
+              className="flex items-center gap-1.5 rounded-lg border border-black/10 px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-white/10 dark:text-zinc-200 dark:hover:bg-zinc-800"
             >
-              🖨 Imprimer la liste
+              <FaPrint size={11} /> Imprimer la liste
             </a>
             <a
               href={`/api/students/export-filtered${exportQuery ? `?${exportQuery}` : ""}`}
-              className="rounded-lg border border-black/10 px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-white/10 dark:text-zinc-200 dark:hover:bg-zinc-800"
+              className="flex items-center gap-1.5 rounded-lg border border-black/10 px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-white/10 dark:text-zinc-200 dark:hover:bg-zinc-800"
             >
-              ⬇ Exporter (CSV)
+              <FaDownload size={11} /> Exporter (CSV)
             </a>
           </div>
         </div>

@@ -1,6 +1,7 @@
-"use client";
+﻿"use client";
 
 import { useActionState, useRef, useState } from "react";
+import { FaCheck, FaCheckCircle, FaTimes } from "react-icons/fa";
 import { registerInscriptionAction, type InscriptionState } from "./actions";
 
 const STEPS = [
@@ -75,7 +76,7 @@ const inputClass =
   "mt-1 w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-zinc-900 outline-none focus:ring-2 focus:ring-indigo-500/40 dark:border-white/10 dark:bg-zinc-950 dark:text-zinc-50";
 const labelClass = "block text-sm font-medium text-zinc-700 dark:text-zinc-200";
 const primaryButtonClass =
-  "rounded-xl bg-linear-to-r from-indigo-600 to-violet-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md transition hover:from-indigo-500 hover:to-violet-500 disabled:opacity-50";
+  "rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-indigo-500 disabled:opacity-50";
 const secondaryButtonClass =
   "rounded-xl border border-black/10 px-5 py-2.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-white/10 dark:text-zinc-200 dark:hover:bg-zinc-800";
 
@@ -170,8 +171,8 @@ export function InscriptionWizard({
   if (state.matricule) {
     return (
       <div className="mx-auto max-w-lg rounded-2xl border border-black/5 bg-white p-8 text-center shadow-sm dark:border-white/10 dark:bg-zinc-900">
-        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-2xl dark:bg-emerald-950">
-          ✅
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-2xl text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400">
+          <FaCheckCircle size={28} />
         </div>
         <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">
           Inscription enregistrée !
@@ -197,8 +198,8 @@ export function InscriptionWizard({
   return (
     <div className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm sm:p-8 dark:border-white/10 dark:bg-zinc-900">
       {preselectionId && (
-        <p className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300">
-          ✓ Dossier pré-rempli depuis la présélection — vérifiez chaque champ et les pièces avant de
+        <p className="mb-6 flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300">
+          <FaCheck size={12} className="shrink-0" /> Dossier pré-rempli depuis la présélection — vérifiez chaque champ et les pièces avant de
           valider.
         </p>
       )}
@@ -216,11 +217,11 @@ export function InscriptionWizard({
                   i < step
                     ? "flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-xs font-bold text-white"
                     : i === step
-                      ? "flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-linear-to-r from-indigo-600 to-violet-600 text-xs font-bold text-white ring-4 ring-indigo-500/20"
+                      ? "flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-xs font-bold text-white ring-4 ring-indigo-500/20"
                       : "flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-200 text-xs font-bold text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
                 }
               >
-                {i < step ? "✓" : i + 1}
+                {i < step ? <FaCheck size={12} /> : i + 1}
               </div>
               <div
                 className={`h-1 flex-1 rounded-full ${i === STEPS.length - 1 ? "opacity-0" : i < step ? "bg-indigo-500" : "bg-zinc-200 dark:bg-zinc-800"}`}
@@ -728,7 +729,9 @@ export function InscriptionWizard({
                         : "text-sm text-red-600 dark:text-red-400"
                     }
                   >
-                    {provided ? "✓" : "✗"} {label}
+                    <span className="inline-flex items-center gap-1.5">
+                      {provided ? <FaCheck size={10} /> : <FaTimes size={10} />} {label}
+                    </span>
                   </li>
                 );
               })}
@@ -762,8 +765,8 @@ export function InscriptionWizard({
               Suivant →
             </button>
           ) : (
-            <button type="submit" disabled={pending} className={primaryButtonClass}>
-              {pending ? "Enregistrement..." : "✓ Valider l'inscription"}
+            <button type="submit" disabled={pending} className={`${primaryButtonClass} flex items-center gap-2`}>
+              {pending ? "Enregistrement..." : (<><FaCheck size={13} /> Valider l&apos;inscription</>)}
             </button>
           )}
         </div>

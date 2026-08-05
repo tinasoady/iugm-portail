@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useActionState } from "react";
 import { uploadLogoAction, removeLogoAction, type SettingsState } from "./actions";
@@ -27,7 +27,7 @@ export function LogoForm({ currentLogo }: { currentLogo?: string }) {
             className="h-16 w-16 rounded-xl border border-black/10 bg-white object-contain p-1 dark:border-white/10"
           />
         ) : (
-          <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-linear-to-br from-indigo-500 to-violet-600 text-lg font-bold text-white">
+          <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-indigo-600 text-lg font-bold text-white">
             IU
           </div>
         )}
@@ -50,7 +50,7 @@ export function LogoForm({ currentLogo }: { currentLogo?: string }) {
           <button
             type="submit"
             disabled={uploadPending}
-            className="rounded-lg bg-linear-to-r from-indigo-600 to-violet-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:from-indigo-500 hover:to-violet-500 disabled:opacity-50"
+            className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-indigo-500 disabled:opacity-50"
           >
             {uploadPending ? "Envoi..." : "Mettre à jour le logo"}
           </button>

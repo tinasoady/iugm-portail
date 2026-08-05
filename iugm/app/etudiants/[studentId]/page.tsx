@@ -1,5 +1,6 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { FaPrint, FaPen, FaCheck, FaTimes } from "react-icons/fa";
 
 import { getSession } from "@/lib/auth";
 import { getStudentProfile } from "@/lib/students";
@@ -71,7 +72,7 @@ export default async function StudentProfilePage({
       <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-zinc-900">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-linear-to-br from-indigo-500 to-violet-600 text-lg font-bold text-white">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-indigo-600 text-lg font-bold text-white">
               {student.fullName
                 .split(/\s+/)
                 .slice(0, 2)
@@ -96,17 +97,17 @@ export default async function StudentProfilePage({
             {student.status === "INSCRIT" && canPrintReceipt && (
               <a
                 href={`/agent-pedagogique/recu/${student.id}`}
-                className="rounded-lg border border-black/10 px-3 py-1.5 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100 dark:border-white/10 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                className="flex items-center gap-1.5 rounded-lg border border-black/10 px-3 py-1.5 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100 dark:border-white/10 dark:text-zinc-200 dark:hover:bg-zinc-800"
               >
-                🖨 Reçu d&apos;inscription
+                <FaPrint size={11} /> Reçu d&apos;inscription
               </a>
             )}
             {canEditDossier && (
               <Link
                 href={`/etudiants/${student.id}/modifier`}
-                className="rounded-lg border border-blue-200 px-3 py-1.5 text-xs font-semibold text-blue-600 transition hover:bg-blue-50 dark:border-blue-900 dark:text-blue-400 dark:hover:bg-blue-950"
+                className="flex items-center gap-1.5 rounded-lg border border-blue-200 px-3 py-1.5 text-xs font-semibold text-blue-600 transition hover:bg-blue-50 dark:border-blue-900 dark:text-blue-400 dark:hover:bg-blue-950"
               >
-                ✎ Modifier le dossier
+                <FaPen size={11} /> Modifier le dossier
               </Link>
             )}
             <Link
@@ -207,8 +208,8 @@ export default async function StudentProfilePage({
           </h3>
           <div className="mb-3">
             {feePaid ? (
-              <span className="rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700 dark:bg-green-950 dark:text-green-300">
-                ✓ Écolage payé (reçu bancaire vérifié)
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700 dark:bg-green-950 dark:text-green-300">
+                <FaCheck size={10} /> Écolage payé (reçu bancaire vérifié)
               </span>
             ) : (
               <span className="rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-medium text-red-700 dark:bg-red-950 dark:text-red-300">
@@ -251,11 +252,11 @@ export default async function StudentProfilePage({
                 key={label}
                 className={
                   provided
-                    ? "text-sm text-emerald-700 dark:text-emerald-400"
-                    : "text-sm text-red-600 dark:text-red-400"
+                    ? "flex items-center gap-1.5 text-sm text-emerald-700 dark:text-emerald-400"
+                    : "flex items-center gap-1.5 text-sm text-red-600 dark:text-red-400"
                 }
               >
-                {provided ? "✓" : "✗"} {label}
+                {provided ? <FaCheck size={10} /> : <FaTimes size={10} />} {label}
               </li>
             ))}
           </ul>

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useActionState } from "react";
 import { createUser, type CreateUserState } from "./actions";
@@ -78,7 +78,7 @@ export function CreateUserForm() {
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded-xl bg-linear-to-r from-indigo-600 to-violet-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md transition hover:from-indigo-500 hover:to-violet-500 disabled:opacity-50"
+        className="w-full rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-indigo-500 disabled:opacity-50"
       >
         {pending ? "Création en cours..." : "Créer le compte"}
       </button>

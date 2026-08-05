@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { FaLock } from "react-icons/fa";
+
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { tasksForRole, TASKS } from "@/lib/permissions";
@@ -114,8 +116,8 @@ export default async function PermissionsPage() {
                     </span>
                   )}
                   {user.formation && (
-                    <span className="rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
-                      🔒 {user.formation}
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
+                      <FaLock size={10} /> {user.formation}
                     </span>
                   )}
                   {user.active ? (

@@ -1,6 +1,7 @@
-"use client";
+﻿"use client";
 
 import { useActionState } from "react";
+import { FaCheckCircle } from "react-icons/fa";
 import { reenrollAction, type ReenrollState } from "./actions";
 
 const fieldClass =
@@ -33,8 +34,8 @@ export function ReenrollForm({
 
   if (state.success) {
     return (
-      <p className="rounded-lg bg-green-50 px-2.5 py-1.5 text-xs text-green-700 dark:bg-green-950 dark:text-green-300">
-        ✅ {state.success}
+      <p className="flex items-center gap-1.5 rounded-lg bg-green-50 px-2.5 py-1.5 text-xs text-green-700 dark:bg-green-950 dark:text-green-300">
+        <FaCheckCircle size={12} /> {state.success}
       </p>
     );
   }
@@ -71,7 +72,7 @@ export function ReenrollForm({
         <button
           type="submit"
           disabled={pending}
-          className="rounded-lg bg-linear-to-r from-indigo-600 to-violet-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:from-indigo-500 hover:to-violet-500 disabled:opacity-50"
+          className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-indigo-500 disabled:opacity-50"
         >
           {pending ? "..." : "Réinscrire"}
         </button>

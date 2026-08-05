@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useActionState } from "react";
 import {
@@ -69,7 +69,7 @@ export function PermissionActions({
           <button
             type="submit"
             disabled={rolePending}
-            className="rounded-lg bg-linear-to-r from-indigo-600 to-violet-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:from-indigo-500 hover:to-violet-500 disabled:opacity-50"
+            className="rounded-lg bg-indigo-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-indigo-500 disabled:opacity-50"
           >
             {rolePending ? "..." : "Appliquer"}
           </button>

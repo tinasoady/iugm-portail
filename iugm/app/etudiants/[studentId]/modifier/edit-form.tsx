@@ -1,7 +1,8 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useActionState } from "react";
+import { FaLock, FaCheck } from "react-icons/fa";
 import { updateStudentAction, type EditStudentState } from "./actions";
 
 const LEVELS = ["L1", "L2", "L3", "M1", "M2"];
@@ -300,8 +301,8 @@ export function EditStudentForm({
           <div>
             <label className={labelClass}>Formation *</label>
             {lockedFormation ? (
-              <p className="mt-1 rounded-xl bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
-                🔒 {lockedFormation} (votre formation)
+              <p className="mt-1 flex items-center gap-1.5 rounded-xl bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
+                <FaLock size={12} /> {lockedFormation} (votre formation)
               </p>
             ) : (
               <select id="formation" name="formation" required defaultValue={d.formation} className={inputClass}>
@@ -380,9 +381,9 @@ export function EditStudentForm({
         <button
           type="submit"
           disabled={pending}
-          className="rounded-xl bg-linear-to-r from-indigo-600 to-violet-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md transition hover:from-indigo-500 hover:to-violet-500 disabled:opacity-50"
+          className="flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-indigo-500 disabled:opacity-50"
         >
-          {pending ? "Enregistrement..." : "✓ Enregistrer les modifications"}
+          {pending ? "Enregistrement..." : (<><FaCheck size={13} /> Enregistrer les modifications</>)}
         </button>
       </div>
     </form>

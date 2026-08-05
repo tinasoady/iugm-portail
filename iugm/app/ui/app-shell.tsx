@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { Fragment, type ReactNode } from "react";
 
 import { prisma } from "@/lib/prisma";
@@ -82,7 +82,6 @@ const NAV_ITEMS: NavItem[] = [
     icon: <IconCash />,
     roles: ["SUPERADMIN", "AGENT_ADMINISTRATION"],
     task: "ecolage",
-    children: [{ href: "/agent-admin/ecolage/tarifs", label: "Tarifs (service finance)" }],
   },
   {
     href: "/agent-pedagogique",
@@ -208,7 +207,7 @@ export async function AppShell({
               className="h-10 w-10 rounded-xl bg-white object-contain p-0.5 shadow-lg"
             />
           ) : (
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-linear-to-br from-indigo-500 to-violet-600 text-sm font-bold text-white shadow-lg">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-sm font-bold text-white shadow-lg">
               IU
             </div>
           )}
@@ -232,7 +231,7 @@ export async function AppShell({
                   href={item.href}
                   className={
                     isActive
-                      ? "flex items-center gap-3 rounded-xl bg-linear-to-r from-indigo-600 to-violet-600 px-3 py-2.5 text-sm font-semibold text-white shadow-md"
+                      ? "flex items-center gap-3 rounded-xl bg-indigo-600 px-3 py-2.5 text-sm font-semibold text-white shadow-md"
                       : "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-zinc-400 transition hover:bg-white/5 hover:text-white"
                   }
                 >

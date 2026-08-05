@@ -1,4 +1,6 @@
-"use client";
+﻿"use client";
+
+import { FaPrint } from "react-icons/fa";
 
 import { logReceiptPrintAction } from "../../actions";
 
@@ -11,9 +13,10 @@ export function PrintButton({ matricule, fullName }: { matricule: string; fullNa
         void logReceiptPrintAction(matricule, fullName);
         window.print();
       }}
-      className="rounded-xl bg-linear-to-r from-indigo-600 to-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:from-indigo-500 hover:to-violet-500 print:hidden"
+      className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:bg-indigo-500 print:hidden"
     >
-      🖨 Imprimer le reçu
+      <FaPrint size={14} />
+      Imprimer le reçu
     </button>
   );
 }

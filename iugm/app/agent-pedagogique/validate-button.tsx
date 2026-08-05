@@ -1,6 +1,7 @@
-"use client";
+﻿"use client";
 
 import { useActionState } from "react";
+import { FaCheckCircle, FaPrint } from "react-icons/fa";
 import { validatePedagoAction, type ValidateState } from "./actions";
 
 const initialState: ValidateState = {};
@@ -15,7 +16,9 @@ export function ValidatePedagoButton({ studentId }: { studentId: string }) {
       <div className="rounded-xl bg-green-50 px-3 py-2 text-xs text-green-800 dark:bg-green-950 dark:text-green-300">
         {state.credentials.password === null ? (
           <>
-            <p className="font-semibold">✅ Réinscription validée</p>
+            <p className="flex items-center gap-1.5 font-semibold">
+              <FaCheckCircle size={13} /> Réinscription validée
+            </p>
             <p className="mt-1 font-mono">Compte existant : {state.credentials.email}</p>
             <p className="mt-1 text-green-700 dark:text-green-400">
               L&apos;étudiant conserve son email et son mot de passe habituels.
@@ -23,7 +26,9 @@ export function ValidatePedagoButton({ studentId }: { studentId: string }) {
           </>
         ) : (
           <>
-            <p className="font-semibold">✅ Compte étudiant créé — à transmettre :</p>
+            <p className="flex items-center gap-1.5 font-semibold">
+              <FaCheckCircle size={13} /> Compte étudiant créé — à transmettre :
+            </p>
             <p className="mt-1 font-mono">Email : {state.credentials.email}</p>
             <p className="font-mono">Mot de passe : {state.credentials.password}</p>
             <p className="mt-1 text-green-700 dark:text-green-400">
@@ -33,9 +38,9 @@ export function ValidatePedagoButton({ studentId }: { studentId: string }) {
         )}
         <a
           href={`/agent-pedagogique/recu/${studentId}`}
-          className="mt-2 inline-block rounded-lg border border-green-300 px-3 py-1.5 font-semibold text-green-800 transition hover:bg-green-100 dark:border-green-800 dark:text-green-300 dark:hover:bg-green-900"
+          className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-green-300 px-3 py-1.5 font-semibold text-green-800 transition hover:bg-green-100 dark:border-green-800 dark:text-green-300 dark:hover:bg-green-900"
         >
-          🖨 Imprimer le reçu d&apos;inscription
+          <FaPrint size={13} /> Imprimer le reçu d&apos;inscription
         </a>
       </div>
     );
@@ -48,7 +53,7 @@ export function ValidatePedagoButton({ studentId }: { studentId: string }) {
         <button
           type="submit"
           disabled={pending}
-          className="rounded-lg bg-linear-to-r from-indigo-600 to-violet-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:from-indigo-500 hover:to-violet-500 disabled:opacity-50"
+          className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-indigo-500 disabled:opacity-50"
         >
           {pending ? "Validation..." : "Valider l'inscription pédagogique"}
         </button>

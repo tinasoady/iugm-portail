@@ -1,7 +1,7 @@
-"use client";
+﻿"use client";
 
 import { useActionState, useState } from "react";
-import { FaEye, FaEyeSlash } from "react-icons/fa";
+import { FaEye, FaEyeSlash, FaExclamationTriangle } from "react-icons/fa";
 import { loginAction, type LoginState } from "./actions";
 
 const initialState: LoginState = {};
@@ -68,16 +68,17 @@ export function LoginForm() {
       {state.error && (
         <p
           role="alert"
-          className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300"
+          className="flex items-center gap-2 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300"
         >
-          ⚠ {state.error}
+          <FaExclamationTriangle className="shrink-0" size={14} />
+          {state.error}
         </p>
       )}
 
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded-xl bg-linear-to-r from-indigo-600 to-violet-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:from-indigo-500 hover:to-violet-500 disabled:opacity-60"
+        className="w-full rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:bg-indigo-500 disabled:opacity-60"
       >
         {pending ? "Connexion..." : "Se connecter"}
       </button>

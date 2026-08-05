@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+﻿import { redirect } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
@@ -8,6 +8,7 @@ import { currentAcademicYear, getSelectedAcademicYear } from "@/lib/academic-yea
 import { AppShell } from "@/app/ui/app-shell";
 import { StatCard } from "@/app/ui/stat-card";
 import { IconClipboard, IconCap, IconChart, IconFolder } from "@/app/ui/icons";
+import { FaPrint } from "react-icons/fa";
 import {
   STATUS_LABELS,
   STATUS_BADGE_CLASSES,
@@ -80,28 +81,28 @@ export default async function AgentPedagogiquePage({
             label="À valider"
             value={pending.length}
             sublabel="inscriptions administratives validées"
-            gradient="from-amber-400 to-orange-500"
+            color="bg-amber-500"
             icon={<IconClipboard />}
           />
           <StatCard
             label="Inscrits"
             value={countOf("INSCRIT")}
             sublabel="étudiants avec compte actif"
-            gradient="from-emerald-500 to-teal-600"
+            color="bg-emerald-600"
             icon={<IconCap />}
           />
           <StatCard
             label="Résultats assignés"
             value={resultCount}
             sublabel="moyennes enregistrées"
-            gradient="from-sky-500 to-blue-600"
+            color="bg-sky-600"
             icon={<IconChart />}
           />
           <StatCard
             label="Dossiers en cours"
             value={countOf("ENREGISTRE") + countOf("PAIEMENT_VERIFIE")}
             sublabel="en amont du workflow"
-            gradient="from-violet-500 to-purple-600"
+            color="bg-indigo-600"
             icon={<IconFolder />}
           />
         </div>
@@ -256,9 +257,9 @@ export default async function AgentPedagogiquePage({
                       <td className="py-2.5">
                         <a
                           href={`/agent-pedagogique/recu/${s.id}`}
-                          className="whitespace-nowrap rounded-lg border border-black/10 px-3 py-1.5 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100 dark:border-white/10 dark:text-zinc-200 dark:hover:bg-zinc-900"
+                          className="flex w-fit items-center gap-1.5 whitespace-nowrap rounded-lg border border-black/10 px-3 py-1.5 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100 dark:border-white/10 dark:text-zinc-200 dark:hover:bg-zinc-900"
                         >
-                          🖨 Reçu
+                          <FaPrint size={11} /> Reçu
                         </a>
                       </td>
                     </tr>

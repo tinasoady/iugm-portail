@@ -1,4 +1,5 @@
-import { notFound } from "next/navigation";
+﻿import { notFound } from "next/navigation";
+import { FaCheck } from "react-icons/fa";
 
 import { getStudentByQrToken } from "@/lib/students";
 import { getSettings } from "@/lib/settings";
@@ -31,7 +32,7 @@ export default async function CarteEtudiantPage({
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 p-6 dark:bg-black">
       <div className="w-full max-w-sm overflow-hidden rounded-3xl border border-black/10 bg-white shadow-lg dark:border-white/10 dark:bg-zinc-900">
         {/* En-tête établissement */}
-        <div className="bg-linear-to-r from-indigo-600 to-violet-600 px-6 py-4 text-center text-white">
+        <div className="bg-indigo-600 px-6 py-4 text-center text-white">
           {settings.logo && (
             // eslint-disable-next-line @next/next/no-img-element -- fichier local, next/image inutile ici
             <img
@@ -46,7 +47,7 @@ export default async function CarteEtudiantPage({
 
         {/* Identité */}
         <div className="flex flex-col items-center gap-3 px-6 py-6 text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-linear-to-br from-indigo-500 to-violet-600 text-xl font-bold text-white">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-indigo-600 text-xl font-bold text-white">
             {initials}
           </div>
           <div>
@@ -61,11 +62,11 @@ export default async function CarteEtudiantPage({
           <span
             className={
               isActive
-                ? "rounded-full bg-green-50 px-3 py-1 text-xs font-semibold text-green-700 dark:bg-green-950 dark:text-green-300"
+                ? "inline-flex items-center gap-1.5 rounded-full bg-green-50 px-3 py-1 text-xs font-semibold text-green-700 dark:bg-green-950 dark:text-green-300"
                 : "rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 dark:bg-amber-950 dark:text-amber-300"
             }
           >
-            {isActive ? "✓ Inscription active" : (STATUS_LABELS[student.status] ?? student.status)}
+            {isActive ? (<><FaCheck size={10} /> Inscription active</>) : (STATUS_LABELS[student.status] ?? student.status)}
           </span>
         </div>
 

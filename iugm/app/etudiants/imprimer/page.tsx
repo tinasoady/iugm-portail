@@ -62,7 +62,7 @@ export default async function ImprimerListePage({
           >
             ← Retour à la liste
           </Link>
-          <PrintButton label="🖨 Imprimer" />
+          <PrintButton />
         </div>
 
         <div className="rounded-2xl border border-black/10 bg-white p-8 shadow-sm print:rounded-none print:border-0 print:shadow-none">
