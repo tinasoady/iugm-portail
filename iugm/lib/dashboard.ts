@@ -46,28 +46,42 @@ function monthWindow(opts: { monthsBack: number; academicYear: string | null }) 
 // l'historique — sans cette union, les événements d'une année déjà
 // réinscrite disparaîtraient du graphique alors qu'ils ont bien eu lieu.
 export async function getInscriptionTrend(
-  opts: { monthsBack?: number; academicYear?: string | null } = {},
+  opts: { monthsBack?: number; academicYear?: string | null; level?: string | null } = {},
 ): Promise<InscriptionTrend> {
-  const { monthsBack = 6, academicYear = null } = opts;
+  const { monthsBack = 6, academicYear = null, level = null } = opts;
   const { start, span } = monthWindow({ monthsBack, academicYear });
   const end = new Date(start.getFullYear(), start.getMonth() + span, 1); // borne haute exclusive
 
   const [students, archived] = await Promise.all([
     prisma.student.findMany({
       where: {
-        OR: [
-          { createdAt: { gte: start, lt: end } },
-          { receiptVerifiedAt: { gte: start, lt: end } },
-          { pedagoValidatedAt: { gte: start, lt: end } },
+        AND: [
+          {
+            OR: [
+              { createdAt: { gte: start, lt: end } },
+              { receiptVerifiedAt: { gte: start, lt: end } },
+              { pedagoValidatedAt: { gte: start, lt: end } },
+            ],
+          },
+          ...(level ? [{ level }] : []),
         ],
       },
       select: { createdAt: true, receiptVerifiedAt: true, pedagoValidatedAt: true },
     }),
     prisma.enrollmentHistory.findMany({
       where: {
-        OR: [
-          { receiptVerifiedAt: { gte: start, lt: end } },
-          { pedagoValidatedAt: { gte: start, lt: end } },
+        AND: [
+          {
+            OR: [
+              { receiptVerifiedAt: { gte: start, lt: end } },
+              { pedagoValidatedAt: { gte: start, lt: end } },
+            ],
+          },
+          // `track` porte le niveau au moment de l'archivage (voir
+          // reenrollStudent dans lib/students.ts, qui n'a pas de colonne
+          // "level" dédiée sur l'historique) : seule façon de filtrer par
+          // niveau les événements passés d'une année déjà réinscrite.
+          ...(level ? [{ track: level }] : []),
         ],
       },
       select: { receiptVerifiedAt: true, pedagoValidatedAt: true },

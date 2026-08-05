@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { getInscriptionTrend } from "@/lib/dashboard";
 import { getSelectedAcademicYear } from "@/lib/academic-year";
+import { getSelectedLevel } from "@/lib/level";
 import { AppShell } from "@/app/ui/app-shell";
 import { StatCard } from "@/app/ui/stat-card";
 import { LineChart } from "@/app/ui/line-chart";
@@ -65,7 +66,10 @@ export default async function AdminPage({
 
   const params = await searchParams;
   const monthsBack = Math.min(12, Math.max(3, Number(params.months) || 6));
-  const selectedYear = await getSelectedAcademicYear();
+  const [selectedYear, selectedLevel] = await Promise.all([
+    getSelectedAcademicYear(),
+    getSelectedLevel(),
+  ]);
 
   const [users, roleCounts, trend] = await Promise.all([
     prisma.user.findMany({
@@ -73,7 +77,7 @@ export default async function AdminPage({
       select: { id: true, email: true, fullName: true, role: true, createdAt: true },
     }),
     prisma.user.groupBy({ by: ["role"], _count: { _all: true } }),
-    getInscriptionTrend({ monthsBack, academicYear: selectedYear }),
+    getInscriptionTrend({ monthsBack, academicYear: selectedYear, level: selectedLevel }),
   ]);
 
   const countOf = (role: string) =>
@@ -132,7 +136,8 @@ export default async function AdminPage({
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
               {selectedYear
                 ? `Année universitaire ${selectedYear} (septembre à août)`
-                : `Sur les ${monthsBack} derniers mois`}{" "}
+                : `Sur les ${monthsBack} derniers mois`}
+              {selectedLevel ? ` — niveau ${selectedLevel}` : ""}{" "}
               — dossiers enregistrés, reçus bancaires vérifiés, inscriptions finalisées.
             </p>
           </div>

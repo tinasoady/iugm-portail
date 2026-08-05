@@ -63,7 +63,10 @@ export default async function AgentPedagogiquePage({
       ...(selectedYear || selectedLevel ? { where: studentWhere } : {}),
     }),
     prisma.academicResult.count({
-      ...(selectedYear ? { where: { academicYear: selectedYear } } : {}),
+      where: {
+        ...(selectedYear ? { academicYear: selectedYear } : {}),
+        ...(selectedLevel ? { student: { level: selectedLevel } } : {}),
+      },
     }),
   ]);
   const countOf = (status: string) =>
