@@ -4,6 +4,7 @@ import type { PreselectionCategory } from "@prisma/client";
 import { prisma } from "./prisma";
 import { logAction } from "./audit";
 import { createStudentFromExistingRecord } from "./students";
+import { FORMATIONS } from "./formations";
 
 // ---------------------------------------------------------------------------
 // Base de données : fiches importées en lot pour pré-remplir l'inscription
@@ -21,6 +22,15 @@ import { createStudentFromExistingRecord } from "./students";
 // searchPreselectionCandidates) — la création du dossier étudiant lui-même
 // reste toujours registerStudent (lib/students.ts), l'agent vérifie les
 // pièces et valide comme d'habitude.
+//
+// Format "par classe" (une feuille par niveau/filière, ex. le fichier reçu
+// directement de l'IUGM) : chaque feuille nommée "L1 - PGI", "M2 - GRH"...
+// porte un bandeau ministériel avant les colonnes (en-tête pas forcément en
+// ligne 1) et n'a pas de colonne Niveau/Filière par ligne — ces deux valeurs
+// se déduisent du nom de la feuille. parsePreselectionWorkbook et
+// parseExistingRecordsFromFile (streaming, pour les gros fichiers) le
+// détectent automatiquement (voir LEVEL_PREFIX_RE) ; à défaut, comportement
+// historique : une seule feuille de données, en-têtes en ligne 1.
 // ---------------------------------------------------------------------------
 
 // Normalise un texte pour comparer des en-têtes de colonnes sans se soucier
@@ -37,29 +47,41 @@ function normalizeHeader(value: string): string {
 // Alias acceptés (déjà normalisés) pour chaque champ du dossier — le fichier
 // reçu de Mahajanga peut nommer ses colonnes différemment d'une année à
 // l'autre, d'où une liste large plutôt qu'un unique nom de colonne attendu.
+// Certaines variantes (ex. "DATEDELIVRABCE", "LIIEUDENAISSANCE") sont des
+// coquilles observées telles quelles dans le fichier réel de l'IUGM.
 const FIELD_ALIASES: Record<string, string[]> = {
   lastName: ["NOM"],
   firstName: ["PRENOM", "PRENOMS"],
-  fullName: ["NOMETPRENOM", "NOMETPRENOMS", "NOMCOMPLET", "NOMPRENOM", "NOMPRENOMS"],
+  fullName: [
+    "NOMETPRENOM",
+    "NOMETPRENOMS",
+    "NOMCOMPLET",
+    "NOMPRENOM",
+    "NOMPRENOMS",
+    // Colonne d'aide à la saisie du modèle IUGM ("Coller ici le NOM et
+    // PRENOMS de l'étudiant") : sert de repli quand NOM/PRENOMS ne sont pas
+    // remplis séparément (voir la scission par espace plus bas).
+    "COLLERICILENOMETPRENOMSDELETUDIANT",
+  ],
   gender: ["SEXE", "GENRE"],
   birthDate: ["DATEDENAISSANCE", "DATENAISSANCE", "NE(E)LE", "NELE"],
-  birthPlace: ["LIEUDENAISSANCE", "LIEUNAISSANCE", "NE(E)A", "NEA"],
+  birthPlace: ["LIEUDENAISSANCE", "LIEUNAISSANCE", "NE(E)A", "NEA", "LIIEUDENAISSANCE"],
   nationality: ["NATIONALITE"],
   cin: ["CIN", "NCIN", "NUMEROCIN", "CARTEIDENTITENATIONALE"],
-  cinIssueDate: ["DATEDELIVRANCECIN", "CINDELIVREELE", "DATEDELIVRANCE"],
-  cinIssuePlace: ["LIEUDELIVRANCECIN", "CINDELIVREEA", "LIEUDELIVRANCE"],
+  cinIssueDate: ["DATEDELIVRANCECIN", "CINDELIVREELE", "DATEDELIVRANCE", "DATEDELIVRABCE"],
+  cinIssuePlace: ["LIEUDELIVRANCECIN", "CINDELIVREEA", "LIEUDELIVRANCE", "LIEUDEDELIVRANCE"],
   phone: ["TELEPHONE", "TEL", "NUMEROTELEPHONE", "CONTACT"],
-  personalEmail: ["EMAIL", "MAIL", "ADRESSEEMAIL"],
+  personalEmail: ["EMAIL", "MAIL", "ADRESSEEMAIL", "ADRESSEMAIL"],
   address: ["ADRESSE", "ADRESSEEXACTE"],
   baccNumber: ["NUMEROBACC", "NBACC", "NUMERODUBACC", "NUMEROBACCALAUREAT"],
   baccSeries: ["SERIE", "SERIEBACC", "SERIEDUBACC"],
   baccMention: ["MENTIONBACC", "MENTIONAUBACC", "MENTIONDUBACC"],
-  baccYear: ["ANNEEBACC", "ANNEEDOBTENTION", "ANNEEOBTENTIONBACC"],
+  baccYear: ["ANNEEBACC", "ANNEEDOBTENTION", "ANNEEOBTENTIONBACC", "ANNEEDOBTENTIONDUBACC"],
   baccCenter: ["CENTRE", "CENTREDEXAMEN"],
   baccCountry: ["PAYS"],
   previousSchool: ["ETABLISSEMENTDORIGINE", "ETABLISSEMENT", "ECOLEDORIGINE"],
   fatherName: ["PERE", "NOMDUPERE"],
-  motherName: ["MERE", "NOMDELAMERE"],
+  motherName: ["MERE", "NOMDELAMERE", "NOMETPRENOMDEMERE"],
   parentsPhone: ["TELEPHONEDESPARENTS", "TELEPHONEPARENTS", "TELPARENTS"],
   parentsAddress: ["ADRESSEDESPARENTS", "ADRESSEPARENTS"],
   parentsCity: ["VILLEDESPARENTS", "VILLEPARENTS", "VILLE"],
@@ -70,7 +92,7 @@ const FIELD_ALIASES: Record<string, string[]> = {
 type FieldKey = keyof typeof FIELD_ALIASES;
 
 // Construit, pour une ligne d'en-têtes donnée, la correspondance
-// "index de colonne -> champ du dossier" (une seule fois par import)
+// "index de colonne -> champ du dossier" (une seule fois par feuille)
 function mapColumns(headerCells: string[]): Map<number, FieldKey> {
   const columns = new Map<number, FieldKey>();
   headerCells.forEach((raw, i) => {
@@ -86,10 +108,45 @@ function mapColumns(headerCells: string[]): Map<number, FieldKey> {
   return columns;
 }
 
+function hasUsableColumns(columns: Map<number, FieldKey>): boolean {
+  const values = [...columns.values()];
+  return (values.includes("lastName") && values.includes("firstName")) || values.includes("fullName");
+}
+
+// Feuille "par classe" : nom du type "L1 - PGI", "M2 - GRH"... Le niveau et
+// le code de filière s'en déduisent ; le code est ensuite résolu vers le
+// libellé officiel (lib/formations.ts) quand il y correspond, pour rester
+// cohérent avec le reste de l'application (filtres, périmètre des
+// secrétaires de formation) — sinon le code brut sert de repli.
+const LEVEL_PREFIX_RE = /^([LM][1-3])\s*-\s*([A-Za-zÀ-ÖØ-öø-ÿ]+)/;
+
+function levelAndFormationFromSheetName(name: string): { level: string | null; code: string | null } {
+  const m = name.trim().match(LEVEL_PREFIX_RE);
+  if (!m) return { level: null, code: null };
+  return { level: m[1].toUpperCase(), code: m[2].toUpperCase() };
+}
+
+function formationLabelForCode(code: string): string {
+  const known = FORMATIONS.find((f) => f.code === code);
+  return known ? known.label : code;
+}
+
 // Convertit une valeur de cellule ExcelJS en date, qu'elle soit déjà un objet
-// Date (colonne formatée "date" dans Excel) ou un texte "2026-08-15" / "15/08/2026"
+// Date (colonne formatée "date" dans Excel) ou un texte "2026-08-15" / "15/08/2026".
+// Un nombre brut (ex. 38577) est un numéro de série Excel — cas fréquent en
+// lecture en flux (streaming), où la mise en forme "date" de la cellule
+// n'est pas toujours appliquée avant que la valeur ne nous parvienne,
+// contrairement au chargement complet (voir parseExistingRecordsFromFile).
 function toDate(value: ExcelJS.CellValue): Date | null {
   if (value instanceof Date) return value;
+  if (typeof value === "number" && Number.isFinite(value)) {
+    // Numéro de série Excel -> date : 25569 = écart (en jours) entre l'époque
+    // Excel (1899-12-30, qui compense le faux 29 février 1900 d'Excel) et
+    // l'époque Unix (1970-01-01). Formule standard, reprise de xlsx/SheetJS.
+    const ms = Math.round((value - 25569) * 86400 * 1000);
+    const d = new Date(ms);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
   if (typeof value === "string" && value.trim()) {
     const trimmed = value.trim();
     const isoLike = new Date(trimmed);
@@ -107,9 +164,47 @@ function toDate(value: ExcelJS.CellValue): Date | null {
 function toText(value: ExcelJS.CellValue): string {
   if (value === null || value === undefined) return "";
   if (value instanceof Date) return "";
-  if (typeof value === "object" && "text" in value) return String((value as { text: unknown }).text ?? "").trim();
-  if (typeof value === "object" && "result" in value) return String((value as { result: unknown }).result ?? "").trim();
+  // Cellule "vide" formatée en flux (streaming) : ExcelJS peut renvoyer NaN
+  // plutôt que null pour une cellule numérique/formule sans contenu réel —
+  // fréquent sur les milliers de lignes mises en forme mais vides en bas des
+  // feuilles "par classe" du fichier IUGM.
+  if (typeof value === "number" && Number.isNaN(value)) return "";
+  if (typeof value === "object") {
+    if ("richText" in value) {
+      return (value as { richText: Array<{ text?: string }> }).richText
+        .map((run) => run.text ?? "")
+        .join("")
+        .trim();
+    }
+    if ("text" in value) return String((value as { text: unknown }).text ?? "").trim();
+    if ("result" in value) {
+      const result = (value as { result: unknown }).result;
+      // `NaN ?? x` ne se déclenche pas (NaN n'est ni null ni undefined) : à
+      // vérifier explicitement, sous peine de rendre "NaN" en texte (voir la
+      // note plus haut — même symptôme, ici dans le résultat mis en cache
+      // d'une formule plutôt que dans la valeur brute de la cellule).
+      if (result === null || result === undefined || (typeof result === "number" && Number.isNaN(result))) {
+        return "";
+      }
+      return String(result).trim();
+    }
+    // Cellule-formule (souvent un VLOOKUP recopié sur des lignes de modèle
+    // sans étudiant réel) dont le résultat n'a pas été mis en cache dans le
+    // fichier : rien à en tirer, traitée comme une cellule vide plutôt que
+    // de finir en "[object Object]".
+    if ("formula" in value || "error" in value) return "";
+  }
   return String(value).trim();
+}
+
+// Texte trouvé tel quel dans le bandeau/légende des feuilles "par classe" du
+// fichier IUGM (récapitulatif d'effectif, rappel des codes de redoublement) —
+// jamais un vrai nom, même s'il tombe dans la colonne NOM après un décalage
+// de mise en page en bas de feuille.
+const NON_NAME_PATTERNS = [/^\[\s*\d+\s*\]$/, /^ARR[ÊE]T[ÉE]/i, /^N\s*\(NOUVEAU\)/i, /^R\s*\(REDOUBLANT\)/i, /^T\+?\s*\(TRIPLANT/i];
+
+function looksLikeRealName(value: string): boolean {
+  return value.length > 0 && value.toUpperCase() !== "NAN" && !NON_NAME_PATTERNS.some((re) => re.test(value));
 }
 
 const GENDER_ALIASES: Record<string, string> = {
@@ -157,78 +252,45 @@ export type PreselectionRow = {
   level: string | null;
 };
 
-export type ParsePreselectionResult = {
-  rows: PreselectionRow[];
-  errors: string[];
-};
+// Construit une PreselectionRow à partir des valeurs de cellules déjà
+// mappées aux champs (voir mapColumns) ; `sheetLevel`/`sheetFormation`
+// servent de repli quand la ligne elle-même n'a pas ces colonnes (format
+// "par classe" : niveau et filière déduits du nom de la feuille, voir
+// levelAndFormationFromSheetName). Partagé par parsePreselectionWorkbook
+// (classeurs classiques, chargement complet) et parseExistingRecordsFromFile
+// (fichiers volumineux "par classe", lecture en flux).
+function buildPreselectionRow(
+  values: Partial<Record<FieldKey, ExcelJS.CellValue>>,
+  rowLabel: string,
+  sheetLevel: string | null,
+  sheetFormation: string | null,
+): { row: PreselectionRow } | { error: string } | { skip: true } {
+  // Une date est une vraie valeur même si toText() la rend en "" (elle est
+  // gérée séparément, voir birthDate/cinIssueDate plus bas) ; tout le reste
+  // suit la même notion de "vide" que le texte affiché (couvre NaN, les
+  // cellules-formule sans résultat mis en cache, etc. — voir toText).
+  const isBlankCell = (v: ExcelJS.CellValue) => !(v instanceof Date) && toText(v) === "";
+  const allEmpty = Object.values(values).every(isBlankCell);
+  if (allEmpty) return { skip: true };
 
-// Lit le classeur Excel (1ère feuille) et transforme chaque ligne en
-// PreselectionRow. Ne touche pas à la base : voir importPreselectionFile.
-export async function parsePreselectionWorkbook(buffer: Buffer): Promise<ParsePreselectionResult> {
-  const workbook = new ExcelJS.Workbook();
-  // Cast : exceljs référence un `Buffer` ambiant résolu via la copie de
-  // @types/node imbriquée dans sa dépendance fast-csv, distincte (pour le
-  // typeur) du Buffer<ArrayBufferLike> de notre propre @types/node — même
-  // objet à l'exécution, seule l'identité de type diffère.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await workbook.xlsx.load(buffer as any);
-  const sheet = workbook.worksheets[0];
-  if (!sheet || sheet.rowCount < 2) {
-    return { rows: [], errors: ["Feuille vide ou sans ligne de données."] };
+  let lastName = toText(values.lastName);
+  let firstName = toText(values.firstName);
+  if (!lastName && values.fullName) {
+    const full = toText(values.fullName);
+    const parts = full.split(/\s+/).filter(Boolean);
+    lastName = lastName || parts[0] || "";
+    firstName = firstName || parts.slice(1).join(" ") || "";
   }
+  // Légende ou bandeau récapitulatif du modèle IUGM ("[ 1 ] [ 2 ] ..." sous
+  // l'en-tête, "ARRÊTÉ AU NOMBRE DE:", rappel des codes de redoublement en
+  // bas de feuille) : ni une ligne vide ni un vrai nom.
+  if (lastName && !looksLikeRealName(lastName)) return { skip: true };
 
-  const headerRow = sheet.getRow(1);
-  const headerCells: string[] = [];
-  headerRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-    headerCells[colNumber - 1] = toText(cell.value);
-  });
-  const columns = mapColumns(headerCells);
+  if (!lastName) return { error: `${rowLabel} : nom obligatoire.` };
 
-  const hasNameColumns =
-    [...columns.values()].includes("lastName") && [...columns.values()].includes("firstName");
-  const hasFullNameColumn = [...columns.values()].includes("fullName");
-  if (!hasNameColumns && !hasFullNameColumn) {
-    return {
-      rows: [],
-      errors: [
-        "Colonnes de nom introuvables : le fichier doit contenir des colonnes « Nom » et « Prénom » (ou une colonne « Nom et prénom »).",
-      ],
-    };
-  }
-
-  const rows: PreselectionRow[] = [];
-  const errors: string[] = [];
-
-  for (let rowNumber = 2; rowNumber <= sheet.rowCount; rowNumber++) {
-    const row = sheet.getRow(rowNumber);
-    if (row.cellCount === 0) continue;
-
-    const values: Partial<Record<FieldKey, ExcelJS.CellValue>> = {};
-    row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-      const field = columns.get(colNumber - 1);
-      if (field) values[field] = cell.value;
-    });
-
-    const allEmpty = Object.values(values).every((v) => v === null || v === undefined || v === "");
-    if (allEmpty) continue;
-
-    let lastName = toText(values.lastName);
-    let firstName = toText(values.firstName);
-    if (!lastName && values.fullName) {
-      const full = toText(values.fullName);
-      const parts = full.split(/\s+/).filter(Boolean);
-      lastName = lastName || parts[0] || "";
-      firstName = firstName || parts.slice(1).join(" ") || "";
-    }
-    // Le prénom seul peut manquer (courant à Madagascar) : seul le nom est
-    // vraiment obligatoire pour identifier la ligne.
-    if (!lastName) {
-      errors.push(`Ligne ${rowNumber} : nom obligatoire.`);
-      continue;
-    }
-
-    const genderRaw = toText(values.gender);
-    rows.push({
+  const genderRaw = toText(values.gender);
+  return {
+    row: {
       lastName,
       firstName,
       fullName: `${lastName.toUpperCase()} ${firstName}`.trim(),
@@ -254,11 +316,173 @@ export async function parsePreselectionWorkbook(buffer: Buffer): Promise<ParsePr
       parentsPhone: toText(values.parentsPhone) || null,
       parentsAddress: toText(values.parentsAddress) || null,
       parentsCity: toText(values.parentsCity) || null,
-      formation: toText(values.formation) || null,
-      level: toText(values.level) || null,
-    });
+      formation: toText(values.formation) || sheetFormation,
+      level: toText(values.level) || sheetLevel,
+    },
+  };
+}
+
+export type ParsePreselectionResult = {
+  rows: PreselectionRow[];
+  errors: string[];
+};
+
+// Lit le classeur Excel et transforme chaque ligne en PreselectionRow. Ne
+// touche pas à la base : voir importPreselectionFile. Deux modes, détectés
+// automatiquement :
+//  - une ou plusieurs feuilles nommées "L1 - PGI", "M2 - GRH"... (format "par
+//    classe") : chacune est lue, en-tête cherché dans ses ~20 premières
+//    lignes (bandeau ministériel avant), niveau/filière déduits du nom ;
+//  - sinon, comportement historique : la première feuille du classeur,
+//    en-têtes en ligne 1.
+export async function parsePreselectionWorkbook(buffer: Buffer): Promise<ParsePreselectionResult> {
+  const workbook = new ExcelJS.Workbook();
+  // Cast : exceljs référence un `Buffer` ambiant résolu via la copie de
+  // @types/node imbriquée dans sa dépendance fast-csv, distincte (pour le
+  // typeur) du Buffer<ArrayBufferLike> de notre propre @types/node — même
+  // objet à l'exécution, seule l'identité de type diffère.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await workbook.xlsx.load(buffer as any);
+
+  const matchingSheets = workbook.worksheets.filter((ws) => LEVEL_PREFIX_RE.test(ws.name.trim()));
+  const sheetsToParse = matchingSheets.length > 0 ? matchingSheets : workbook.worksheets.slice(0, 1);
+
+  const rows: PreselectionRow[] = [];
+  const errors: string[] = [];
+  let anyHeaderFound = false;
+
+  for (const sheet of sheetsToParse) {
+    if (sheet.rowCount < 2) continue;
+
+    const maxScan = Math.min(20, sheet.rowCount);
+    let headerRowNumber = -1;
+    let columns: Map<number, FieldKey> = new Map();
+    for (let r = 1; r <= maxScan; r++) {
+      const headerCells: string[] = [];
+      sheet.getRow(r).eachCell({ includeEmpty: true }, (cell, colNumber) => {
+        headerCells[colNumber - 1] = toText(cell.value);
+      });
+      const candidate = mapColumns(headerCells);
+      if (hasUsableColumns(candidate)) {
+        headerRowNumber = r;
+        columns = candidate;
+        break;
+      }
+    }
+    if (headerRowNumber === -1) continue;
+    anyHeaderFound = true;
+
+    const { level: sheetLevel, code: sheetCode } = levelAndFormationFromSheetName(sheet.name);
+    const sheetFormation = sheetCode ? formationLabelForCode(sheetCode) : null;
+
+    for (let rowNumber = headerRowNumber + 1; rowNumber <= sheet.rowCount; rowNumber++) {
+      const row = sheet.getRow(rowNumber);
+      if (row.cellCount === 0) continue;
+
+      const values: Partial<Record<FieldKey, ExcelJS.CellValue>> = {};
+      row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+        const field = columns.get(colNumber - 1);
+        if (field) values[field] = cell.value;
+      });
+
+      const result = buildPreselectionRow(values, `${sheet.name} — ligne ${rowNumber}`, sheetLevel, sheetFormation);
+      if ("error" in result) errors.push(result.error);
+      else if ("row" in result) rows.push(result.row);
+    }
   }
 
+  if (!anyHeaderFound) {
+    return {
+      rows: [],
+      errors: [
+        "Colonnes de nom introuvables : le fichier doit contenir des colonnes « Nom » et « Prénom » (ou une colonne « Nom et prénom »).",
+      ],
+    };
+  }
+
+  return { rows, errors };
+}
+
+// Variante en flux (streaming), pour les fichiers "par classe" trop
+// volumineux pour tenir en mémoire avec un chargement complet (voir
+// parsePreselectionWorkbook) — au-delà de la limite d'upload web (10 Mo,
+// voir app/admin/base-donnees/actions.ts), réservée à un import en ligne de
+// commande (voir scripts/). Lit directement un fichier sur disque plutôt
+// qu'un Buffer, pour ne jamais avoir la totalité du classeur en mémoire.
+export async function parseExistingRecordsFromFile(filePath: string): Promise<ParsePreselectionResult> {
+  const options = {
+    entries: "emit",
+    sharedStrings: "cache",
+    styles: "cache",
+    hyperlinks: "ignore",
+    worksheets: "emit",
+  } as const;
+  const reader = new ExcelJS.stream.xlsx.WorkbookReader(filePath, options);
+
+  const rows: PreselectionRow[] = [];
+  const errors: string[] = [];
+  let anyHeaderFound = false;
+
+  for await (const worksheetReader of reader) {
+    // `.name` existe bel et bien à l'exécution (voir exceljs/lib/stream/xlsx/worksheet-reader.js)
+    // mais manque des types publiés du paquet — cast ciblé, pas une vraie incertitude de type.
+    const sheetName = (worksheetReader as unknown as { name: string }).name.trim();
+    if (!LEVEL_PREFIX_RE.test(sheetName)) continue;
+
+    const { level: sheetLevel, code: sheetCode } = levelAndFormationFromSheetName(sheetName);
+    const sheetFormation = sheetCode ? formationLabelForCode(sheetCode) : null;
+
+    let columns: Map<number, FieldKey> | null = null;
+    let rowNumber = 0;
+    let dataRows = 0;
+
+    for await (const row of worksheetReader) {
+      rowNumber++;
+      if (!columns) {
+        if (rowNumber > 20) break; // pas d'en-tête reconnu dans le bandeau : feuille ignorée
+        const headerCells: string[] = [];
+        row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+          headerCells[colNumber - 1] = toText(cell.value);
+        });
+        const candidate = mapColumns(headerCells);
+        if (hasUsableColumns(candidate)) {
+          columns = candidate;
+          anyHeaderFound = true;
+        }
+        continue;
+      }
+
+      dataRows++;
+      // Garde-fou : très largement au-dessus d'un effectif réel de classe —
+      // au-delà, il ne reste que des lignes vides mises en forme jusqu'en
+      // bas de la feuille (source du poids du fichier).
+      if (dataRows > 20000) break;
+
+      const values: Partial<Record<FieldKey, ExcelJS.CellValue>> = {};
+      row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+        const field = columns!.get(colNumber - 1);
+        if (field) values[field] = cell.value;
+      });
+
+      const result = buildPreselectionRow(
+        values,
+        `${sheetName} — ligne ${rowNumber}`,
+        sheetLevel,
+        sheetFormation,
+      );
+      if ("error" in result) errors.push(result.error);
+      else if ("row" in result) rows.push(result.row);
+    }
+  }
+
+  if (!anyHeaderFound) {
+    return {
+      rows: [],
+      errors: [
+        "Aucune feuille reconnue : le format attendu est une feuille par niveau/filière, nommée par exemple « L1 - PGI », avec des colonnes Nom/Prénom.",
+      ],
+    };
+  }
   return { rows, errors };
 }
 
@@ -272,37 +496,46 @@ export type ImportPreselectionResult = {
   studentsMatched?: number;
 };
 
-// Importe le fichier Excel pour une année universitaire et une catégorie
-// (présélection ou dossiers existants) : remplace le lot précédent de cette
-// année ET catégorie (les fiches déjà utilisées pour inscrire un étudiant
-// sont conservées, pour ne jamais casser un dossier déjà créé) puis insère
-// les nouvelles lignes. Scoper aussi par catégorie évite qu'un ré-import des
-// dossiers existants n'efface la présélection de la même année (et vice-versa).
-export async function importPreselectionFile(
-  buffer: Buffer,
+// Enregistre en base un lot de PreselectionRow déjà extrait (voir
+// parsePreselectionWorkbook / parseExistingRecordsFromFile ci-dessus) pour
+// une année universitaire et une catégorie : remplace le lot précédent de
+// cette année ET catégorie (les fiches déjà utilisées pour inscrire un
+// étudiant sont conservées, pour ne jamais casser un dossier déjà créé) puis
+// insère les nouvelles lignes. Scoper aussi par catégorie évite qu'un
+// ré-import des dossiers existants n'efface la présélection de la même année
+// (et vice-versa).
+export async function importPreselectionRows(
+  rows: PreselectionRow[],
   academicYear: string,
   actorId: string,
-  category: PreselectionCategory = "PRESELECTION",
+  category: PreselectionCategory,
+  parseErrors: string[] = [],
 ): Promise<ImportPreselectionResult> {
   if (!/^\d{4}-\d{4}$/.test(academicYear)) {
     throw new Error("Année universitaire invalide (format attendu : 2026-2027).");
   }
-
-  const { rows, errors } = await parsePreselectionWorkbook(buffer);
   if (rows.length === 0) {
-    return { created: 0, errors: errors.length > 0 ? errors : ["Aucune ligne exploitable dans le fichier."] };
+    return {
+      created: 0,
+      errors: parseErrors.length > 0 ? parseErrors : ["Aucune ligne exploitable dans le fichier."],
+    };
   }
 
-  await prisma.$transaction(async (tx) => {
-    // Les fiches déjà liées à un dossier créé restent en base : seules les
-    // fiches non utilisées de cette année et catégorie sont remplacées.
-    await tx.preselectionCandidate.deleteMany({
-      where: { academicYear, category, usedByStudentId: null },
-    });
-    await tx.preselectionCandidate.createMany({
-      data: rows.map((row) => ({ ...row, academicYear, category, importedById: actorId })),
-    });
-  });
+  const errors = [...parseErrors];
+
+  await prisma.$transaction(
+    async (tx) => {
+      // Les fiches déjà liées à un dossier créé restent en base : seules les
+      // fiches non utilisées de cette année et catégorie sont remplacées.
+      await tx.preselectionCandidate.deleteMany({
+        where: { academicYear, category, usedByStudentId: null },
+      });
+      await tx.preselectionCandidate.createMany({
+        data: rows.map((row) => ({ ...row, academicYear, category, importedById: actorId })),
+      });
+    },
+    { timeout: 120_000 },
+  );
 
   // "Dossiers existants" : ces personnes sont déjà à l'université, pas
   // besoin de repasser par le guichet d'inscription — chaque fiche devient
@@ -383,6 +616,21 @@ export async function importPreselectionFile(
   );
 
   return { created: rows.length, errors, studentsCreated, studentsMatched };
+}
+
+// Importe le fichier Excel (classeur classique, chargement complet — voir
+// parsePreselectionWorkbook) pour une année universitaire et une catégorie.
+export async function importPreselectionFile(
+  buffer: Buffer,
+  academicYear: string,
+  actorId: string,
+  category: PreselectionCategory = "PRESELECTION",
+): Promise<ImportPreselectionResult> {
+  if (!/^\d{4}-\d{4}$/.test(academicYear)) {
+    throw new Error("Année universitaire invalide (format attendu : 2026-2027).");
+  }
+  const { rows, errors } = await parsePreselectionWorkbook(buffer);
+  return importPreselectionRows(rows, academicYear, actorId, category, errors);
 }
 
 // Nombre de fiches actuellement en base par année et par catégorie (pour

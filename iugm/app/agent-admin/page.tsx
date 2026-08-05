@@ -5,6 +5,8 @@ import { getSession } from "@/lib/auth";
 import { searchStudents } from "@/lib/students";
 import { getUserFormation } from "@/lib/permissions";
 import { getSelectedAcademicYear } from "@/lib/academic-year";
+import { getSelectedLevel } from "@/lib/level";
+import { getLevelFinancialInfos, registrationMinimum, FOREIGN_NATIONALITY } from "@/lib/finance";
 import { AppShell } from "@/app/ui/app-shell";
 import { StatCard } from "@/app/ui/stat-card";
 import { IconFolder, IconClipboard, IconShield, IconCap } from "@/app/ui/icons";
@@ -27,22 +29,37 @@ export default async function AgentAdminPage({
   const { q } = await searchParams;
   // Secrétaire de formation : dossiers limités à sa formation
   const userFormation = await getUserFormation(session.sub, session.role);
-  // Sélecteur global d'année universitaire (en-tête)
-  const selectedYear = await getSelectedAcademicYear();
+  // Sélecteur global d'année universitaire et de niveau (en-tête)
+  const [selectedYear, selectedLevel] = await Promise.all([
+    getSelectedAcademicYear(),
+    getSelectedLevel(),
+  ]);
   const statusWhere = {
     ...(userFormation ? { OR: [{ mention: userFormation }, { program: userFormation }] } : {}),
     ...(selectedYear ? { academicYear: selectedYear } : {}),
+    ...(selectedLevel ? { level: selectedLevel } : {}),
   };
   const [students, statusCounts] = await Promise.all([
-    searchStudents(q, userFormation, selectedYear),
+    searchStudents(q, userFormation, selectedYear, selectedLevel),
     prisma.student.groupBy({
       by: ["status"],
       _count: { _all: true },
-      ...(userFormation || selectedYear ? { where: statusWhere } : {}),
+      ...(userFormation || selectedYear || selectedLevel ? { where: statusWhere } : {}),
     }),
   ]);
   const countOf = (status: string) =>
     statusCounts.find((s) => s.status === status)?._count._all ?? 0;
+
+  // Montant minimum requis à l'inscription par niveau (droit d'inscription +
+  // assurance + polo + premier versement), affiché en aide sur chaque
+  // dossier encore ENREGISTRE — voir DossierActions.
+  const financialInfoByLevel = new Map(
+    (await getLevelFinancialInfos()).map((info) => [info.level, info]),
+  );
+  const registrationMinimumFor = (level: string | null, nationality: string | null) => {
+    const info = level ? financialInfoByLevel.get(level) : undefined;
+    return info ? registrationMinimum(info, nationality === FOREIGN_NATIONALITY) : null;
+  };
 
   return (
     <AppShell
@@ -188,6 +205,7 @@ export default async function AgentAdminPage({
                             studentId={s.id}
                             status={s.status}
                             accountEmail={s.account?.email}
+                            registrationMinimum={registrationMinimumFor(s.level, s.nationality)}
                           />
                         </td>
                       </tr>

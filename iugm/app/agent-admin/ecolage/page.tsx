@@ -5,6 +5,7 @@ import { getSession } from "@/lib/auth";
 import { getEcolageStats, listStudentsWithBalanceDue } from "@/lib/students";
 import { hasTaskPermission } from "@/lib/permissions";
 import { getSelectedAcademicYear } from "@/lib/academic-year";
+import { getSelectedLevel } from "@/lib/level";
 import { AppShell } from "@/app/ui/app-shell";
 import { StatCard } from "@/app/ui/stat-card";
 import { Donut } from "@/app/ui/donut";
@@ -73,11 +74,11 @@ export default async function EcolagePage() {
   if (!["AGENT_ADMINISTRATION", "SUPERADMIN"].includes(session.role)) redirect("/");
   if (!(await hasTaskPermission(session.sub, session.role, "ecolage"))) redirect("/agent-admin");
 
-  // Année universitaire pilotée par le sélecteur global de l'en-tête
-  const year = await getSelectedAcademicYear();
+  // Année universitaire et niveau pilotés par les sélecteurs globaux de l'en-tête
+  const [year, level] = await Promise.all([getSelectedAcademicYear(), getSelectedLevel()]);
   const [stats, due] = await Promise.all([
-    getEcolageStats(year ?? undefined),
-    listStudentsWithBalanceDue(year ?? undefined),
+    getEcolageStats(year ?? undefined, level ?? undefined),
+    listStudentsWithBalanceDue(year ?? undefined, level ?? undefined),
   ]);
   const fullPct = pct(stats.full, stats.total);
   const partialPct = pct(stats.partial, stats.total);

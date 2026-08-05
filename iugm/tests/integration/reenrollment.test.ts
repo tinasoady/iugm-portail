@@ -9,12 +9,9 @@ import {
   reenrollStudent,
 } from "@/lib/students";
 import { disconnectDb, resetDb } from "../setup/db";
-import { createActor, createTariff, validRegisterInput } from "../setup/factories";
+import { createActor, validRegisterInput } from "../setup/factories";
 
-beforeEach(async () => {
-  await resetDb();
-  await createTariff(); // "Management", filière par défaut de validRegisterInput
-});
+beforeEach(resetDb);
 afterAll(disconnectDb);
 
 // Fait passer un dossier fraîchement enregistré jusqu'au statut INSCRIT

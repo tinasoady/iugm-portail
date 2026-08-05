@@ -7,12 +7,9 @@ import {
   getStudentByQrToken,
 } from "@/lib/students";
 import { disconnectDb, resetDb } from "../setup/db";
-import { createActor, createTariff, validRegisterInput } from "../setup/factories";
+import { createActor, validRegisterInput } from "../setup/factories";
 
-beforeEach(async () => {
-  await resetDb();
-  await createTariff();
-});
+beforeEach(resetDb);
 afterAll(disconnectDb);
 
 describe("carte étudiante numérique (QR code)", () => {

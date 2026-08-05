@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth";
 import {
   recordEcolagePayment,
+  verifyRegistrationPayment,
   validateAdminInscription,
   importStudentsCsv,
   type EcolagePaymentTypeValue,
@@ -30,7 +31,11 @@ async function requireAgentAdmin(task: TaskKey) {
   return session;
 }
 
-const VALID_PAYMENT_TYPES: EcolagePaymentTypeValue[] = ["TRANCHE_S1", "TRANCHE_S2", "TOTALITE"];
+// Seule la 2e tranche (versement en cours d'année, hors inscription) passe
+// encore par cette action générique — le versement à l'inscription (1ère
+// tranche ou totalité) est désormais géré par verifyRegistrationPaymentAction
+// ci-dessous, avec un montant saisi par l'agent plutôt que calculé.
+const VALID_PAYMENT_TYPES: EcolagePaymentTypeValue[] = ["TRANCHE_S2"];
 
 export async function recordEcolagePaymentAction(
   _prev: ActionState,
@@ -63,6 +68,43 @@ export async function recordEcolagePaymentAction(
     revalidatePath("/agent-admin");
     revalidatePath("/agent-admin/ecolage");
     return { success: `Reçu ${receiptNumber} enregistré (${payment.amount.toLocaleString("fr-FR")} Ar).` };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Erreur lors de l'enregistrement." };
+  }
+}
+
+// Vérification du paiement à l'inscription (dossier ENREGISTRE) : reçu +
+// montant réellement versé, comparé au minimum requis pour ce niveau (droit
+// d'inscription + assurance + polo + premier versement) — voir
+// verifyRegistrationPayment dans lib/students.ts.
+export async function verifyRegistrationPaymentAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const session = await requireAgentAdmin("verification_paiement");
+  if (!session) return { error: "Accès refusé." };
+  if (session === "denied") return { error: PERMISSION_DENIED_MESSAGE };
+
+  const studentId = String(formData.get("studentId") ?? "");
+  const receiptNumber = String(formData.get("receiptNumber") ?? "").trim();
+  const amount = Number(String(formData.get("amount") ?? "").replace(/\s/g, ""));
+  if (!studentId || !receiptNumber) {
+    return { error: "Numéro de reçu obligatoire." };
+  }
+  if (!Number.isInteger(amount) || amount < 0) {
+    return { error: "Montant invalide." };
+  }
+  if (!(await canManageStudent(session.sub, session.role, studentId))) {
+    return { error: FORMATION_DENIED_MESSAGE };
+  }
+
+  try {
+    const payment = await verifyRegistrationPayment(studentId, receiptNumber, amount, session.sub);
+    revalidatePath("/agent-admin");
+    revalidatePath("/agent-admin/ecolage");
+    return {
+      success: `Reçu ${receiptNumber} enregistré (${payment.amount.toLocaleString("fr-FR")} Ar). L'inscription peut être validée.`,
+    };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Erreur lors de l'enregistrement." };
   }

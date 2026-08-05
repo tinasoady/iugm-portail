@@ -2,14 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 
-import { Prisma } from "@prisma/client";
-
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { logAction } from "@/lib/audit";
-import { hasTaskPermission } from "@/lib/permissions";
 import { saveSettings, getSettings, INSTITUTION_KEYS } from "@/lib/settings";
 import { saveUploadedFile, deleteUploadedFile } from "@/lib/storage";
+import { FINANCIAL_INFO_DEFAULTS, type FinancialInfoFields } from "@/lib/finance";
+import { LEVELS } from "@/lib/level-shared";
 
 export type SettingsState = { success?: string; error?: string };
 
@@ -18,28 +17,6 @@ async function requireSuperadmin() {
   const session = await getSession();
   if (!session || session.role !== "SUPERADMIN") return null;
   return session;
-}
-
-// Tarifs : superadmin, ou agent d'administration avec la tâche "ecolage"
-// (service finance — voir /agent-admin/ecolage/tarifs, qui réutilise ces
-// mêmes actions que la page Paramètres).
-async function requireTariffAccess() {
-  const session = await getSession();
-  if (!session) return null;
-  if (session.role === "SUPERADMIN") return session;
-  if (
-    session.role === "AGENT_ADMINISTRATION" &&
-    (await hasTaskPermission(session.sub, session.role, "ecolage"))
-  ) {
-    return session;
-  }
-  return null;
-}
-
-// Les tarifs apparaissent sur les deux pages qui les affichent
-function revalidateTariffPages() {
-  revalidatePath("/admin/parametres");
-  revalidatePath("/agent-admin/ecolage/tarifs");
 }
 
 // Les paramètres apparaissent sur toutes les pages (sidebar, login, reçu)
@@ -112,91 +89,44 @@ export async function removeLogoAction(): Promise<SettingsState> {
 }
 
 // ---------------------------------------------------------------------------
-// Tarifs
+// Renseignements financiers par niveau
 // ---------------------------------------------------------------------------
 
-function parseAmount(formData: FormData): number | null {
-  const amount = Number(String(formData.get("amount") ?? "").replace(/\s/g, ""));
+function parseAmount(formData: FormData, key = "amount"): number | null {
+  const amount = Number(String(formData.get(key) ?? "").replace(/\s/g, ""));
   if (!Number.isInteger(amount) || amount < 0) return null;
   return amount;
 }
 
-// Filière associée au tarif (utilisée pour le calcul automatique des
-// tranches d'écolage) : "" côté formulaire = aucune, stockée comme null.
-function parseFormation(formData: FormData): string | null {
-  const value = String(formData.get("formation") ?? "").trim();
-  return value || null;
-}
+const FINANCIAL_INFO_FIELDS = Object.keys(FINANCIAL_INFO_DEFAULTS) as Array<
+  keyof FinancialInfoFields
+>;
 
-export async function addTariffAction(
+export async function updateLevelFinancialInfoAction(
   _prev: SettingsState,
   formData: FormData,
 ): Promise<SettingsState> {
-  const session = await requireTariffAccess();
+  const session = await requireSuperadmin();
   if (!session) return { error: "Accès refusé." };
 
-  const label = String(formData.get("label") ?? "").trim();
-  const amount = parseAmount(formData);
-  const formation = parseFormation(formData);
-  if (!label) return { error: "Le libellé du tarif est obligatoire." };
-  if (amount === null) return { error: "Montant invalide (nombre entier en ariary)." };
-
-  try {
-    await prisma.tariff.create({ data: { label, amount, formation } });
-  } catch (e) {
-    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
-      return { error: `Un tarif est déjà associé à la filière « ${formation} ».` };
-    }
-    throw e;
+  const level = String(formData.get("level") ?? "");
+  if (!LEVELS.includes(level as (typeof LEVELS)[number])) {
+    return { error: "Niveau invalide." };
   }
-  await logAction("SETTINGS_UPDATED", `Tarif ajouté : ${label} — ${amount} Ar`, session.sub);
-  revalidateTariffPages();
-  return { success: `Tarif « ${label} » ajouté.` };
-}
 
-export async function updateTariffAction(
-  _prev: SettingsState,
-  formData: FormData,
-): Promise<SettingsState> {
-  const session = await requireTariffAccess();
-  if (!session) return { error: "Accès refusé." };
-
-  const id = String(formData.get("id") ?? "");
-  const label = String(formData.get("label") ?? "").trim();
-  const amount = parseAmount(formData);
-  const formation = parseFormation(formData);
-  if (!id || !label) return { error: "Libellé obligatoire." };
-  if (amount === null) return { error: "Montant invalide." };
-
-  try {
-    await prisma.tariff.update({ where: { id }, data: { label, amount, formation } });
-  } catch (e) {
-    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
-      return { error: `Un tarif est déjà associé à la filière « ${formation} ».` };
-    }
-    return { error: "Tarif introuvable." };
+  const data: Partial<FinancialInfoFields> = {};
+  for (const field of FINANCIAL_INFO_FIELDS) {
+    const amount = parseAmount(formData, field);
+    if (amount === null) return { error: `Montant invalide pour « ${field} ».` };
+    data[field] = amount;
   }
-  await logAction("SETTINGS_UPDATED", `Tarif modifié : ${label} — ${amount} Ar`, session.sub);
-  revalidateTariffPages();
-  return { success: `Tarif « ${label} » mis à jour.` };
-}
 
-export async function deleteTariffAction(
-  _prev: SettingsState,
-  formData: FormData,
-): Promise<SettingsState> {
-  const session = await requireTariffAccess();
-  if (!session) return { error: "Accès refusé." };
-
-  const id = String(formData.get("id") ?? "");
-  if (!id) return { error: "Tarif manquant." };
-
-  try {
-    const tariff = await prisma.tariff.delete({ where: { id } });
-    await logAction("SETTINGS_UPDATED", `Tarif supprimé : ${tariff.label}`, session.sub);
-  } catch {
-    return { error: "Tarif introuvable." };
-  }
-  revalidateTariffPages();
-  return { success: "Tarif supprimé." };
+  await prisma.levelFinancialInfo.upsert({
+    where: { level },
+    update: data,
+    create: { level, ...(data as FinancialInfoFields) },
+  });
+  await logAction("SETTINGS_UPDATED", `Renseignements financiers mis à jour pour ${level}`, session.sub);
+  revalidatePath("/admin/parametres");
+  return { success: `Renseignements financiers de ${level} enregistrés.` };
 }

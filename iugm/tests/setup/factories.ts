@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { RegisterStudentInput } from "@/lib/students";
+import { FINANCIAL_INFO_DEFAULTS, type FinancialInfoFields } from "@/lib/finance";
 
 // Compteur simple pour des valeurs uniques (email, n° bacc...) sans dépendre
 // de Math.random()/Date.now() dans les tests — juste un compteur de process.
@@ -26,15 +27,23 @@ export async function createActor(role: ActorRole = "SUPERADMIN") {
   });
 }
 
-// Dossier d'inscription minimal mais valide vis-à-vis des règles de
-// registerStudent (année au format AAAA-AAAA, sexe M/F, personne à contacter
-// d'urgence obligatoire...).
-// Tarif annuel d'écolage pour une filière — requis par recordEcolagePayment
-// (le montant de chaque tranche est calculé depuis ce tarif, jamais saisi
-// librement). "Management" correspond à la filière par défaut de
-// validRegisterInput ci-dessous.
-export async function createTariff(formation = "Management", amount = 2_000_000) {
-  return prisma.tariff.create({ data: { label: `Écolage ${formation}`, amount, formation } });
+// Renseignements financiers d'un niveau — requis par recordEcolagePayment /
+// verifyRegistrationPayment (le montant de chaque tranche est calculé depuis
+// le tarif annuel du niveau, jamais saisi librement pour la 2e tranche).
+// "L1" correspond au niveau par défaut de validRegisterInput ci-dessous. Sans
+// appel à cette factory, les valeurs par défaut de lib/finance.ts
+// s'appliquent déjà (aucune configuration n'est requise pour un niveau
+// standard) : ne l'utiliser que pour tester avec des montants précis.
+export async function createLevelFinancialInfo(
+  level = "L1",
+  overrides: Partial<FinancialInfoFields> = {},
+) {
+  const data = { ...FINANCIAL_INFO_DEFAULTS, ...overrides };
+  return prisma.levelFinancialInfo.upsert({
+    where: { level },
+    update: data,
+    create: { level, ...data },
+  });
 }
 
 export function validRegisterInput(

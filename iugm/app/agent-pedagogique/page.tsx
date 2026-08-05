@@ -5,6 +5,7 @@ import { getSession } from "@/lib/auth";
 import { searchStudents, listInscrits, getFilterOptions } from "@/lib/students";
 import { getUserFormation } from "@/lib/permissions";
 import { currentAcademicYear, getSelectedAcademicYear } from "@/lib/academic-year";
+import { getSelectedLevel } from "@/lib/level";
 import { AppShell } from "@/app/ui/app-shell";
 import { StatCard } from "@/app/ui/stat-card";
 import { IconClipboard, IconCap, IconChart, IconFolder } from "@/app/ui/icons";
@@ -40,16 +41,26 @@ export default async function AgentPedagogiquePage({
 
   // Secrétaire de formation : tout est limité à sa formation, côté serveur
   const userFormation = await getUserFormation(session.sub, session.role);
-  // Sélecteur global d'année universitaire (en-tête)
-  const selectedYear = await getSelectedAcademicYear();
+  // Sélecteurs globaux d'année universitaire et de niveau (en-tête)
+  const [selectedYear, selectedLevel] = await Promise.all([
+    getSelectedAcademicYear(),
+    getSelectedLevel(),
+  ]);
+  const studentWhere = {
+    ...(selectedYear ? { academicYear: selectedYear } : {}),
+    ...(selectedLevel ? { level: selectedLevel } : {}),
+  };
   const [allStudents, inscrits, filterOptions, statusCounts, resultCount] = await Promise.all([
-    searchStudents(q, userFormation, selectedYear),
-    listInscrits({ q: qi, program, department, mention, year: selectedYear }, userFormation),
+    searchStudents(q, userFormation, selectedYear, selectedLevel),
+    listInscrits(
+      { q: qi, program, department, mention, year: selectedYear, level: selectedLevel },
+      userFormation,
+    ),
     getFilterOptions(selectedYear),
     prisma.student.groupBy({
       by: ["status"],
       _count: { _all: true },
-      ...(selectedYear ? { where: { academicYear: selectedYear } } : {}),
+      ...(selectedYear || selectedLevel ? { where: studentWhere } : {}),
     }),
     prisma.academicResult.count({
       ...(selectedYear ? { where: { academicYear: selectedYear } } : {}),

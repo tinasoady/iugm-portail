@@ -1,24 +1,19 @@
 import { redirect } from "next/navigation";
 
-import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
+import { getLevelFinancialInfos } from "@/lib/finance";
 import { AppShell } from "@/app/ui/app-shell";
 import { InstitutionForm } from "./institution-form";
 import { LogoForm } from "./logo-form";
-import { TariffRow, AddTariffForm } from "./tariff-forms";
-
-const amountFormatter = new Intl.NumberFormat("fr-FR");
+import { FinancialInfoForm } from "./financial-info-forms";
 
 export default async function ParametresPage() {
   const session = await getSession();
   if (!session) redirect("/login");
   if (session.role !== "SUPERADMIN") redirect("/");
 
-  const [settings, tariffs] = await Promise.all([
-    getSettings(),
-    prisma.tariff.findMany({ orderBy: { createdAt: "asc" } }),
-  ]);
+  const [settings, financialInfos] = await Promise.all([getSettings(), getLevelFinancialInfos()]);
 
   return (
     <AppShell
@@ -45,50 +40,24 @@ export default async function ParametresPage() {
         </section>
       </div>
 
-      {/* Tarifs */}
+      {/* Renseignements financiers */}
       <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-zinc-900">
         <h2 className="mb-1 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-          Tarifs ({tariffs.length})
+          Renseignements financiers
         </h2>
         <p className="mb-4 text-xs text-zinc-500 dark:text-zinc-400">
-          Droits d&apos;inscription, frais de scolarité par niveau ou type de formation... Montants
-          en ariary. Modifiez une ligne puis « Enregistrer », ou supprimez-la. Un tarif associé à
-          une filière sert de montant annuel d&apos;écolage pour cette filière : les agents
-          n&apos;ont plus qu&apos;à choisir « 1ère tranche » (moitié) ou « Totalité » lors de
-          l&apos;enregistrement d&apos;un versement — voir Gestion d&apos;écolage.
+          Montants par niveau (L1 à M2), en ariary : droit d&apos;inscription, assurance, polo,
+          frais de formation annuel et premier versement. Le polo n&apos;est en principe dû que
+          par un nouvel étudiant (optionnel pour un ancien étudiant). Le paiement à
+          l&apos;inscription d&apos;un dossier n&apos;est validé que s&apos;il couvre au moins le
+          droit d&apos;inscription + l&apos;assurance + le polo + le premier versement du niveau.
         </p>
 
         <div className="space-y-3">
-          {tariffs.length === 0 && (
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              Aucun tarif configuré pour le moment.
-            </p>
-          )}
-          {tariffs.map((t) => (
-            <TariffRow
-              key={t.id}
-              id={t.id}
-              label={t.label}
-              amount={t.amount}
-              formation={t.formation}
-            />
+          {financialInfos.map((info) => (
+            <FinancialInfoForm key={info.level} info={info} />
           ))}
         </div>
-
-        <div className="mt-6 border-t border-black/5 pt-4 dark:border-white/10">
-          <h3 className="mb-2 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
-            Ajouter un tarif
-          </h3>
-          <AddTariffForm />
-        </div>
-
-        {tariffs.length > 0 && (
-          <p className="mt-4 text-xs text-zinc-500 dark:text-zinc-400">
-            Total configuré :{" "}
-            {amountFormatter.format(tariffs.reduce((sum, t) => sum + t.amount, 0))} Ar sur{" "}
-            {tariffs.length} tarif(s).
-          </p>
-        )}
       </section>
     </AppShell>
   );

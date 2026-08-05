@@ -321,19 +321,23 @@ model Setting {
   updatedAt DateTime @updatedAt
 }
 
-// Tarifs configurables par le superadmin (droits d'inscription, scolarité...)
-model Tariff {
-  id        String   @id @default(cuid())
-  label     String
-  amount    Int // montant en ariary
-  // Filière associée (correspond à Student.mention / program) : quand
-  // renseignée, ce tarif est le montant annuel d'écolage de cette filière et
-  // sert au calcul automatique des tranches (voir recordEcolagePayment dans
-  // lib/students.ts). Les tarifs sans filière (droits de dossier, etc.)
-  // restent une simple liste informative, non utilisée dans ce calcul.
-  formation String?  @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+// Renseignements financiers par niveau (droit d'inscription, assurance,
+// polo, frais de formation, premier versement), configurables par le
+// superadmin depuis Paramètres — base du calcul du paiement à l'inscription
+// et du solde d'écolage restant dû (voir lib/finance.ts et
+// verifyRegistrationPayment/recordEcolagePayment dans lib/students.ts).
+model LevelFinancialInfo {
+  id                  String   @id @default(cuid())
+  level               String   @unique // L1, L2, L3, M1, M2
+  inscriptionLocal    Int // droit d'inscription, étudiant local
+  inscriptionForeign  Int // droit d'inscription, étudiant étranger
+  insurance           Int // assurance
+  polo                Int // polo (optionnel pour un ancien étudiant)
+  tuitionLocal        Int // frais de formation annuel, étudiant local
+  tuitionForeign      Int // frais de formation annuel, étudiant étranger
+  firstPaymentLocal   Int // premier versement, étudiant local
+  firstPaymentForeign Int // premier versement, étudiant étranger
+  updatedAt           DateTime @updatedAt
 }
 
 // Type de versement d'écolage pour une année universitaire donnée : soit

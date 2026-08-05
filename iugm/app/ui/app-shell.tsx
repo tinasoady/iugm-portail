@@ -7,7 +7,9 @@ import { Footer } from "./footer";
 import { unreadAnnouncementsCount } from "@/lib/announcements";
 import { getAcademicYears } from "@/lib/students";
 import { getSelectedAcademicYear } from "@/lib/academic-year";
+import { getSelectedLevel } from "@/lib/level";
 import { AcademicYearSelector } from "./academic-year-selector";
+import { LevelSelector } from "./level-selector";
 import { AccountMenu } from "./account-menu";
 import type { TaskKey } from "@/lib/permissions";
 import {
@@ -185,13 +187,19 @@ export async function AppShell({
   const showAcademicYearSelector = role !== "ETUDIANT";
   let academicYearYears: string[] = [];
   let selectedAcademicYear: string | null = null;
+  let selectedLevel: string | null = null;
   if (showAcademicYearSelector) {
-    const [years, selected] = await Promise.all([getAcademicYears(), getSelectedAcademicYear()]);
+    const [years, selected, level] = await Promise.all([
+      getAcademicYears(),
+      getSelectedAcademicYear(),
+      getSelectedLevel(),
+    ]);
     // L'année sélectionnée par défaut (année en cours) peut ne pas encore
     // avoir de dossier en base — on l'ajoute quand même à la liste pour que
     // le <select> l'affiche correctement dès la première visite.
     academicYearYears = selected && !years.includes(selected) ? [selected, ...years] : years;
     selectedAcademicYear = selected;
+    selectedLevel = level;
   }
 
   return (
@@ -281,7 +289,10 @@ export async function AppShell({
             </div>
             <div className="flex items-center gap-2 sm:gap-3">
               {showAcademicYearSelector && (
-                <AcademicYearSelector years={academicYearYears} selected={selectedAcademicYear} />
+                <>
+                  <AcademicYearSelector years={academicYearYears} selected={selectedAcademicYear} />
+                  <LevelSelector selected={selectedLevel} />
+                </>
               )}
               <ThemeToggle />
               <AccountMenu

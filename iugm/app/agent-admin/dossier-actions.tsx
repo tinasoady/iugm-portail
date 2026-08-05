@@ -1,7 +1,11 @@
 ﻿"use client";
 
 import { useActionState } from "react";
-import { recordEcolagePaymentAction, validateAdminAction, type ActionState } from "./actions";
+import {
+  verifyRegistrationPaymentAction,
+  validateAdminAction,
+  type ActionState,
+} from "./actions";
 
 const initialState: ActionState = {};
 
@@ -13,13 +17,18 @@ export function DossierActions({
   studentId,
   status,
   accountEmail,
+  registrationMinimum,
 }: {
   studentId: string;
   status: string;
   accountEmail?: string | null;
+  // Montant minimum requis pour débloquer le dossier (droit d'inscription +
+  // assurance + polo + premier versement du niveau) — affiché en aide, non
+  // imposé côté client (le serveur revérifie systématiquement).
+  registrationMinimum?: number | null;
 }) {
   const [paymentState, paymentFormAction, paymentPending] = useActionState(
-    recordEcolagePaymentAction,
+    verifyRegistrationPaymentAction,
     initialState,
   );
   const [validateState, validateFormAction, validatePending] = useActionState(
@@ -39,29 +48,34 @@ export function DossierActions({
             placeholder="N° du reçu"
             className="w-28 rounded-lg border border-black/10 bg-white px-2 py-1.5 text-xs text-zinc-900 outline-none focus:ring-2 focus:ring-black/20 dark:border-white/10 dark:bg-black dark:text-zinc-50"
           />
-          {/* Deux boutons, un même formulaire : le montant (moitié ou totalité
-              du tarif de la filière) est calculé côté serveur, pas saisi ici. */}
+          <input
+            name="amount"
+            type="number"
+            required
+            min={0}
+            step={1}
+            placeholder="Montant versé"
+            title={
+              registrationMinimum
+                ? `Minimum requis : ${registrationMinimum.toLocaleString("fr-FR")} Ar`
+                : undefined
+            }
+            className="w-28 rounded-lg border border-black/10 bg-white px-2 py-1.5 text-xs text-zinc-900 outline-none focus:ring-2 focus:ring-black/20 dark:border-white/10 dark:bg-black dark:text-zinc-50"
+          />
           <button
             type="submit"
-            name="type"
-            value="TRANCHE_S1"
             disabled={paymentPending}
-            title="1ère tranche : moitié du tarif annuel de la filière"
+            title="Le dossier n'est débloqué que si le montant couvre le minimum requis pour ce niveau"
             className={smallButtonClass}
           >
-            {paymentPending ? "..." : "1ère tranche"}
-          </button>
-          <button
-            type="submit"
-            name="type"
-            value="TOTALITE"
-            disabled={paymentPending}
-            title="Paiement de la totalité de l'année en une fois"
-            className="rounded-lg border border-black/10 px-3 py-1.5 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100 disabled:opacity-50 dark:border-white/10 dark:text-zinc-200 dark:hover:bg-zinc-900"
-          >
-            Totalité
+            {paymentPending ? "..." : "Vérifier le paiement"}
           </button>
         </form>
+        {registrationMinimum != null && (
+          <p className="text-[11px] text-zinc-400 dark:text-zinc-500">
+            Minimum requis : {registrationMinimum.toLocaleString("fr-FR")} Ar
+          </p>
+        )}
         {paymentState.error && (
           <p className="text-xs text-red-600 dark:text-red-400">{paymentState.error}</p>
         )}

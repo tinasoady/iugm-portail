@@ -6,6 +6,7 @@ import { getSession } from "@/lib/auth";
 import { listStudents, getStudentFilterValues } from "@/lib/students";
 import { hasTaskPermission, getUserFormation } from "@/lib/permissions";
 import { getSelectedAcademicYear } from "@/lib/academic-year";
+import { getSelectedLevel } from "@/lib/level";
 import { AppShell } from "@/app/ui/app-shell";
 import {
   STATUS_LABELS,
@@ -99,11 +100,22 @@ export default async function EtudiantsPage({
     redirect("/");
   }
 
-  const params = await searchParams;
+  const rawParams = await searchParams;
   // Secrétaire de formation : la liste est limitée à sa formation, côté serveur
   const userFormation = await getUserFormation(session.sub, session.role);
   // Année universitaire pilotée par le sélecteur global de l'en-tête
-  const selectedYear = await getSelectedAcademicYear();
+  const [selectedYear, selectedLevel] = await Promise.all([
+    getSelectedAcademicYear(),
+    getSelectedLevel(),
+  ]);
+  // Le filtre "niveau" de cette page reprend, par défaut, le niveau choisi
+  // dans le sélecteur global de l'en-tête — sauf si l'agent a explicitement
+  // choisi une valeur ici (y compris "Tous les niveaux", qui doit alors
+  // primer sur le sélecteur global plutôt que d'y retomber).
+  const params: Params = {
+    ...rawParams,
+    niveau: rawParams.niveau !== undefined ? rawParams.niveau || undefined : (selectedLevel ?? undefined),
+  };
   const [{ students, total, page, totalPages }, filterValues] = await Promise.all([
     listStudents(
       { ...params, year: selectedYear ?? undefined, page: Number(params.page) || 1 },
@@ -198,7 +210,7 @@ export default async function EtudiantsPage({
           >
             Rechercher
           </button>
-          {(params.q || params.filiere || params.niveau || params.group) && (
+          {(rawParams.q || rawParams.filiere || rawParams.niveau || rawParams.group) && (
             <Link
               href="/etudiants"
               className="rounded-xl border border-black/10 px-3 py-2 text-sm font-medium text-zinc-600 transition hover:bg-zinc-100 dark:border-white/10 dark:text-zinc-300 dark:hover:bg-zinc-800"

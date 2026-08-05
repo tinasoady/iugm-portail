@@ -4,6 +4,13 @@ import { Prisma } from "@prisma/client";
 
 import { prisma } from "./prisma";
 import { logAction } from "./audit";
+import {
+  getLevelFinancialInfoOne,
+  getLevelFinancialInfos,
+  registrationMinimum,
+  annualTuition,
+  FOREIGN_NATIONALITY,
+} from "./finance";
 
 export const STUDENT_EMAIL_DOMAIN = "student.iugm.edu";
 
@@ -364,35 +371,35 @@ export const ECOLAGE_PAYMENT_LABELS: Record<EcolagePaymentTypeValue, string> = {
 };
 
 // 2. Agent d'administration : enregistre un versement d'écolage pour l'année
-// en cours du dossier. Le montant est calculé depuis le tarif configuré pour
-// la filière (moitié du tarif annuel pour une tranche, montant plein pour un
-// versement total) — pas de saisie libre, pour éviter les écarts entre
-// dossiers. Le tout premier versement de l'année débloque la suite du
-// workflow (validation administrative), exactement comme l'ancien reçu
-// unique ; les versements suivants (2e tranche) ne font qu'ajouter une ligne
-// d'historique, le dossier étant déjà débloqué.
+// en cours du dossier. Le montant annuel de référence vient des
+// renseignements financiers du niveau du dossier (lib/finance.ts, local ou
+// étranger selon Student.nationality) — moitié de ce montant pour une
+// tranche, montant plein pour un versement total, sauf `explicitAmount`
+// fourni (montant réellement versé, saisi par l'agent — voir
+// verifyRegistrationPayment ci-dessous, pour le tout premier versement de
+// l'année). Le tout premier versement débloque la suite du workflow
+// (validation administrative) ; les versements suivants (2e tranche) ne font
+// qu'ajouter une ligne d'historique, le dossier étant déjà débloqué.
 export async function recordEcolagePayment(
   studentId: string,
   type: EcolagePaymentTypeValue,
   receiptNumber: string,
   actorId: string,
+  explicitAmount?: number,
 ) {
   const student = await prisma.student.findUnique({ where: { id: studentId } });
   if (!student) throw new Error("Dossier introuvable.");
   if (!student.academicYear) {
     throw new Error("Ce dossier n'a pas d'année universitaire définie.");
   }
-
-  const formation = student.mention ?? student.program;
-  if (!formation) {
-    throw new Error("Ce dossier n'a pas de filière définie : impossible de déterminer le tarif.");
-  }
-  const tariff = await prisma.tariff.findUnique({ where: { formation } });
-  if (!tariff) {
+  if (!student.level) {
     throw new Error(
-      `Aucun tarif configuré pour la filière « ${formation} ». Configurez-le depuis Paramètres avant d'enregistrer un versement.`,
+      "Ce dossier n'a pas de niveau défini : impossible de déterminer le montant attendu.",
     );
   }
+
+  const info = await getLevelFinancialInfoOne(student.level);
+  const annualAmount = annualTuition(info, student.nationality === FOREIGN_NATIONALITY);
 
   const existing = await prisma.ecolagePayment.findMany({
     where: { studentId, academicYear: student.academicYear },
@@ -415,7 +422,7 @@ export async function recordEcolagePayment(
     throw new Error("La 1ère tranche doit être enregistrée avant la 2e.");
   }
 
-  const amount = type === "TOTALITE" ? tariff.amount : Math.round(tariff.amount / 2);
+  const amount = explicitAmount ?? (type === "TOTALITE" ? annualAmount : Math.round(annualAmount / 2));
 
   const payment = await prisma.$transaction(async (tx) => {
     const created = await tx.ecolagePayment.create({
@@ -443,6 +450,48 @@ export async function recordEcolagePayment(
     actorId,
   );
   return payment;
+}
+
+// Vérification du paiement à l'inscription (dossier au statut ENREGISTRE) :
+// l'agent saisit le montant réellement versé (plus de tranche calculée
+// automatiquement) ; le dossier n'est débloqué que si ce montant couvre au
+// moins les frais généraux (droit d'inscription + assurance + polo) et le
+// premier versement du niveau du dossier — voir registrationMinimum dans
+// lib/finance.ts. Le type de versement enregistré est déduit du montant :
+// au moins le tarif annuel plein => versement total, sinon 1ère tranche.
+export async function verifyRegistrationPayment(
+  studentId: string,
+  receiptNumber: string,
+  amountPaid: number,
+  actorId: string,
+) {
+  if (!Number.isInteger(amountPaid) || amountPaid < 0) {
+    throw new Error("Montant invalide.");
+  }
+  const student = await prisma.student.findUnique({ where: { id: studentId } });
+  if (!student) throw new Error("Dossier introuvable.");
+  if (student.status !== "ENREGISTRE") {
+    throw new Error("Ce dossier n'est plus en attente de vérification du paiement.");
+  }
+  if (!student.level) {
+    throw new Error(
+      "Ce dossier n'a pas de niveau défini : impossible de déterminer le montant attendu.",
+    );
+  }
+
+  const info = await getLevelFinancialInfoOne(student.level);
+  const foreign = student.nationality === FOREIGN_NATIONALITY;
+  const minimum = registrationMinimum(info, foreign);
+
+  if (amountPaid < minimum) {
+    throw new Error(
+      `Montant insuffisant : ${minimum.toLocaleString("fr-FR")} Ar minimum requis (droit d'inscription + assurance + polo + premier versement), il manque ${(minimum - amountPaid).toLocaleString("fr-FR")} Ar.`,
+    );
+  }
+
+  const type: EcolagePaymentTypeValue =
+    amountPaid >= annualTuition(info, foreign) ? "TOTALITE" : "TRANCHE_S1";
+  return recordEcolagePayment(studentId, type, receiptNumber, actorId, amountPaid);
 }
 
 // Versements déjà enregistrés pour l'année en cours d'un dossier + le
@@ -708,10 +757,12 @@ export async function assignAcademicResult(input: AssignResultInput, actorId: st
 
 // `formation` : restreint aux dossiers de cette formation (secrétaire de formation)
 // `year` : restreint à cette année universitaire (sélecteur global de l'en-tête)
+// `level` : restreint à ce niveau (sélecteur global de l'en-tête)
 export async function searchStudents(
   query?: string,
   formation?: string | null,
   year?: string | null,
+  level?: string | null,
 ) {
   const q = query?.trim();
   const conditions: object[] = [];
@@ -720,6 +771,9 @@ export async function searchStudents(
   }
   if (year) {
     conditions.push({ academicYear: year });
+  }
+  if (level) {
+    conditions.push({ level });
   }
   if (q) {
     conditions.push({
@@ -745,6 +799,7 @@ export type InscritsFilters = {
   department?: string;
   mention?: string;
   year?: string | null;
+  level?: string | null;
 };
 
 const VALID_MENTIONS: MentionValue[] = ["ECHEC", "PASSABLE", "ASSEZ_BIEN", "BIEN", "TRES_BIEN"];
@@ -762,6 +817,7 @@ export async function listInscrits(filters: InscritsFilters = {}, formation?: st
       status: "INSCRIT",
       ...(formation ? { AND: [{ OR: [{ mention: formation }, { program: formation }] }] } : {}),
       ...(filters.year ? { academicYear: filters.year } : {}),
+      ...(filters.level ? { level: filters.level } : {}),
       ...(filters.program ? { program: filters.program } : {}),
       ...(filters.department ? { department: filters.department } : {}),
       ...(mention ? { results: { some: { mention } } } : {}),
@@ -1194,9 +1250,10 @@ export type EcolageStats = {
   byFormation: Array<{ formation: string; full: number; partial: number; unpaid: number; total: number }>;
 };
 
-export async function getEcolageStats(year?: string): Promise<EcolageStats> {
+export async function getEcolageStats(year?: string, level?: string): Promise<EcolageStats> {
+  const where = { ...(year ? { academicYear: year } : {}), ...(level ? { level } : {}) };
   const students = await prisma.student.findMany({
-    where: year ? { academicYear: year } : {},
+    where,
     select: { id: true, academicYear: true, mention: true, program: true },
   });
   const typesByStudent = await paymentTypesByStudent(students);
@@ -1233,14 +1290,17 @@ export type EcolageDueEntry = {
   academicYear: string | null;
   createdAt: Date;
   paymentStatus: "UNPAID" | "PARTIAL";
-  amountDue: number | null; // null si aucun tarif configuré pour la filière
+  amountDue: number | null; // null si le dossier n'a pas de niveau défini
 };
 
 // Dossiers dont l'écolage de l'année en cours n'est pas intégralement réglé
 // (rien versé, ou seulement la 1ère tranche) — pour relance.
-export async function listStudentsWithBalanceDue(year?: string): Promise<EcolageDueEntry[]> {
+export async function listStudentsWithBalanceDue(
+  year?: string,
+  level?: string,
+): Promise<EcolageDueEntry[]> {
   const students = await prisma.student.findMany({
-    where: year ? { academicYear: year } : {},
+    where: { ...(year ? { academicYear: year } : {}), ...(level ? { level } : {}) },
     orderBy: { createdAt: "asc" },
     select: {
       id: true,
@@ -1252,24 +1312,22 @@ export async function listStudentsWithBalanceDue(year?: string): Promise<Ecolage
       program: true,
       academicYear: true,
       createdAt: true,
+      level: true,
+      nationality: true,
     },
   });
   if (students.length === 0) return [];
 
   const typesByStudent = await paymentTypesByStudent(students);
-  const formations = [
-    ...new Set(students.map((s) => s.mention ?? s.program).filter((f): f is string => !!f)),
-  ];
-  const tariffs = await prisma.tariff.findMany({ where: { formation: { in: formations } } });
-  const tariffByFormation = new Map(tariffs.map((t) => [t.formation!, t.amount]));
+  const infoByLevel = new Map((await getLevelFinancialInfos()).map((i) => [i.level, i]));
 
   const due: EcolageDueEntry[] = [];
   for (const s of students) {
     const status = paymentStatusOf(typesByStudent.get(s.id) ?? new Set());
     if (status === "FULL") continue;
 
-    const formation = s.mention ?? s.program ?? null;
-    const annualAmount = formation ? tariffByFormation.get(formation) : undefined;
+    const info = s.level ? infoByLevel.get(s.level) : undefined;
+    const annualAmount = info ? annualTuition(info, s.nationality === FOREIGN_NATIONALITY) : undefined;
     const amountDue =
       annualAmount === undefined
         ? null
@@ -1297,9 +1355,9 @@ export async function listStudentsWithBalanceDue(year?: string): Promise<Ecolage
 export type StudentBalanceDue = {
   status: EcolagePaymentStatus;
   academicYear: string | null;
-  annualAmount: number | null; // tarif annuel de la filière ; null si non configuré
+  annualAmount: number | null; // frais de formation annuel du niveau ; null si niveau non défini
   paidAmount: number; // déjà versé pour l'année de rattachement actuelle
-  amountDue: number | null; // reste à payer ; null si tarif non configuré, 0 si soldé
+  amountDue: number | null; // reste à payer ; null si niveau non défini, 0 si soldé
 };
 
 // Reste à payer d'UN dossier pour son année de rattachement actuelle — sert à
@@ -1308,7 +1366,7 @@ export type StudentBalanceDue = {
 export async function getStudentBalanceDue(studentId: string): Promise<StudentBalanceDue> {
   const student = await prisma.student.findUniqueOrThrow({
     where: { id: studentId },
-    select: { academicYear: true, mention: true, program: true },
+    select: { academicYear: true, level: true, nationality: true },
   });
 
   const payments = student.academicYear
@@ -1319,9 +1377,9 @@ export async function getStudentBalanceDue(studentId: string): Promise<StudentBa
   const status = paymentStatusOf(new Set(payments.map((p) => p.type)));
   const paidAmount = payments.reduce((sum, p) => sum + p.amount, 0);
 
-  const formation = student.mention ?? student.program;
-  const tariff = formation ? await prisma.tariff.findUnique({ where: { formation } }) : null;
-  const annualAmount = tariff?.amount ?? null;
+  const annualAmount = student.level
+    ? annualTuition(await getLevelFinancialInfoOne(student.level), student.nationality === FOREIGN_NATIONALITY)
+    : null;
 
   const amountDue =
     status === "FULL" ? 0 : annualAmount === null ? null : Math.max(annualAmount - paidAmount, 0);

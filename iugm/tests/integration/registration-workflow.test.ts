@@ -4,21 +4,25 @@ import { prisma } from "@/lib/prisma";
 import {
   registerStudent,
   recordEcolagePayment,
+  verifyRegistrationPayment,
   validateAdminInscription,
   validatePedagoInscription,
 } from "@/lib/students";
 import { disconnectDb, resetDb } from "../setup/db";
-import { createActor, createTariff, validRegisterInput } from "../setup/factories";
+import { createActor, createLevelFinancialInfo, validRegisterInput } from "../setup/factories";
 
-// Parcours complet d'un dossier : enregistrement -> 1ère tranche d'écolage
-// versée -> validation administrative -> validation pédagogique (création
+// Parcours complet d'un dossier : enregistrement -> paiement d'inscription
+// vérifié -> validation administrative -> validation pédagogique (création
 // automatique du compte). C'est le workflow central de l'application ; s'il
 // régresse, plus rien derrière (impression du reçu, tableau de bord, compte
 // étudiant...) n'est fiable.
 
 beforeEach(async () => {
   await resetDb();
-  await createTariff(); // "Management", filière par défaut de validRegisterInput
+  // "L1" correspond au niveau par défaut de validRegisterInput ; tuitionLocal
+  // fixé à une valeur ronde pour des assertions lisibles (le reste des
+  // montants garde les valeurs par défaut de lib/finance.ts).
+  await createLevelFinancialInfo("L1", { tuitionLocal: 2_000_000 });
 });
 afterAll(disconnectDb);
 
@@ -30,8 +34,12 @@ describe("workflow d'inscription", () => {
     expect(student.status).toBe("ENREGISTRE");
     expect(student.matricule).toMatch(/^FI2026-\d+$/);
 
-    const afterPayment = await recordEcolagePayment(student.id, "TRANCHE_S1", "REC-001", actor.id);
-    expect(afterPayment.amount).toBe(1_000_000); // moitié du tarif (2 000 000 Ar)
+    // Montant versé par l'agent : au-dessus du minimum requis (290 000 Ar :
+    // droit d'inscription + assurance + polo + premier versement), en deçà
+    // du tarif annuel plein (2 000 000 Ar) => 1ère tranche.
+    const afterPayment = await verifyRegistrationPayment(student.id, "REC-001", 400_000, actor.id);
+    expect(afterPayment.amount).toBe(400_000);
+    expect(afterPayment.type).toBe("TRANCHE_S1");
     const reloadedAfterPayment = await prisma.student.findUniqueOrThrow({
       where: { id: student.id },
     });
@@ -71,24 +79,33 @@ describe("workflow d'inscription", () => {
     expect(matricules).toEqual(["FI2026-1", "FI2026-2", "FI2026-3"]);
   });
 
-  it("refuse d'enregistrer deux fois la même tranche pour un dossier", async () => {
+  it("refuse le paiement d'inscription si le montant versé est insuffisant", async () => {
     const actor = await createActor("AGENT_ADMINISTRATION");
     const student = await registerStudent(validRegisterInput(), actor.id);
-    await recordEcolagePayment(student.id, "TRANCHE_S1", "REC-001", actor.id);
 
+    // 200 000 Ar < minimum requis (290 000 Ar)
     await expect(
-      recordEcolagePayment(student.id, "TRANCHE_S1", "REC-002", actor.id),
-    ).rejects.toThrow(/déjà enregistrée/);
+      verifyRegistrationPayment(student.id, "REC-001", 200_000, actor.id),
+    ).rejects.toThrow(/Montant insuffisant/);
   });
 
-  it("refuse un versement total une fois une tranche déjà enregistrée", async () => {
+  it("enregistre un versement total quand le montant couvre le tarif annuel plein", async () => {
     const actor = await createActor("AGENT_ADMINISTRATION");
     const student = await registerStudent(validRegisterInput(), actor.id);
-    await recordEcolagePayment(student.id, "TRANCHE_S1", "REC-001", actor.id);
+
+    const payment = await verifyRegistrationPayment(student.id, "REC-001", 2_000_000, actor.id);
+    expect(payment.type).toBe("TOTALITE");
+    expect(payment.amount).toBe(2_000_000);
+  });
+
+  it("refuse une 2e vérification de paiement une fois le dossier débloqué", async () => {
+    const actor = await createActor("AGENT_ADMINISTRATION");
+    const student = await registerStudent(validRegisterInput(), actor.id);
+    await verifyRegistrationPayment(student.id, "REC-001", 400_000, actor.id);
 
     await expect(
-      recordEcolagePayment(student.id, "TOTALITE", "REC-002", actor.id),
-    ).rejects.toThrow(/impossible de basculer/);
+      verifyRegistrationPayment(student.id, "REC-002", 400_000, actor.id),
+    ).rejects.toThrow(/plus en attente/);
   });
 
   it("refuse la 2e tranche avant la 1ère", async () => {
@@ -100,22 +117,19 @@ describe("workflow d'inscription", () => {
     ).rejects.toThrow(/1ère tranche doit être enregistrée avant/);
   });
 
-  it("refuse un versement si aucun tarif n'est configuré pour la filière", async () => {
+  it("refuse un versement si le dossier n'a pas de niveau défini", async () => {
     const actor = await createActor("AGENT_ADMINISTRATION");
-    const student = await registerStudent(
-      validRegisterInput({ mention: "Filière sans tarif" }),
-      actor.id,
-    );
+    const student = await registerStudent(validRegisterInput({ level: "" }), actor.id);
 
     await expect(
-      recordEcolagePayment(student.id, "TRANCHE_S1", "REC-001", actor.id),
-    ).rejects.toThrow(/Aucun tarif configuré/);
+      verifyRegistrationPayment(student.id, "REC-001", 400_000, actor.id),
+    ).rejects.toThrow(/n'a pas de niveau défini/);
   });
 
   it("refuse la validation pédagogique tant que l'administratif n'est pas validé", async () => {
     const actor = await createActor("AGENT_ADMINISTRATION");
     const student = await registerStudent(validRegisterInput(), actor.id);
-    await recordEcolagePayment(student.id, "TRANCHE_S1", "REC-001", actor.id);
+    await verifyRegistrationPayment(student.id, "REC-001", 400_000, actor.id);
     // Pas de validateAdminInscription ici : le dossier reste PAIEMENT_VERIFIE
 
     await expect(validatePedagoInscription(student.id, actor.id)).rejects.toThrow(
