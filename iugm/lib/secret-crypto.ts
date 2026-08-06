@@ -34,13 +34,20 @@ export function encryptSecret(plain: string): string {
   return [iv, authTag, ciphertext].map((b) => b.toString("base64url")).join(":");
 }
 
-// Renvoie null si la valeur est absente ou invalide (mauvais format, ou
-// chiffrée avec un autre AUTH_SECRET) plutôt que de faire échouer la page
-// appelante — un dossier ancien sans mot de passe initial reste affichable.
+// Format attendu d'une valeur chiffrée par encryptSecret : trois segments
+// base64url séparés par ":". Un mot de passe initial en clair (matricule +
+// suffixe généré par generateInitialPassword, ou mot de passe temporaire de
+// generatePassword) ne contient jamais ":" — donc une valeur qui ne suit pas
+// ce format vient forcément d'un dossier écrit avant l'introduction du
+// chiffrement. On la renvoie telle quelle plutôt que de la faire disparaître
+// de l'affichage (voir scripts/encrypt-legacy-initial-passwords.ts pour la
+// migration qui rattrape ces valeurs).
+const CIPHERTEXT_PATTERN = /^[A-Za-z0-9_-]+:[A-Za-z0-9_-]+:[A-Za-z0-9_-]+$/;
+
 export function decryptSecret(value: string | null | undefined): string | null {
   if (!value) return null;
+  if (!CIPHERTEXT_PATTERN.test(value)) return value;
   const parts = value.split(":");
-  if (parts.length !== 3) return null;
 
   try {
     const [ivB64, tagB64, cipherB64] = parts;
