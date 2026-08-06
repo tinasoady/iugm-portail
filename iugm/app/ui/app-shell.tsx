@@ -288,11 +288,16 @@ export async function AppShell({
               )}
             </div>
             <div className="flex items-center gap-2 sm:gap-3">
+              {/* Masqués sous sm : sur un petit écran, ces deux sélecteurs
+                  plus le bouton de thème et l'avatar dans la même ligne
+                  laissaient trop peu de place à l'avatar (déconnexion) pour
+                  qu'il reste facile à repérer. Toujours disponibles à partir
+                  d'une tablette. */}
               {showAcademicYearSelector && (
-                <>
+                <div className="hidden items-center gap-2 sm:flex sm:gap-3">
                   <AcademicYearSelector years={academicYearYears} selected={selectedAcademicYear} />
                   <LevelSelector selected={selectedLevel} />
-                </>
+                </div>
               )}
               <ThemeToggle />
               <AccountMenu

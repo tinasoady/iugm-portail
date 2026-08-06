@@ -645,6 +645,26 @@ export async function validatePedagoInscription(studentId: string, actorId: stri
   );
   await logAction("USER_CREATED", `Compte étudiant ${email} créé automatiquement`, actorId);
 
+  // Communiqué de bienvenue, uniquement à la toute première inscription (pas
+  // à une réinscription, qui conserve le compte existant — voir plus haut) :
+  // en best-effort comme l'avis d'admission automatique (assignAcademicResult
+  // ci-dessus), une erreur ici ne doit jamais faire échouer l'inscription
+  // elle-même, qui est déjà actée en base à ce stade.
+  try {
+    await createAnnouncement(
+      {
+        title: "Bienvenue à l'IUGM Mahajanga !",
+        body: `Bienvenue ${updatedStudent.fullName} ! Votre inscription est finalisée et votre compte étudiant (matricule ${updatedStudent.matricule}) est actif. Pensez à changer votre mot de passe initial dès votre première connexion si ce n'est pas déjà fait, et à vérifier vos informations dans « Mon profil ». Bonne année universitaire !`,
+        studentId,
+        kind: "WELCOME",
+        sourceAcademicYear: updatedStudent.academicYear,
+      },
+      actorId,
+    );
+  } catch (e) {
+    console.error("Échec de l'envoi du communiqué de bienvenue :", e);
+  }
+
   // Le mot de passe en clair n'est retourné qu'une seule fois, pour être transmis à l'étudiant
   return { student: updatedStudent, email, password: password as string | null };
 }

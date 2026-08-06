@@ -107,7 +107,7 @@ export default async function AdminPage({
     >
       {/* Cartes statistiques — cliquables : accès rapide à la liste filtrée
           par rôle, juste en-dessous (section "Utilisateurs") */}
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <StatCard
           label="Super administrateur"
           value={countOf("SUPERADMIN")}

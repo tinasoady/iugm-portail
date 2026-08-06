@@ -69,7 +69,7 @@ export default async function AgentAdminPage({
       active="/agent-admin"
     >
         {/* Cartes statistiques du workflow */}
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
           <StatCard
             label="Enregistrés"
             value={countOf("ENREGISTRE")}

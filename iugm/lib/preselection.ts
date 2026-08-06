@@ -1,5 +1,5 @@
 import ExcelJS from "exceljs";
-import type { PreselectionCategory } from "@prisma/client";
+import { Prisma, type PreselectionCategory } from "@prisma/client";
 
 import { prisma } from "./prisma";
 import { logAction } from "./audit";
@@ -605,13 +605,31 @@ export async function importPreselectionRows(
             },
             actorId,
           ));
-        await prisma.preselectionCandidate.update({
-          where: { id: c.id },
-          data: { usedByStudentId: student.id, usedAt: new Date() },
-        });
-        // Comptés seulement une fois la liaison réellement écrite : sinon une
-        // ligne dont l'update échoue (ex. contrainte d'unicité) se retrouvait
-        // à la fois dans le résumé de succès et dans la liste d'erreurs.
+        try {
+          await prisma.preselectionCandidate.update({
+            where: { id: c.id },
+            data: { usedByStudentId: student.id, usedAt: new Date() },
+          });
+        } catch (updateError) {
+          // `usedByStudentId` est unique (une fiche = un dossier, voir
+          // schema.prisma) : si `existing` était déjà vrai, c'est qu'une
+          // AUTRE fiche (un import précédent) revendique déjà ce dossier —
+          // exactement le cas d'un ré-import corrigé de la même personne. Ce
+          // n'est pas une erreur : le dossier ne doit pas être dupliqué, et
+          // cette fiche redondante reste simplement non liée (elle sera
+          // remplacée au prochain import, ou supprimable via le bouton de
+          // nettoyage — Base de données). Toute autre cause d'échec reste
+          // une vraie erreur.
+          const isRedundantDuplicate =
+            existing &&
+            updateError instanceof Prisma.PrismaClientKnownRequestError &&
+            updateError.code === "P2002";
+          if (!isRedundantDuplicate) throw updateError;
+        }
+        // Comptés seulement une fois la liaison réellement écrite (ou
+        // reconnue redondante) : sinon une ligne dont l'update échoue pour
+        // une autre raison se retrouverait à la fois dans le résumé de
+        // succès et dans la liste d'erreurs.
         if (existing) studentsMatched++;
         else studentsCreated++;
       } catch (e) {

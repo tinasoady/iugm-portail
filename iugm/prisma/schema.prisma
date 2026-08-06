@@ -300,10 +300,12 @@ model AcademicResult {
 }
 
 // Origine d'un communiqué : rédigé manuellement par un agent, ou généré
-// automatiquement (ex : avis d'admission à l'issue des résultats S1+S2).
+// automatiquement (ex : avis d'admission à l'issue des résultats S1+S2, ou
+// message de bienvenue à la création du compte — voir validatePedagoInscription).
 enum AnnouncementKind {
   MANUAL
   ADMISSION_NOTICE
+  WELCOME
 }
 
 // Communiqué envoyé par un agent aux étudiants (lecture seule côté étudiant).
