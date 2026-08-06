@@ -23,7 +23,11 @@ export async function createAnnouncement(
     kind?: AnnouncementKind;
     sourceAcademicYear?: string | null;
   },
-  actorId: string,
+  // null pour un communiqué généré par le système sans agent à l'origine
+  // (ex : bienvenue à la première connexion, voir
+  // sendWelcomeAnnouncementOnFirstLogin) — `authorId` est nullable côté
+  // schéma pour ce cas précis.
+  actorId: string | null,
 ) {
   const title = input.title.trim();
   const body = input.body.trim();
@@ -49,6 +53,37 @@ export async function createAnnouncement(
     : [announcement.formation ?? "toutes filières", announcement.level ?? "tous niveaux"].join(" / ");
   await logAction("ANNOUNCEMENT_SENT", `Communiqué « ${title} » envoyé (${target})`, actorId);
   return announcement;
+}
+
+// Communiqué de bienvenue à la toute première connexion réussie d'un
+// étudiant sur le portail — pas à l'inscription : un dossier peut être
+// validé plusieurs jours avant que l'étudiant se connecte pour la première
+// fois, et le message n'a de sens qu'une fois qu'il est vraiment entré dans
+// le portail (voir authenticateUser, lib/login.ts).
+//
+// `User.firstLoginAt` sert de verrou atomique : l'update conditionnel
+// (WHERE firstLoginAt IS NULL) ne peut réussir qu'une seule fois, même si
+// deux connexions arrivaient en même temps — pas de double communiqué.
+export async function sendWelcomeAnnouncementOnFirstLogin(userId: string): Promise<void> {
+  const claimed = await prisma.user.updateMany({
+    where: { id: userId, firstLoginAt: null },
+    data: { firstLoginAt: new Date() },
+  });
+  if (claimed.count === 0) return; // déjà connecté au moins une fois
+
+  const student = await prisma.student.findFirst({ where: { accountId: userId } });
+  if (!student) return; // compte étudiant sans dossier lié : ne devrait pas arriver
+
+  await createAnnouncement(
+    {
+      title: "Bienvenue à l'IUGM Mahajanga !",
+      body: `Bienvenue ${student.fullName} ! Votre compte étudiant (matricule ${student.matricule}) est maintenant actif. Pensez à vérifier vos informations dans « Mon profil ». Bonne année universitaire !`,
+      studentId: student.id,
+      kind: "WELCOME",
+      sourceAcademicYear: student.academicYear,
+    },
+    null,
+  );
 }
 
 // Liste pour les agents (tous les communiqués, avec auteur et lectures) —

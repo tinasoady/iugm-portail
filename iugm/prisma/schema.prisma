@@ -24,6 +24,11 @@ model User {
   mustChangePassword      Boolean                 @default(false)
   // Compte désactivé : connexion refusée (géré depuis la page Permissions)
   active                  Boolean                 @default(true)
+  // Date de la toute première connexion réussie (null tant que jamais
+  // connecté) — sert de verrou atomique pour le communiqué de bienvenue
+  // envoyé une seule fois à un étudiant, voir authenticateUser (lib/login.ts)
+  // et sendWelcomeAnnouncementOnFirstLogin (lib/announcements.ts).
+  firstLoginAt            DateTime?
   // Fonction / poste (ex : Secrétaire, Chef de scolarité, Responsable finance...)
   jobTitle                String?
   // Photo de profil (data URL, gérée par l'utilisateur sur sa page Mon compte)

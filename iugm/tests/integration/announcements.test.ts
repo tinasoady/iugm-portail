@@ -7,10 +7,12 @@ import {
   validateAdminInscription,
   validatePedagoInscription,
   assignAcademicResult,
-  reenrollStudent,
-  verifyRegistrationPayment,
 } from "@/lib/students";
-import { createAnnouncement, listAnnouncementsForStudent } from "@/lib/announcements";
+import {
+  createAnnouncement,
+  listAnnouncementsForStudent,
+  sendWelcomeAnnouncementOnFirstLogin,
+} from "@/lib/announcements";
 import { disconnectDb, resetDb } from "../setup/db";
 import { createActor, validRegisterInput } from "../setup/factories";
 
@@ -26,41 +28,47 @@ async function enrollToInscrit(actorId: string, overrides: Partial<Parameters<ty
 }
 
 describe("communiqué de bienvenue automatique", () => {
-  it("envoie un communiqué personnel à la toute première inscription", async () => {
+  it("n'envoie rien à la validation de l'inscription elle-même", async () => {
     const actor = await createActor("AGENT_PEDAGOGIQUE");
     const inscrit = await enrollToInscrit(actor.id);
+
+    // L'inscription peut être validée plusieurs jours avant que l'étudiant
+    // se connecte pour la première fois : le communiqué ne doit pas exister
+    // avant sendWelcomeAnnouncementOnFirstLogin (déclenché par la connexion).
+    const notices = await prisma.announcement.findMany({
+      where: { studentId: inscrit.id, kind: "WELCOME" },
+    });
+    expect(notices).toHaveLength(0);
+  });
+
+  it("envoie un communiqué personnel à la toute première connexion", async () => {
+    const actor = await createActor("AGENT_PEDAGOGIQUE");
+    const inscrit = await enrollToInscrit(actor.id);
+
+    await sendWelcomeAnnouncementOnFirstLogin(inscrit.accountId!);
 
     const notices = await prisma.announcement.findMany({
       where: { studentId: inscrit.id, kind: "WELCOME" },
     });
     expect(notices).toHaveLength(1);
     expect(notices[0].body).toContain(inscrit.matricule);
+    expect(notices[0].authorId).toBeNull(); // généré par le système, pas par un agent
     expect(notices[0].sourceAcademicYear).toBe(inscrit.academicYear);
 
     const view = await listAnnouncementsForStudent(inscrit.accountId!);
     expect(view.some((a) => a.kind === "WELCOME")).toBe(true);
+
+    const account = await prisma.user.findUniqueOrThrow({ where: { id: inscrit.accountId! } });
+    expect(account.firstLoginAt).not.toBeNull();
   });
 
-  it("n'envoie rien de nouveau lors d'une réinscription (compte déjà existant)", async () => {
-    const pedagoActor = await createActor("AGENT_PEDAGOGIQUE");
-    const adminActor = await createActor("AGENT_ADMINISTRATION");
-    const inscrit = await enrollToInscrit(pedagoActor.id);
+  it("n'envoie rien de plus aux connexions suivantes", async () => {
+    const actor = await createActor("AGENT_PEDAGOGIQUE");
+    const inscrit = await enrollToInscrit(actor.id);
 
-    // Réinscription pour l'année suivante : reprend le dossier existant sans
-    // créer un nouveau compte (voir validatePedagoInscription) — un seul
-    // communiqué de bienvenue doit exister, celui de la première inscription.
-    // Redoublement (même niveau) plutôt qu'un passage : évite la condition de
-    // moyenne >= 10 requise pour progresser, hors sujet ici.
-    const nextYear = `${Number(inscrit.academicYear!.split("-")[0]) + 1}-${Number(inscrit.academicYear!.split("-")[0]) + 2}`;
-    await reenrollStudent(
-      inscrit.id,
-      { academicYear: nextYear, level: inscrit.level, docTranscript: true, docBlueFolder: true },
-      adminActor.id,
-      "AGENT_ADMINISTRATION",
-    );
-    await verifyRegistrationPayment(inscrit.id, "REC-002", 400_000, adminActor.id);
-    await validateAdminInscription(inscrit.id, adminActor.id);
-    await validatePedagoInscription(inscrit.id, pedagoActor.id);
+    await sendWelcomeAnnouncementOnFirstLogin(inscrit.accountId!);
+    await sendWelcomeAnnouncementOnFirstLogin(inscrit.accountId!);
+    await sendWelcomeAnnouncementOnFirstLogin(inscrit.accountId!);
 
     const notices = await prisma.announcement.findMany({
       where: { studentId: inscrit.id, kind: "WELCOME" },

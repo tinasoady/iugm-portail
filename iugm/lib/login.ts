@@ -4,6 +4,7 @@ import { prisma } from "./prisma";
 import { createSessionToken } from "./auth";
 import { logAction } from "./audit";
 import { getClientIp, checkLoginRateLimit, recordLoginAttempt } from "./rate-limit";
+import { sendWelcomeAnnouncementOnFirstLogin } from "./announcements";
 
 export type LoginResult =
   | { ok: true; token: string; destination: string }
@@ -71,6 +72,16 @@ export async function authenticateUser(email: string, password: string): Promise
   await recordLoginAttempt(email, ip, true);
   const token = createSessionToken({ sub: user.id, email: user.email, role: user.role });
   await logAction("LOGIN_SUCCESS", `Connexion de ${user.email}`, user.id);
+
+  // Best-effort : un souci ici (compte étudiant sans dossier lié, etc.) ne
+  // doit jamais empêcher la connexion elle-même.
+  if (user.role === "ETUDIANT") {
+    try {
+      await sendWelcomeAnnouncementOnFirstLogin(user.id);
+    } catch (e) {
+      console.error("Échec de l'envoi du communiqué de bienvenue :", e);
+    }
+  }
 
   // Mot de passe initial prévisible : changement forcé avant tout accès
   const destination = user.mustChangePassword
