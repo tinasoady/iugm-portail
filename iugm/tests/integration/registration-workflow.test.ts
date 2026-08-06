@@ -38,8 +38,8 @@ describe("workflow d'inscription", () => {
     // droit d'inscription + assurance + polo + premier versement), en deçà
     // du tarif annuel plein (2 000 000 Ar) => 1ère tranche.
     const afterPayment = await verifyRegistrationPayment(student.id, "REC-001", 400_000, actor.id);
-    expect(afterPayment.amount).toBe(400_000);
-    expect(afterPayment.type).toBe("TRANCHE_S1");
+    expect(afterPayment.payment.amount).toBe(400_000);
+    expect(afterPayment.payment.type).toBe("TRANCHE_S1");
     const reloadedAfterPayment = await prisma.student.findUniqueOrThrow({
       where: { id: student.id },
     });
@@ -93,9 +93,10 @@ describe("workflow d'inscription", () => {
     const actor = await createActor("AGENT_ADMINISTRATION");
     const student = await registerStudent(validRegisterInput(), actor.id);
 
-    const payment = await verifyRegistrationPayment(student.id, "REC-001", 2_000_000, actor.id);
-    expect(payment.type).toBe("TOTALITE");
-    expect(payment.amount).toBe(2_000_000);
+    const result = await verifyRegistrationPayment(student.id, "REC-001", 2_000_000, actor.id);
+    expect(result.payment.type).toBe("TOTALITE");
+    expect(result.payment.amount).toBe(2_000_000);
+    expect(result.remainingBalance).toBe(0);
   });
 
   it("refuse une 2e vérification de paiement une fois le dossier débloqué", async () => {

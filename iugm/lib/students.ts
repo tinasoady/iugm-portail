@@ -514,9 +514,14 @@ export async function verifyRegistrationPayment(
     );
   }
 
-  const type: EcolagePaymentTypeValue =
-    amountPaid >= annualTuition(info, foreign) ? "TOTALITE" : "TRANCHE_S1";
-  return recordEcolagePayment(studentId, type, receiptNumber, actorId, amountPaid);
+  const annual = annualTuition(info, foreign);
+  const type: EcolagePaymentTypeValue = amountPaid >= annual ? "TOTALITE" : "TRANCHE_S1";
+  const payment = await recordEcolagePayment(studentId, type, receiptNumber, actorId, amountPaid);
+  // Reste à payer pour solder l'écolage de l'année, une fois ce versement pris
+  // en compte — affiché à l'agent pour qu'il sache tout de suite quoi
+  // annoncer à la famille (voir verifyRegistrationPaymentAction).
+  const remainingBalance = Math.max(annual - amountPaid, 0);
+  return { payment, remainingBalance };
 }
 
 // Versements déjà enregistrés pour l'année en cours d'un dossier + le
@@ -1320,21 +1325,28 @@ function paymentStatusOf(types: Set<EcolagePaymentTypeValue>): EcolagePaymentSta
   return "UNPAID";
 }
 
-// Regroupe les versements par dossier, en ne gardant que ceux de l'année de
-// rattachement actuelle de chaque dossier (voir paymentStatusOf ci-dessus).
-async function paymentTypesByStudent(
+// Regroupe les versements par dossier (types ET montant total versé), en ne
+// gardant que ceux de l'année de rattachement actuelle de chaque dossier
+// (voir paymentStatusOf ci-dessus). Le montant sert à calculer le vrai reste
+// à payer (annualAmount - paidAmount) plutôt qu'une simple moitié figée :
+// un versement à l'inscription peut dépasser le minimum requis (voir
+// verifyRegistrationPayment), auquel cas la 2e tranche ne vaut plus la
+// moitié du tarif annuel.
+async function paymentSummaryByStudent(
   students: Array<{ id: string; academicYear: string | null }>,
-): Promise<Map<string, Set<EcolagePaymentTypeValue>>> {
+): Promise<Map<string, { types: Set<EcolagePaymentTypeValue>; paidAmount: number }>> {
   const yearById = new Map(students.map((s) => [s.id, s.academicYear]));
   const payments = await prisma.ecolagePayment.findMany({
     where: { studentId: { in: students.map((s) => s.id) } },
-    select: { studentId: true, academicYear: true, type: true },
+    select: { studentId: true, academicYear: true, type: true, amount: true },
   });
-  const byStudent = new Map<string, Set<EcolagePaymentTypeValue>>();
+  const byStudent = new Map<string, { types: Set<EcolagePaymentTypeValue>; paidAmount: number }>();
   for (const p of payments) {
     if (yearById.get(p.studentId) !== p.academicYear) continue;
-    if (!byStudent.has(p.studentId)) byStudent.set(p.studentId, new Set());
-    byStudent.get(p.studentId)!.add(p.type);
+    if (!byStudent.has(p.studentId)) byStudent.set(p.studentId, { types: new Set(), paidAmount: 0 });
+    const entry = byStudent.get(p.studentId)!;
+    entry.types.add(p.type);
+    entry.paidAmount += p.amount;
   }
   return byStudent;
 }
@@ -1353,13 +1365,13 @@ export async function getEcolageStats(year?: string, level?: string): Promise<Ec
     where,
     select: { id: true, academicYear: true, mention: true, program: true },
   });
-  const typesByStudent = await paymentTypesByStudent(students);
+  const summaryByStudent = await paymentSummaryByStudent(students);
 
   const stats: EcolageStats = { total: students.length, full: 0, partial: 0, unpaid: 0, byFormation: [] };
   const formations = new Map<string, { full: number; partial: number; unpaid: number; total: number }>();
 
   for (const s of students) {
-    const status = paymentStatusOf(typesByStudent.get(s.id) ?? new Set());
+    const status = paymentStatusOf(summaryByStudent.get(s.id)?.types ?? new Set());
     const key = status === "FULL" ? "full" : status === "PARTIAL" ? "partial" : "unpaid";
     stats[key]++;
 
@@ -1415,22 +1427,22 @@ export async function listStudentsWithBalanceDue(
   });
   if (students.length === 0) return [];
 
-  const typesByStudent = await paymentTypesByStudent(students);
+  const summaryByStudent = await paymentSummaryByStudent(students);
   const infoByLevel = new Map((await getLevelFinancialInfos()).map((i) => [i.level, i]));
 
   const due: EcolageDueEntry[] = [];
   for (const s of students) {
-    const status = paymentStatusOf(typesByStudent.get(s.id) ?? new Set());
+    const summary = summaryByStudent.get(s.id);
+    const status = paymentStatusOf(summary?.types ?? new Set());
     if (status === "FULL") continue;
 
     const info = s.level ? infoByLevel.get(s.level) : undefined;
     const annualAmount = info ? annualTuition(info, s.nationality === FOREIGN_NATIONALITY) : undefined;
+    // Reste réellement dû (tarif annuel - déjà versé), pas une moitié figée :
+    // un versement à l'inscription peut dépasser le minimum requis (voir
+    // verifyRegistrationPayment dans ce fichier).
     const amountDue =
-      annualAmount === undefined
-        ? null
-        : status === "PARTIAL"
-          ? Math.round(annualAmount / 2) // il ne reste que la 2e tranche
-          : annualAmount; // rien versé : l'année entière est due
+      annualAmount === undefined ? null : Math.max(annualAmount - (summary?.paidAmount ?? 0), 0);
 
     due.push({
       id: s.id,

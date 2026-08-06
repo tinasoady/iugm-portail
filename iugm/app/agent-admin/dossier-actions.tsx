@@ -95,6 +95,14 @@ export function DossierActions({
         {validateState.error && (
           <p className="text-xs text-red-600 dark:text-red-400">{validateState.error}</p>
         )}
+        {/* Le paiement qui vient de débloquer ce dossier fait passer son statut
+            d'ENREGISTRE à PAIEMENT_VERIFIE, donc la branche ci-dessus (avec le
+            formulaire de paiement) disparaît aussitôt — le message de succès
+            (dont le reste à payer, voir verifyRegistrationPaymentAction) doit
+            donc s'afficher ici pour rester visible à l'agent. */}
+        {paymentState.success && (
+          <p className="text-xs text-emerald-600 dark:text-emerald-400">{paymentState.success}</p>
+        )}
       </div>
     );
   }

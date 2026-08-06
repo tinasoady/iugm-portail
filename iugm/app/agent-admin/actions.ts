@@ -58,12 +58,27 @@ export async function recordEcolagePaymentAction(
     return { error: FORMATION_DENIED_MESSAGE };
   }
 
+  // Montant réellement versé pour ce solde (voir la note sur amountDue dans
+  // lib/students.ts : le reste dû peut différer d'une simple moitié du tarif
+  // annuel dès que le premier versement a dépassé le minimum requis).
+  // Optionnel : sans montant saisi, recordEcolagePayment retombe sur son
+  // calcul par défaut.
+  const amountRaw = String(formData.get("amount") ?? "").trim();
+  let amount: number | undefined;
+  if (amountRaw) {
+    amount = Number(amountRaw.replace(/\s/g, ""));
+    if (!Number.isInteger(amount) || amount < 0) {
+      return { error: "Montant invalide." };
+    }
+  }
+
   try {
     const payment = await recordEcolagePayment(
       studentId,
       type as EcolagePaymentTypeValue,
       receiptNumber,
       session.sub,
+      amount,
     );
     revalidatePath("/agent-admin");
     revalidatePath("/agent-admin/ecolage");
@@ -99,11 +114,20 @@ export async function verifyRegistrationPaymentAction(
   }
 
   try {
-    const payment = await verifyRegistrationPayment(studentId, receiptNumber, amount, session.sub);
+    const { payment, remainingBalance } = await verifyRegistrationPayment(
+      studentId,
+      receiptNumber,
+      amount,
+      session.sub,
+    );
     revalidatePath("/agent-admin");
     revalidatePath("/agent-admin/ecolage");
+    const balanceNote =
+      remainingBalance > 0
+        ? ` Il reste ${remainingBalance.toLocaleString("fr-FR")} Ar à payer pour solder l'écolage de l'année (voir « Gestion d'écolage »).`
+        : " Écolage soldé en totalité pour l'année.";
     return {
-      success: `Reçu ${receiptNumber} enregistré (${payment.amount.toLocaleString("fr-FR")} Ar). L'inscription peut être validée.`,
+      success: `Reçu ${receiptNumber} enregistré (${payment.amount.toLocaleString("fr-FR")} Ar).${balanceNote} L'inscription peut être validée.`,
     };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Erreur lors de l'enregistrement." };

@@ -30,9 +30,9 @@ describe("recordEcolagePayment — calcul du montant", () => {
     const actor = await createActor("AGENT_ADMINISTRATION");
     const student = await registerStudent(validRegisterInput(), actor.id);
 
-    const payment = await verifyRegistrationPayment(student.id, "REC-001", 2_000_000, actor.id);
-    expect(payment.type).toBe("TOTALITE");
-    expect(payment.amount).toBe(2_000_000);
+    const result = await verifyRegistrationPayment(student.id, "REC-001", 2_000_000, actor.id);
+    expect(result.payment.type).toBe("TOTALITE");
+    expect(result.payment.amount).toBe(2_000_000);
   });
 
   it("la 2e tranche complète l'année sans repasser par le statut ENREGISTRE", async () => {
@@ -74,7 +74,7 @@ describe("getEcolageStats", () => {
 });
 
 describe("listStudentsWithBalanceDue", () => {
-  it("exclut les dossiers déjà soldés et donne le montant restant dû", async () => {
+  it("exclut les dossiers déjà soldés et donne le montant restant réellement dû", async () => {
     await createLevelFinancialInfo("L1", { tuitionLocal: 2_000_000 });
     const actor = await createActor("AGENT_ADMINISTRATION");
 
@@ -94,9 +94,40 @@ describe("listStudentsWithBalanceDue", () => {
     expect(unpaidEntry.paymentStatus).toBe("UNPAID");
     expect(unpaidEntry.amountDue).toBe(2_000_000);
 
+    // 2 000 000 - 400 000 réellement versés = 1 600 000, PAS la moitié
+    // figée (1 000 000) : un versement à l'inscription au-dessus du minimum
+    // requis doit réduire d'autant le reste dû (voir la note dans
+    // listStudentsWithBalanceDue, lib/students.ts).
     const partialEntry = due.find((d) => d.id === partial.id)!;
     expect(partialEntry.paymentStatus).toBe("PARTIAL");
-    expect(partialEntry.amountDue).toBe(1_000_000);
+    expect(partialEntry.amountDue).toBe(1_600_000);
+  });
+
+  it("le reste dû tient compte d'un premier versement supérieur au minimum requis", async () => {
+    await createLevelFinancialInfo("L1", { tuitionLocal: 2_000_000 });
+    const actor = await createActor("AGENT_ADMINISTRATION");
+    const student = await registerStudent(validRegisterInput(), actor.id);
+
+    // Nettement plus que le minimum requis (290 000 Ar)
+    const { remainingBalance } = await verifyRegistrationPayment(
+      student.id,
+      "REC-001",
+      1_200_000,
+      actor.id,
+    );
+    expect(remainingBalance).toBe(800_000);
+
+    const due = await listStudentsWithBalanceDue(student.academicYear!);
+    const entry = due.find((d) => d.id === student.id)!;
+    expect(entry.amountDue).toBe(800_000);
+
+    // La 2e tranche solde exactement ce reste (montant explicite, plus une
+    // simple moitié figée du tarif annuel).
+    const s2 = await recordEcolagePayment(student.id, "TRANCHE_S2", "REC-002", actor.id, 800_000);
+    expect(s2.amount).toBe(800_000);
+    const balance = await getStudentBalanceDue(student.id);
+    expect(balance.status).toBe("FULL");
+    expect(balance.amountDue).toBe(0);
   });
 
   it("renvoie un montant dû nul (pas zéro) quand le dossier n'a pas de niveau défini", async () => {

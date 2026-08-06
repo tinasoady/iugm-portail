@@ -348,7 +348,7 @@ export default async function EcolagePage() {
                     </td>
                     <td className="py-2.5">
                       {s.paymentStatus === "PARTIAL" ? (
-                        <Tranche2Form studentId={s.id} />
+                        <Tranche2Form studentId={s.id} amountDue={s.amountDue ?? 0} />
                       ) : (
                         <Link
                           href={`/agent-admin?q=${encodeURIComponent(s.matricule)}`}
