@@ -55,10 +55,22 @@ function avatarColor(key: string): string {
   return AVATAR_COLORS[h];
 }
 
+const ROLES = ["SUPERADMIN", "AGENT_ADMINISTRATION", "AGENT_PEDAGOGIQUE", "ETUDIANT"] as const;
+type RoleValue = (typeof ROLES)[number];
+const VALID_ROLES = new Set<string>(ROLES);
+
+// Construit "/admin?role=X&months=Y#users" en conservant la période du
+// graphique déjà sélectionnée — cliquer une carte "accès rapide" ne doit pas
+// réinitialiser un réglage sans rapport.
+function roleFilterHref(role: RoleValue, monthsBack: number): string {
+  const q = new URLSearchParams({ role, months: String(monthsBack) });
+  return `/admin?${q.toString()}#users`;
+}
+
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ months?: string }>;
+  searchParams: Promise<{ months?: string; role?: string }>;
 }) {
   const session = await getSession();
   if (!session) redirect("/login");
@@ -66,6 +78,8 @@ export default async function AdminPage({
 
   const params = await searchParams;
   const monthsBack = Math.min(12, Math.max(3, Number(params.months) || 6));
+  const roleFilter: RoleValue | null =
+    params.role && VALID_ROLES.has(params.role) ? (params.role as RoleValue) : null;
   const [selectedYear, selectedLevel] = await Promise.all([
     getSelectedAcademicYear(),
     getSelectedLevel(),
@@ -73,6 +87,7 @@ export default async function AdminPage({
 
   const [users, roleCounts, trend] = await Promise.all([
     prisma.user.findMany({
+      where: roleFilter ? { role: roleFilter } : undefined,
       orderBy: { createdAt: "desc" },
       select: { id: true, email: true, fullName: true, role: true, createdAt: true },
     }),
@@ -90,7 +105,8 @@ export default async function AdminPage({
       title="Tableau de bord — Administration"
       active="/admin"
     >
-      {/* Cartes statistiques */}
+      {/* Cartes statistiques — cliquables : accès rapide à la liste filtrée
+          par rôle, juste en-dessous (section "Utilisateurs") */}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="Super administrateur"
@@ -99,6 +115,8 @@ export default async function AdminPage({
           color="bg-indigo-600"
           icon={<IconShield />}
           compact
+          href={roleFilterHref("SUPERADMIN", monthsBack)}
+          active={roleFilter === "SUPERADMIN"}
         />
         <StatCard
           label="Agents administration"
@@ -107,6 +125,8 @@ export default async function AdminPage({
           color="bg-sky-600"
           icon={<IconFolder />}
           compact
+          href={roleFilterHref("AGENT_ADMINISTRATION", monthsBack)}
+          active={roleFilter === "AGENT_ADMINISTRATION"}
         />
         <StatCard
           label="Agents pédagogiques"
@@ -115,6 +135,8 @@ export default async function AdminPage({
           color="bg-emerald-600"
           icon={<IconCap />}
           compact
+          href={roleFilterHref("AGENT_PEDAGOGIQUE", monthsBack)}
+          active={roleFilter === "AGENT_PEDAGOGIQUE"}
         />
         <StatCard
           label="Étudiants"
@@ -123,6 +145,8 @@ export default async function AdminPage({
           color="bg-amber-500"
           icon={<IconUsers />}
           compact
+          href={roleFilterHref("ETUDIANT", monthsBack)}
+          active={roleFilter === "ETUDIANT"}
         />
       </div>
 
@@ -184,10 +208,23 @@ export default async function AdminPage({
         </section>
 
         {/* Liste des utilisateurs */}
-        <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-zinc-900">
-          <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-            Utilisateurs ({users.length})
-          </h2>
+        <section
+          id="users"
+          className="scroll-mt-4 rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-zinc-900"
+        >
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+              {roleFilter ? `${ROLE_LABELS[roleFilter]} (${users.length})` : `Utilisateurs (${users.length})`}
+            </h2>
+            {roleFilter && (
+              <a
+                href={`/admin?months=${monthsBack}#users`}
+                className="text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400"
+              >
+                Voir tous les utilisateurs
+              </a>
+            )}
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
