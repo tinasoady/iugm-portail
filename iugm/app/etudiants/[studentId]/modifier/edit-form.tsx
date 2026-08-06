@@ -4,6 +4,9 @@ import Link from "next/link";
 import { useActionState } from "react";
 import { FaLock, FaCheck } from "react-icons/fa";
 import { updateStudentAction, type EditStudentState } from "./actions";
+import { MALAGASY_PHONE_PATTERN_SOURCE } from "@/lib/phone";
+
+const PHONE_TITLE = "10 chiffres, commençant par 032, 033, 034, 037 ou 038";
 
 const LEVELS = ["L1", "L2", "L3", "M1", "M2"];
 
@@ -168,7 +171,17 @@ export function EditStudentForm({
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className={labelClass} htmlFor="phone">Téléphone de l&apos;étudiant *</label>
-              <input id="phone" name="phone" type="tel" required defaultValue={d.phone} className={inputClass} />
+              <input
+                id="phone"
+                name="phone"
+                type="tel"
+                required
+                pattern={MALAGASY_PHONE_PATTERN_SOURCE}
+                title={PHONE_TITLE}
+                placeholder="0321234567"
+                defaultValue={d.phone}
+                className={inputClass}
+              />
             </div>
             <div>
               <label className={labelClass} htmlFor="personalEmail">Email de l&apos;étudiant</label>
@@ -282,7 +295,17 @@ export function EditStudentForm({
                 </div>
                 <div>
                   <label className={labelClass} htmlFor="guardianPhone">Numéro de téléphone *</label>
-                  <input id="guardianPhone" name="guardianPhone" type="tel" required defaultValue={d.guardianPhone} className={inputClass} />
+                  <input
+                    id="guardianPhone"
+                    name="guardianPhone"
+                    type="tel"
+                    required
+                    pattern={MALAGASY_PHONE_PATTERN_SOURCE}
+                    title={PHONE_TITLE}
+                    placeholder="0321234567"
+                    defaultValue={d.guardianPhone}
+                    className={inputClass}
+                  />
                 </div>
               </div>
               <div>

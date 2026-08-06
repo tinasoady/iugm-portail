@@ -143,4 +143,30 @@ describe("workflow d'inscription", () => {
       registerStudent(validRegisterInput({ academicYear: "2026" }), actor.id),
     ).rejects.toThrow(/Année universitaire invalide/);
   });
+
+  it("rejette un numéro de téléphone étudiant invalide", async () => {
+    const actor = await createActor("AGENT_ADMINISTRATION");
+    await expect(
+      registerStudent(validRegisterInput({ phone: "0391234567" }), actor.id),
+    ).rejects.toThrow(/téléphone de l'étudiant invalide/);
+    await expect(
+      registerStudent(validRegisterInput({ phone: "034123456" }), actor.id),
+    ).rejects.toThrow(/téléphone de l'étudiant invalide/);
+  });
+
+  it("rejette un numéro de téléphone de la personne à contacter invalide", async () => {
+    const actor = await createActor("AGENT_ADMINISTRATION");
+    await expect(
+      registerStudent(validRegisterInput({ guardianPhone: "0021112233" }), actor.id),
+    ).rejects.toThrow(/téléphone de la personne à contacter invalide/);
+  });
+
+  it("accepte un numéro de téléphone saisi avec des espaces et le normalise", async () => {
+    const actor = await createActor("AGENT_ADMINISTRATION");
+    const student = await registerStudent(
+      validRegisterInput({ phone: "034 12 345 67" }),
+      actor.id,
+    );
+    expect(student.phone).toBe("0341234567");
+  });
 });

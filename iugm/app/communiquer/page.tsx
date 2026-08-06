@@ -79,7 +79,9 @@ export default async function CommuniquerPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
-                        {a.formation ?? "Toutes filières"} · {a.level ?? "Tous niveaux"}
+                        {a.student
+                          ? `Personnel — ${a.student.fullName} (${a.student.matricule})`
+                          : `${a.formation ?? "Toutes filières"} · ${a.level ?? "Tous niveaux"}`}
                       </span>
                       <span
                         className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"

@@ -29,6 +29,10 @@ export async function reenrollAction(
   const studentId = String(formData.get("studentId") ?? "");
   const academicYear = String(formData.get("academicYear") ?? "").trim();
   const level = String(formData.get("level") ?? "").trim();
+  const mention = String(formData.get("mention") ?? "").trim();
+  const forceReason = String(formData.get("forceReason") ?? "").trim();
+  const docTranscript = formData.get("docTranscript") === "on";
+  const docBlueFolder = formData.get("docBlueFolder") === "on";
   if (!studentId || !academicYear) {
     return { error: "Année universitaire obligatoire." };
   }
@@ -37,7 +41,19 @@ export async function reenrollAction(
   }
 
   try {
-    const student = await reenrollStudent(studentId, { academicYear, level: level || null }, session.sub);
+    const student = await reenrollStudent(
+      studentId,
+      {
+        academicYear,
+        level: level || null,
+        mention: mention || null,
+        docTranscript,
+        docBlueFolder,
+        forceReason: forceReason || null,
+      },
+      session.sub,
+      session.role,
+    );
     revalidatePath("/agent-admin/reinscription");
     revalidatePath("/agent-admin");
     return {

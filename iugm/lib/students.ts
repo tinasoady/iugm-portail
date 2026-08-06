@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 
 import { prisma } from "./prisma";
 import { logAction } from "./audit";
+import { isValidMalagasyPhone, normalizePhone } from "./phone";
 import {
   getLevelFinancialInfoOne,
   getLevelFinancialInfos,
@@ -11,6 +12,9 @@ import {
   annualTuition,
   FOREIGN_NATIONALITY,
 } from "./finance";
+import { nextLevel } from "./level-shared";
+import { createAnnouncement } from "./announcements";
+import { encryptSecret } from "./secret-crypto";
 
 export const STUDENT_EMAIL_DOMAIN = "student.iugm.edu";
 
@@ -100,6 +104,18 @@ export function generateInitialPassword(matricule: string): string {
   return `${matricule}-${generatePassword(5)}`;
 }
 
+// `program` est un miroir hérité de `mention` (voir la note sur les champs
+// hérités dans schema.prisma) : gardé pour les filtres/listes existants qui
+// s'appuient encore dessus. Centralisé ici pour qu'un seul point de code
+// décide de la valeur de `program` à chaque création/mise à jour — les
+// anciens sites d'écriture dupliquaient ce mirroring à la main, avec le
+// risque qu'un futur appel oublie de le faire et désynchronise les deux champs.
+function mentionFields(mention: string | null | undefined): { mention: string | null; program: string | null } {
+  // `|| null` (pas `??`) : une chaîne vide (ex. cellule vide d'un import
+  // Excel) doit être traitée comme "aucune formation", pas conservée telle quelle.
+  return { mention: mention || null, program: mention || null };
+}
+
 // ---------------------------------------------------------------------------
 // Workflow d'inscription
 // ---------------------------------------------------------------------------
@@ -163,6 +179,16 @@ export async function registerStudent(input: RegisterStudentInput, actorId: stri
   if (!input.guardianName || !input.guardianPhone) {
     throw new Error("La personne à contacter d'urgence est obligatoire.");
   }
+  if (!isValidMalagasyPhone(input.phone)) {
+    throw new Error(
+      "Numéro de téléphone de l'étudiant invalide : 10 chiffres, commençant par 032, 033, 034, 037 ou 038.",
+    );
+  }
+  if (!isValidMalagasyPhone(input.guardianPhone)) {
+    throw new Error(
+      "Numéro de téléphone de la personne à contacter invalide : 10 chiffres, commençant par 032, 033, 034, 037 ou 038.",
+    );
+  }
 
   // .trim() : certaines personnes n'ont pas de prénom (courant à Madagascar,
   // le prénom n'est plus obligatoire à l'inscription) — sans quoi un prénom
@@ -173,10 +199,11 @@ export async function registerStudent(input: RegisterStudentInput, actorId: stri
     prisma.student.create({
       data: {
         ...input,
+        phone: normalizePhone(input.phone),
+        guardianPhone: normalizePhone(input.guardianPhone),
         matricule,
         fullName,
-        // Champ hérité, alimenté pour les filtres et listes existants
-        program: input.mention,
+        ...mentionFields(input.mention),
         // Un dossier fraîchement créé est par définition un nouvel étudiant
         // (un redoublant a déjà un dossier existant réutilisé via reenrollStudent)
         repeatCode: "N",
@@ -275,9 +302,7 @@ export async function createStudentFromExistingRecord(input: ExistingStudentInpu
         parentsPhone: input.parentsPhone || null,
         parentsAddress: input.parentsAddress || null,
         parentsCity: input.parentsCity || null,
-        mention: input.mention || null,
-        // Champ hérité, alimenté pour les filtres et listes existants
-        program: input.mention || null,
+        ...mentionFields(input.mention),
         level: input.level || null,
         repeatCode: "N",
         status: "ENREGISTRE",
@@ -599,7 +624,10 @@ export async function validatePedagoInscription(studentId: string, actorId: stri
       data: {
         status: "INSCRIT",
         accountId: acc.id,
-        initialPassword: password,
+        // Chiffré en base (voir lib/secret-crypto.ts) : une fuite de la base
+        // ne doit pas exposer ce mot de passe en clair avant que l'étudiant
+        // ne l'ait changé.
+        initialPassword: encryptSecret(password),
         pedagoValidatedAt: new Date(),
       },
     });
@@ -620,14 +648,35 @@ export async function validatePedagoInscription(studentId: string, actorId: stri
 // Réinscription des anciens étudiants
 // ---------------------------------------------------------------------------
 
+export type ReenrollInput = {
+  academicYear: string;
+  level?: string | null; // niveau demandé ; par défaut, le niveau suivant légal
+  mention?: string | null; // reconversion de filière (cas particulier) ; par défaut, inchangée
+  docTranscript: boolean; // copie certifiée du relevé de notes de l'année qui se termine
+  docBlueFolder: boolean; // papier chemise bleu
+  // Motif de dérogation, requis uniquement si un SUPERADMIN force le passage
+  // d'un dossier qui n'est pas encore éligible (voir plus bas)
+  forceReason?: string | null;
+};
+
 // Réinscrit un ancien étudiant (statut INSCRIT) pour une nouvelle année :
 // l'année en cours est archivée, le dossier repart au début du workflow
 // (paiement à vérifier), le matricule et le compte sont conservés.
-// `level` : nouveau niveau (ex : L1 -> L2).
+//
+// Progression stricte : le niveau demandé doit être soit le niveau actuel
+// (redoublement), soit le niveau suivant légal (lib/level-shared.ts, jamais
+// de saut) — quel que soit le rôle de l'agent. Un passage au niveau
+// supérieur exige en plus que la moyenne générale (S1+S2, voir
+// getStudentAverageForYear) de l'année qui se termine soit >= 10 : un agent
+// d'administration est bloqué en dur si ce n'est pas le cas, seul un
+// SUPERADMIN peut passer outre, à condition de fournir un motif (journalisé).
+// La filière (`mention`) peut être changée librement (reconversion) : cette
+// restriction ne porte que sur le niveau.
 export async function reenrollStudent(
   studentId: string,
-  input: { academicYear: string; level?: string | null },
+  input: ReenrollInput,
   actorId: string,
+  actorRole: string,
 ) {
   if (!/^\d{4}-\d{4}$/.test(input.academicYear)) {
     throw new Error("Année universitaire invalide (format attendu : 2027-2028).");
@@ -648,16 +697,56 @@ export async function reenrollStudent(
     throw new Error(`Cet étudiant a déjà une inscription archivée pour ${input.academicYear}.`);
   }
 
-  const nextLevel = input.level?.trim() || student.level;
+  const legalNext = nextLevel(student.level);
+  const requestedLevel = input.level?.trim() || legalNext || student.level;
+  const isProgressing = student.level !== null && requestedLevel !== student.level;
+  if (isProgressing && requestedLevel !== legalNext) {
+    throw new Error(
+      `Passage impossible : depuis ${student.level}, seul un redoublement (${student.level}) ou un passage en ${legalNext ?? "— (déjà au dernier niveau)"} est autorisé.`,
+    );
+  }
+
+  let forcedOverride = false;
+  if (isProgressing) {
+    const average = student.academicYear
+      ? await getStudentAverageForYear(studentId, student.academicYear)
+      : null;
+    const eligible = average !== null && average >= 10;
+    if (!eligible) {
+      const reasonMissing =
+        average === null
+          ? "la moyenne générale (S1+S2) de l'année en cours n'est pas encore saisie"
+          : `la moyenne générale est de ${average.toFixed(2)}/20 (10/20 requis)`;
+      if (actorRole !== "SUPERADMIN") {
+        throw new Error(
+          `Passage au niveau supérieur impossible : ${reasonMissing}. Seul un superadmin peut forcer le passage, avec un motif.`,
+        );
+      }
+      if (!input.forceReason?.trim()) {
+        throw new Error(
+          `Passage au niveau supérieur impossible : ${reasonMissing}. Un motif est obligatoire pour forcer le passage.`,
+        );
+      }
+      forcedOverride = true;
+    }
+  }
+
+  if (!input.docTranscript || !input.docBlueFolder) {
+    throw new Error(
+      "Pièces obligatoires manquantes : copie certifiée du relevé de notes et papier chemise bleu.",
+    );
+  }
+
   // Redoublement = même niveau qu'avant la réinscription ; passage au niveau
   // supérieur = étudiant "passant", codé N comme un nouvel étudiant. Un
   // redoublement du redoublement (même niveau, déjà R) passe à T (triplant).
   const repeatCode =
-    nextLevel !== student.level
+    requestedLevel !== student.level
       ? "N"
       : student.repeatCode === "R" || student.repeatCode === "T"
         ? "T"
         : "R";
+  const newMention = input.mention?.trim() || student.mention;
 
   // Archivage de l'année qui se termine + remise à zéro du dossier : les deux
   // écritures doivent réussir ensemble, sinon on perdrait l'historique ou on
@@ -672,29 +761,44 @@ export async function reenrollStudent(
         receiptNumber: student.receiptNumber,
         receiptVerifiedAt: student.receiptVerifiedAt,
         pedagoValidatedAt: student.pedagoValidatedAt,
+        // Pièces vérifiées pour l'année qui se termine, avant remise à zéro
+        // du dossier (nécessairement true à ce stade, voir la vérification ci-dessus)
+        docTranscript: true,
+        docBlueFolder: true,
       },
     });
 
-    // Le dossier repart au début du workflow pour la nouvelle année
+    // Le dossier repart au début du workflow pour la nouvelle année ; les
+    // pièces de réinscription redeviennent à vérifier pour la prochaine fois
     return tx.student.update({
       where: { id: studentId },
       data: {
         academicYear: input.academicYear,
-        level: nextLevel,
+        level: requestedLevel,
+        ...mentionFields(newMention),
         status: "ENREGISTRE",
         receiptNumber: null,
         receiptVerifiedAt: null,
         pedagoValidatedAt: null,
         repeatCode,
+        docTranscript: false,
+        docBlueFolder: false,
       },
     });
   });
 
   await logAction(
     "STUDENT_REENROLLED",
-    `Réinscription de ${student.fullName} (${student.matricule}) : ${student.academicYear ?? "?"} → ${input.academicYear}${input.level ? ` — niveau ${input.level}` : ""}`,
+    `Réinscription de ${student.fullName} (${student.matricule}) : ${student.academicYear ?? "?"} → ${input.academicYear} — niveau ${requestedLevel}${newMention !== student.mention ? ` — reconversion vers ${newMention}` : ""}`,
     actorId,
   );
+  if (forcedOverride) {
+    await logAction(
+      "REENROLLMENT_FORCED",
+      `Passage forcé de ${student.fullName} (${student.matricule}) vers ${requestedLevel} malgré une moyenne insuffisante ou manquante — motif : ${input.forceReason!.trim()}`,
+      actorId,
+    );
+  }
   return updated;
 }
 
@@ -719,6 +823,68 @@ export type AssignResultInput = {
   semester: string; // ex: "S1"
   average: number; // moyenne sur 20
 };
+
+// Moyenne générale d'un étudiant pour une année : moyenne des deux semestres
+// S1/S2, seulement si les deux sont déjà saisis (sinon `null` — condition
+// d'éligibilité au passage de niveau, voir reenrollStudent, et déclencheur de
+// l'avis d'admission, voir maybeSendAdmissionAnnouncement ci-dessous).
+export async function getStudentAverageForYear(
+  studentId: string,
+  academicYear: string,
+): Promise<number | null> {
+  const results = await prisma.academicResult.findMany({
+    where: { studentId, academicYear, semester: { in: ["S1", "S2"] } },
+    select: { semester: true, average: true },
+  });
+  const s1 = results.find((r) => r.semester === "S1");
+  const s2 = results.find((r) => r.semester === "S2");
+  if (!s1 || !s2) return null;
+  return (s1.average + s2.average) / 2;
+}
+
+// À l'issue de l'attribution d'un résultat, si l'étudiant a désormais ses
+// deux semestres pour cette année avec une moyenne générale >= 10, envoie un
+// communiqué personnel annonçant son admission et son éligibilité à la
+// réinscription au niveau suivant (jamais de saut — voir reenrollStudent).
+// Idempotent : la contrainte unique @@unique([studentId, sourceAcademicYear,
+// kind]) empêche un doublon si l'agent corrige S1 ou S2 après coup, une fois
+// l'avis déjà envoyé (violation avalée silencieusement, voir isMatriculeConflict
+// pour l'idiome équivalent). Ne retire jamais un avis déjà envoyé si une
+// correction fait repasser la moyenne sous 10 (hors-scope).
+async function maybeSendAdmissionAnnouncement(
+  studentId: string,
+  academicYear: string,
+  actorId: string,
+): Promise<void> {
+  const average = await getStudentAverageForYear(studentId, academicYear);
+  if (average === null || average < 10) return;
+
+  const student = await prisma.student.findUnique({ where: { id: studentId } });
+  if (!student) return;
+
+  const next = nextLevel(student.level);
+  const title = `Résultats ${academicYear} : admission${next ? ` en ${next}` : ""}`;
+  const body = next
+    ? `Félicitations ${student.fullName} ! Vous avez obtenu une moyenne générale de ${average.toFixed(2)}/20 pour l'année ${academicYear} (niveau ${student.level ?? "—"}). Vous êtes admis(e) et éligible à la réinscription en ${next} pour la prochaine année universitaire. Présentez-vous au service d'administration avec : une copie certifiée de votre relevé de notes, le papier chemise bleu, et votre reçu de paiement de l'écolage.`
+    : `Félicitations ${student.fullName} ! Vous avez obtenu une moyenne générale de ${average.toFixed(2)}/20 pour l'année ${academicYear}, votre dernière année de formation. Contactez le service d'administration pour la suite de votre parcours.`;
+
+  try {
+    await createAnnouncement(
+      {
+        title,
+        body,
+        studentId,
+        kind: "ADMISSION_NOTICE",
+        sourceAcademicYear: academicYear,
+      },
+      actorId,
+    );
+  } catch (e) {
+    // Violation de la contrainte unique = avis déjà envoyé pour cette année :
+    // pas une erreur, juste un ré-enregistrement de S1/S2 après coup.
+    if (!(e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002")) throw e;
+  }
+}
 
 // Agent pédagogique : assigne (ou remplace) le résultat d'un étudiant inscrit
 export async function assignAcademicResult(input: AssignResultInput, actorId: string) {
@@ -748,6 +914,9 @@ export async function assignAcademicResult(input: AssignResultInput, actorId: st
     `Résultat ${academicYear} ${semester} de ${student.fullName} (${student.matricule}) : ${average}/20 — ${mention}`,
     actorId,
   );
+
+  await maybeSendAdmissionAnnouncement(studentId, academicYear, actorId);
+
   return result;
 }
 
@@ -1100,6 +1269,16 @@ export async function updateStudent(
   if (!input.guardianName || !input.guardianPhone) {
     throw new Error("La personne à contacter d'urgence est obligatoire.");
   }
+  if (!isValidMalagasyPhone(input.phone)) {
+    throw new Error(
+      "Numéro de téléphone de l'étudiant invalide : 10 chiffres, commençant par 032, 033, 034, 037 ou 038.",
+    );
+  }
+  if (!isValidMalagasyPhone(input.guardianPhone)) {
+    throw new Error(
+      "Numéro de téléphone de la personne à contacter invalide : 10 chiffres, commençant par 032, 033, 034, 037 ou 038.",
+    );
+  }
 
   // .trim() : certaines personnes n'ont pas de prénom (courant à Madagascar,
   // le prénom n'est plus obligatoire à l'inscription) — sans quoi un prénom
@@ -1109,9 +1288,10 @@ export async function updateStudent(
     where: { id: studentId },
     data: {
       ...input,
+      phone: normalizePhone(input.phone),
+      guardianPhone: normalizePhone(input.guardianPhone),
       fullName,
-      // Champ hérité, gardé en cohérence avec la formation pour les filtres et le périmètre par formation
-      program: input.mention,
+      ...mentionFields(input.mention),
     },
   });
 

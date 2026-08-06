@@ -14,3 +14,14 @@ export const ALL_LEVELS_VALUE = "ALL";
 export const LEVELS = ["L1", "L2", "L3", "M1", "M2"] as const;
 
 export type Level = (typeof LEVELS)[number];
+
+// Niveau suivant légal dans la progression stricte (pas de saut) : L1->L2->
+// L3->M1->M2. `null` = niveau inconnu OU déjà M2 (dernière année, pas de
+// niveau suivant) — à traiter explicitement chez chaque appelant, sans repli
+// implicite sur le niveau courant (voir reenrollStudent dans lib/students.ts
+// et le formulaire de réinscription, qui restreignent le choix à ce niveau
+// suivant ou au redoublement du niveau actuel).
+export function nextLevel(current: string | null | undefined): Level | null {
+  const i = LEVELS.indexOf((current ?? "") as Level);
+  return i >= 0 && i < LEVELS.length - 1 ? LEVELS[i + 1] : null;
+}

@@ -72,7 +72,9 @@ export default async function MesCommuniquesPage() {
                     </p>
                   </div>
                   <span className="rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
-                    {a.formation ?? "Toutes filières"} · {a.level ?? "Tous niveaux"}
+                    {a.studentId
+                      ? "Communiqué personnel"
+                      : `${a.formation ?? "Toutes filières"} · ${a.level ?? "Tous niveaux"}`}
                   </span>
                 </div>
                 <p className="mt-3 text-sm whitespace-pre-wrap text-zinc-700 dark:text-zinc-300">

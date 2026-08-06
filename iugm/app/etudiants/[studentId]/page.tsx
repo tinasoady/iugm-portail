@@ -5,6 +5,7 @@ import { FaPrint, FaPen, FaCheck, FaTimes } from "react-icons/fa";
 import { getSession } from "@/lib/auth";
 import { getStudentProfile } from "@/lib/students";
 import { hasTaskPermission, canManageStudent } from "@/lib/permissions";
+import { decryptSecret } from "@/lib/secret-crypto";
 import { AppShell } from "@/app/ui/app-shell";
 import {
   STATUS_LABELS,
@@ -165,7 +166,7 @@ export default async function StudentProfilePage({
           <InfoRow label="Email personnel" value={student.personalEmail} />
           <InfoRow label="Email institutionnel" value={student.account?.email} />
           {canPrintReceipt && (
-            <InfoRow label="Mot de passe initial" value={student.initialPassword} />
+            <InfoRow label="Mot de passe initial" value={decryptSecret(student.initialPassword)} />
           )}
           <InfoRow label="Contact d'urgence" value={student.guardianName} />
           <InfoRow label="Téléphone (urgence)" value={student.guardianPhone} />

@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { defaultEnrollmentYear } from "@/lib/students";
+import { defaultEnrollmentYear, getStudentAverageForYear } from "@/lib/students";
 import { hasTaskPermission, getUserFormation } from "@/lib/permissions";
 import { AppShell } from "@/app/ui/app-shell";
 import { ReenrollForm } from "./reenroll-form";
@@ -54,6 +54,19 @@ export default async function ReinscriptionPage({
   const defaultYear = defaultEnrollmentYear();
   const startYear = Number(defaultYear.split("-")[0]);
   const years = [defaultYear, `${startYear + 1}-${startYear + 2}`];
+  const canForce = session.role === "SUPERADMIN";
+
+  // Moyenne générale (S1+S2) de l'année en cours de chaque étudiant, pour
+  // afficher l'éligibilité au passage avant même que l'agent ne tente de
+  // réinscrire (voir ReenrollForm) — voir getStudentAverageForYear.
+  const averages = new Map(
+    await Promise.all(
+      students.map(
+        async (s) =>
+          [s.id, s.academicYear ? await getStudentAverageForYear(s.id, s.academicYear) : null] as const,
+      ),
+    ),
+  );
 
   return (
     <AppShell
@@ -103,6 +116,7 @@ export default async function ReinscriptionPage({
                   <th className="py-2.5 pr-4 font-semibold">Matricule</th>
                   <th className="py-2.5 pr-4 font-semibold">Nom</th>
                   <th className="py-2.5 pr-4 font-semibold">Année actuelle</th>
+                  <th className="py-2.5 pr-4 font-semibold">Moyenne générale</th>
                   <th className="py-2.5 pr-4 font-semibold">Années passées</th>
                   <th className="py-2.5 font-semibold">Réinscrire pour</th>
                 </tr>
@@ -130,6 +144,23 @@ export default async function ReinscriptionPage({
                         </span>
                       )}
                     </td>
+                    <td className="py-2.5 pr-4 whitespace-nowrap">
+                      {averages.get(s.id) != null ? (
+                        <span
+                          className={
+                            averages.get(s.id)! >= 10
+                              ? "font-semibold text-emerald-700 dark:text-emerald-400"
+                              : "font-semibold text-rose-700 dark:text-rose-400"
+                          }
+                        >
+                          {averages.get(s.id)!.toFixed(2)}/20
+                        </span>
+                      ) : (
+                        <span className="text-xs text-zinc-400 dark:text-zinc-500">
+                          S1/S2 incomplets
+                        </span>
+                      )}
+                    </td>
                     <td className="py-2.5 pr-4 text-xs text-zinc-500 dark:text-zinc-400">
                       {s.enrollmentHistory.length > 0
                         ? s.enrollmentHistory.map((h) => h.academicYear).join(", ")
@@ -140,6 +171,9 @@ export default async function ReinscriptionPage({
                         studentId={s.id}
                         fullName={s.fullName}
                         currentLevel={s.level ?? s.track}
+                        currentMention={s.mention ?? s.program}
+                        average={averages.get(s.id) ?? null}
+                        canForce={canForce}
                         years={years}
                         defaultYear={
                           s.academicYear === defaultYear ? years[1] : defaultYear

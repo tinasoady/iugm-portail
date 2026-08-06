@@ -1,4 +1,5 @@
 import { prisma } from "./prisma";
+import { getLevelFinancialInfos, annualTuition, FOREIGN_NATIONALITY } from "./finance";
 
 // ---------------------------------------------------------------------------
 // Évolution mensuelle des étapes clés du parcours étudiant, pour le graphique
@@ -125,4 +126,70 @@ export async function getInscriptionTrend(
     payments: months.map((k) => counts.get(k)!.payments),
     inscriptions: months.map((k) => counts.get(k)!.inscriptions),
   };
+}
+
+// ---------------------------------------------------------------------------
+// Évolution de l'encaissement d'écolage, pour le graphique de la page
+// Gestion d'écolage : montant cumulé encaissé mois par mois, comparé au
+// budget total prévu pour la sélection (année/niveau) — la somme des frais
+// de formation annuels (lib/finance.ts) de tous les dossiers du périmètre.
+// ---------------------------------------------------------------------------
+
+export type EcolageRevenueTrend = {
+  months: string[];
+  monthLabels: string[];
+  collected: number[]; // montant cumulé encaissé jusqu'à la fin de chaque mois
+  budget: number; // montant total prévu pour la sélection (constant)
+};
+
+export async function getEcolageRevenueTrend(
+  opts: { monthsBack?: number; academicYear?: string | null; level?: string | null } = {},
+): Promise<EcolageRevenueTrend> {
+  const { monthsBack = 6, academicYear = null, level = null } = opts;
+  const { start, span } = monthWindow({ monthsBack, academicYear });
+  const end = new Date(start.getFullYear(), start.getMonth() + span, 1); // borne haute exclusive
+
+  const students = await prisma.student.findMany({
+    where: {
+      ...(academicYear ? { academicYear } : {}),
+      ...(level ? { level } : {}),
+    },
+    select: { id: true, level: true, nationality: true },
+  });
+
+  // Budget total = somme des frais de formation annuels (par niveau,
+  // local/étranger) de tous les dossiers du périmètre.
+  const infoByLevel = new Map((await getLevelFinancialInfos()).map((i) => [i.level, i]));
+  let budget = 0;
+  for (const s of students) {
+    const info = s.level ? infoByLevel.get(s.level) : undefined;
+    if (info) budget += annualTuition(info, s.nationality === FOREIGN_NATIONALITY);
+  }
+
+  const studentIds = students.map((s) => s.id);
+  const payments =
+    studentIds.length > 0
+      ? await prisma.ecolagePayment.findMany({
+          where: { studentId: { in: studentIds }, verifiedAt: { lt: end } },
+          select: { amount: true, verifiedAt: true },
+        })
+      : [];
+
+  const months: string[] = [];
+  const monthLabels: string[] = [];
+  for (let i = 0; i < span; i++) {
+    const d = new Date(start.getFullYear(), start.getMonth() + i, 1);
+    months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+    monthLabels.push(monthLabelFormatter.format(d));
+  }
+
+  // Cumul : montant total encaissé depuis toujours jusqu'à la fin de chaque
+  // mois affiché (pas seulement les versements du mois), pour suivre la
+  // progression vers le budget au fil du temps.
+  const collected = months.map((_, i) => {
+    const cutoff = new Date(start.getFullYear(), start.getMonth() + i + 1, 1);
+    return payments.filter((p) => p.verifiedAt < cutoff).reduce((sum, p) => sum + p.amount, 0);
+  });
+
+  return { months, monthLabels, collected, budget };
 }

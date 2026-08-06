@@ -2,6 +2,8 @@ import { notFound, redirect } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { canManageStudent } from "@/lib/permissions";
+import { decryptSecret } from "@/lib/secret-crypto";
 import { getSettings } from "@/lib/settings";
 import { PrintButton } from "./print-button";
 
@@ -18,6 +20,12 @@ export default async function ReceiptPage({
   if (!["AGENT_PEDAGOGIQUE", "SUPERADMIN"].includes(session.role)) redirect("/");
 
   const { studentId } = await params;
+  // Secrétaire de formation : accès refusé aux reçus des autres formations
+  // (même contrôle que sur le dossier étudiant, voir etudiants/[studentId]/page.tsx)
+  if (!(await canManageStudent(session.sub, session.role, studentId))) {
+    redirect("/agent-pedagogique");
+  }
+
   const [student, settings] = await Promise.all([
     prisma.student.findUnique({
       where: { id: studentId },
@@ -44,7 +52,7 @@ export default async function ReceiptPage({
 
   const credentials: Array<[string, string]> = [
     ["Adresse email", student.account?.email ?? "—"],
-    ["Mot de passe initial", student.initialPassword ?? "—"],
+    ["Mot de passe initial", decryptSecret(student.initialPassword) ?? "—"],
   ];
 
   return (

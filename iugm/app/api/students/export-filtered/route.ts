@@ -5,7 +5,13 @@ import { getAllFilteredStudents } from "@/lib/students";
 import { getUserFormation } from "@/lib/permissions";
 import { getSettings } from "@/lib/settings";
 import { logAction } from "@/lib/audit";
+import { checkActionRateLimit } from "@/lib/rate-limit";
 import { buildStudentsExportWorkbook } from "@/app/etudiants/export-xlsx";
+
+// Export "vue à l'écran" : usage plus fréquent que la sauvegarde CSV complète
+// (/api/students/export), donc une limite plus large — le but reste de
+// freiner un compte compromis, pas de gêner l'usage normal.
+const MAX_EXPORTS_PER_WINDOW = 20;
 
 // Export Excel (.xlsx) de la liste telle qu'affichée sur /etudiants (mêmes
 // filtres et tri, jamais limité à la page en cours). Ouvert à tous les
@@ -19,6 +25,19 @@ export async function GET(req: Request) {
   const session = await getSession();
   if (!session || !["AGENT_ADMINISTRATION", "AGENT_PEDAGOGIQUE", "SUPERADMIN"].includes(session.role)) {
     return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
+  }
+
+  const rateLimit = checkActionRateLimit(`export-xlsx:${session.sub}`, MAX_EXPORTS_PER_WINDOW);
+  if (rateLimit.limited) {
+    await logAction(
+      "EXPORT_RATE_LIMITED",
+      `Export Excel (liste filtrée) bloqué (trop d'appels récents) pour ${session.email}`,
+      session.sub,
+    );
+    return NextResponse.json(
+      { error: `Trop d'exports récents. Réessayez dans ${rateLimit.retryAfterMinutes} minutes.` },
+      { status: 429 },
+    );
   }
 
   const { searchParams } = new URL(req.url);

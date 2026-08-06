@@ -3,6 +3,9 @@
 import { useActionState, useRef, useState } from "react";
 import { FaCheck, FaCheckCircle, FaTimes } from "react-icons/fa";
 import { registerInscriptionAction, type InscriptionState } from "./actions";
+import { MALAGASY_PHONE_PATTERN_SOURCE } from "@/lib/phone";
+
+const PHONE_TITLE = "10 chiffres, commençant par 032, 033, 034, 037 ou 038";
 
 const STEPS = [
   { title: "Étudiant", subtitle: "Renseignements sur l'étudiant" },
@@ -390,7 +393,9 @@ export function InscriptionWizard({
                 name="phone"
                 type="tel"
                 required
-                placeholder="+261 34 00 000 00"
+                pattern={MALAGASY_PHONE_PATTERN_SOURCE}
+                title={PHONE_TITLE}
+                placeholder="0321234567"
                 defaultValue={values.phone ?? ""}
                 className={inputClass}
               />
@@ -589,7 +594,16 @@ export function InscriptionWizard({
                 </div>
                 <div>
                   <label className={labelClass} htmlFor="guardianPhone">Numéro de téléphone *</label>
-                  <input id="guardianPhone" name="guardianPhone" type="tel" required className={inputClass} />
+                  <input
+                    id="guardianPhone"
+                    name="guardianPhone"
+                    type="tel"
+                    required
+                    pattern={MALAGASY_PHONE_PATTERN_SOURCE}
+                    title={PHONE_TITLE}
+                    placeholder="0321234567"
+                    className={inputClass}
+                  />
                 </div>
               </div>
               <div>

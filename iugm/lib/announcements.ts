@@ -1,14 +1,28 @@
+import type { AnnouncementKind } from "@prisma/client";
+
 import { prisma } from "./prisma";
 import { logAction } from "./audit";
 
 // ---------------------------------------------------------------------------
-// Communiqués : rédigés par les agents, lus par les étudiants.
-// Ciblage par groupe (filière et/ou niveau) ; tous les étudiants ciblés
-// reçoivent le même message.
+// Communiqués : rédigés par les agents, lus par les étudiants. Deux modes de
+// ciblage, mutuellement exclusifs pour une même ligne :
+//  - groupé (formation et/ou niveau, "null" = tous) — le cas habituel, rédigé
+//    manuellement depuis l'écran Communiquer ;
+//  - personnel (studentId renseigné) — un seul destinataire, ex. l'avis
+//    d'admission automatique envoyé depuis assignAcademicResult
+//    (lib/students.ts) à l'issue des résultats S1+S2.
 // ---------------------------------------------------------------------------
 
 export async function createAnnouncement(
-  input: { title: string; body: string; formation?: string | null; level?: string | null },
+  input: {
+    title: string;
+    body: string;
+    formation?: string | null;
+    level?: string | null;
+    studentId?: string | null;
+    kind?: AnnouncementKind;
+    sourceAcademicYear?: string | null;
+  },
   actorId: string,
 ) {
   const title = input.title.trim();
@@ -21,44 +35,59 @@ export async function createAnnouncement(
     data: {
       title,
       body,
-      formation: input.formation?.trim() || null,
-      level: input.level?.trim() || null,
+      formation: input.studentId ? null : input.formation?.trim() || null,
+      level: input.studentId ? null : input.level?.trim() || null,
+      studentId: input.studentId || null,
+      kind: input.kind ?? "MANUAL",
+      sourceAcademicYear: input.sourceAcademicYear ?? null,
       authorId: actorId,
     },
   });
 
-  const target = [
-    announcement.formation ?? "toutes filières",
-    announcement.level ?? "tous niveaux",
-  ].join(" / ");
+  const target = announcement.studentId
+    ? `dossier ${announcement.studentId}`
+    : [announcement.formation ?? "toutes filières", announcement.level ?? "tous niveaux"].join(" / ");
   await logAction("ANNOUNCEMENT_SENT", `Communiqué « ${title} » envoyé (${target})`, actorId);
   return announcement;
 }
 
-// Liste pour les agents (tous les communiqués, avec auteur et lectures)
+// Liste pour les agents (tous les communiqués, avec auteur et lectures) —
+// `student` n'est renseigné que pour un communiqué personnel (avis
+// d'admission automatique), pour afficher son destinataire.
 export async function listAnnouncementsForAgent() {
   return prisma.announcement.findMany({
     orderBy: { createdAt: "desc" },
     include: {
       author: { select: { email: true, fullName: true, jobTitle: true } },
+      student: { select: { fullName: true, matricule: true } },
       _count: { select: { reads: true } },
     },
   });
 }
 
-// Critère de ciblage d'un étudiant : (filière du communiqué absente OU égale)
-// ET (niveau absent OU égal)
+// Critère de ciblage d'un étudiant : soit un communiqué personnel qui lui est
+// adressé (studentId = son dossier), soit un communiqué groupé (studentId
+// absent) dont la filière et le niveau sont absents ou égaux aux siens.
+// Un communiqué personnel n'a pas de formation/level renseignés (voir
+// createAnnouncement) : sans le distinguo `studentId: null` explicite ici, il
+// matcherait par erreur TOUS les étudiants via la règle "absent = tous".
 async function targetingWhere(userId: string) {
   const student = await prisma.student.findFirst({
     where: { accountId: userId },
-    select: { mention: true, program: true, level: true, track: true },
+    select: { id: true, mention: true, program: true, level: true, track: true },
   });
   const formation = student ? (student.mention ?? student.program) : null;
   const level = student ? (student.level ?? student.track) : null;
   return {
-    AND: [
-      { OR: [{ formation: null }, ...(formation ? [{ formation }] : [])] },
-      { OR: [{ level: null }, ...(level ? [{ level }] : [])] },
+    OR: [
+      ...(student ? [{ studentId: student.id }] : []),
+      {
+        AND: [
+          { studentId: null },
+          { OR: [{ formation: null }, ...(formation ? [{ formation }] : [])] },
+          { OR: [{ level: null }, ...(level ? [{ level }] : [])] },
+        ],
+      },
     ],
   };
 }

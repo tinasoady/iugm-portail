@@ -8,6 +8,7 @@ import { getSession } from "@/lib/auth";
 import { logAction } from "@/lib/audit";
 import { generatePassword, generateInitialPassword } from "@/lib/students";
 import { TASKS, tasksForRole, type TaskKey } from "@/lib/permissions";
+import { encryptSecret } from "@/lib/secret-crypto";
 import { FORMATIONS } from "@/lib/formations";
 
 export type PermissionState = {
@@ -128,7 +129,8 @@ export async function resetPasswordAction(
     if (user.studentFile) {
       await tx.student.update({
         where: { id: user.studentFile.id },
-        data: { initialPassword: tempPassword },
+        // Chiffré en base (voir lib/secret-crypto.ts), comme à l'inscription
+        data: { initialPassword: encryptSecret(tempPassword) },
       });
     }
   });

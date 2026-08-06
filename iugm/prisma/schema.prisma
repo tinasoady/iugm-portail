@@ -113,6 +113,10 @@ model Student {
   docPinkFolder       Boolean @default(false) // papier chemise rose
   docPaymentSlip      Boolean @default(false) // bordereau de versement
   docEngagementLetter Boolean @default(false) // lettre d'engagement co-signée
+  // Pièces de réinscription (cochées par l'agent à chaque réinscription, puis
+  // remises à false : à revérifier l'année suivante — voir reenrollStudent)
+  docTranscript       Boolean @default(false) // copie certifiée du relevé de notes
+  docBlueFolder       Boolean @default(false) // papier chemise bleu
 
   // Cursus
   domain       String? // domaine
@@ -149,6 +153,10 @@ model Student {
   // Fiche de présélection (Université de Mahajanga) à partir de laquelle ce
   // dossier a été créé, le cas échéant — voir PreselectionCandidate.
   fromPreselection  PreselectionCandidate?
+  // Communiqués personnels adressés à ce dossier (ex : avis d'admission
+  // automatique) — distincts des communiqués groupés par filière/niveau,
+  // voir Announcement.studentId
+  announcements     Announcement[]
   createdAt         DateTime               @default(now())
   updatedAt         DateTime               @updatedAt
   // + index trigram (pg_trgm/GIN) sur fullName, matricule, receiptNumber,
@@ -176,6 +184,11 @@ model EnrollmentHistory {
   // étudiant se réinscrit, alors qu'ils ont bien eu lieu.
   receiptVerifiedAt DateTime?
   pedagoValidatedAt DateTime?
+  // Pièces de réinscription vérifiées pour cette année, copiées depuis
+  // Student avant leur remise à zéro par reenrollStudent (même logique que
+  // receiptVerifiedAt/pedagoValidatedAt ci-dessus)
+  docTranscript     Boolean   @default(false)
+  docBlueFolder     Boolean   @default(false)
   archivedAt        DateTime  @default(now())
 
   @@index([studentId])
@@ -286,20 +299,40 @@ model AcademicResult {
   @@index([mention])
 }
 
-// Communiqué envoyé par un agent aux étudiants (lecture seule côté étudiant).
-// Ciblage par groupe : filière et/ou niveau ; null = tous.
-model Announcement {
-  id        String             @id @default(cuid())
-  title     String
-  body      String
-  formation String? // filière ciblée (null = toutes)
-  level     String? // niveau ciblé (null = tous)
-  author    User?              @relation("AuthoredAnnouncements", fields: [authorId], references: [id], onDelete: SetNull)
-  authorId  String?
-  reads     AnnouncementRead[]
-  createdAt DateTime           @default(now())
+// Origine d'un communiqué : rédigé manuellement par un agent, ou généré
+// automatiquement (ex : avis d'admission à l'issue des résultats S1+S2).
+enum AnnouncementKind {
+  MANUAL
+  ADMISSION_NOTICE
+}
 
+// Communiqué envoyé par un agent aux étudiants (lecture seule côté étudiant).
+// Ciblage par groupe (filière et/ou niveau ; null = tous) OU, si `studentId`
+// est renseigné, communiqué personnel visible uniquement par ce dossier
+// (voir targetingWhere dans lib/announcements.ts) — les deux modes de
+// ciblage sont mutuellement exclusifs pour une même ligne.
+model Announcement {
+  id                 String             @id @default(cuid())
+  title              String
+  body               String
+  formation          String? // filière ciblée (null = toutes) — ignoré si studentId renseigné
+  level              String? // niveau ciblé (null = tous) — ignoré si studentId renseigné
+  student            Student?           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId          String? // communiqué personnel : destinataire unique
+  kind               AnnouncementKind   @default(MANUAL)
+  // Année universitaire à l'origine d'un avis d'admission automatique — sert
+  // uniquement à dédoublonner (voir @@unique ci-dessous et
+  // maybeSendAdmissionAnnouncement dans lib/students.ts) : un ré-enregistrement
+  // du S2 d'une même année ne doit pas renvoyer un second avis.
+  sourceAcademicYear String?
+  author             User?              @relation("AuthoredAnnouncements", fields: [authorId], references: [id], onDelete: SetNull)
+  authorId           String?
+  reads              AnnouncementRead[]
+  createdAt          DateTime           @default(now())
+
+  @@unique([studentId, sourceAcademicYear, kind])
   @@index([createdAt])
+  @@index([studentId])
 }
 
 // Marque de lecture d'un communiqué par un étudiant (badge « non lu »)

@@ -72,3 +72,33 @@ export async function recordLoginAttempt(
     });
   }
 }
+
+// ---------------------------------------------------------------------------
+// Limiteur générique en mémoire, pour les routes sensibles déjà authentifiées
+// (ex : export complet de la base). Contrairement à l'anti-bruteforce de
+// connexion ci-dessus (basé sur LoginAttempt en base, qui doit résister à un
+// redémarrage et protéger un point d'entrée public non authentifié), un
+// compteur en mémoire suffit ici : la route est déjà protégée par la session,
+// l'objectif est seulement de limiter le débit d'un compte compromis ou d'un
+// script mal écrit, pas d'empêcher une attaque par force brute. Un
+// redémarrage du serveur réinitialise simplement le compteur.
+// ---------------------------------------------------------------------------
+
+const ACTION_WINDOW_MS = 5 * 60_000;
+const actionAttempts = new Map<string, number[]>();
+
+export type ActionRateLimitStatus = { limited: boolean; retryAfterMinutes: number };
+
+// `key` identifie l'acteur ET l'action (ex: "export-csv:<userId>"), pour que
+// la limite d'une action n'affecte pas les autres. Fenêtre glissante de 5 min.
+export function checkActionRateLimit(key: string, max: number): ActionRateLimitStatus {
+  const now = Date.now();
+  const windowStart = now - ACTION_WINDOW_MS;
+  const timestamps = (actionAttempts.get(key) ?? []).filter((t) => t > windowStart);
+  if (timestamps.length >= max) {
+    return { limited: true, retryAfterMinutes: Math.ceil(ACTION_WINDOW_MS / 60_000) };
+  }
+  timestamps.push(now);
+  actionAttempts.set(key, timestamps);
+  return { limited: false, retryAfterMinutes: 0 };
+}

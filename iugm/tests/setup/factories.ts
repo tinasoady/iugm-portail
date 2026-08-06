@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import type { RegisterStudentInput } from "@/lib/students";
+import type { RegisterStudentInput, UpdateStudentInput } from "@/lib/students";
 import { FINANCIAL_INFO_DEFAULTS, type FinancialInfoFields } from "@/lib/finance";
 
 // Compteur simple pour des valeurs uniques (email, n° bacc...) sans dépendre
@@ -51,6 +51,36 @@ export function validRegisterInput(
 ): RegisterStudentInput {
   return {
     academicYear: "2026-2027",
+    lastName: "RAKOTO",
+    firstName: "Jean",
+    nationality: "Malagasy",
+    gender: "M",
+    birthDate: new Date("2005-01-01"),
+    birthPlace: "Mahajanga",
+    phone: "0341234567",
+    address: "Lot 12 Mahajanga",
+    maritalStatus: "Célibataire",
+    baccNumber: unique("BACC"),
+    baccSeries: "D",
+    baccMention: "Passable",
+    baccYear: "2024",
+    guardianName: "RAKOTO Paul",
+    guardianPhone: "0341112233",
+    mention: "Management",
+    level: "L1",
+    docResidenceCert: true,
+    docCinCopy: true,
+    docParentCin: false,
+    docPhotos: true,
+    docPinkFolder: true,
+    docPaymentSlip: true,
+    docEngagementLetter: true,
+    ...overrides,
+  };
+}
+
+export function validUpdateInput(overrides: Partial<UpdateStudentInput> = {}): UpdateStudentInput {
+  return {
     lastName: "RAKOTO",
     firstName: "Jean",
     nationality: "Malagasy",

@@ -3,12 +3,14 @@ import { redirect } from "next/navigation";
 
 import { getSession } from "@/lib/auth";
 import { getEcolageStats, listStudentsWithBalanceDue } from "@/lib/students";
+import { getEcolageRevenueTrend } from "@/lib/dashboard";
 import { hasTaskPermission } from "@/lib/permissions";
 import { getSelectedAcademicYear } from "@/lib/academic-year";
 import { getSelectedLevel } from "@/lib/level";
 import { AppShell } from "@/app/ui/app-shell";
 import { StatCard } from "@/app/ui/stat-card";
 import { Donut } from "@/app/ui/donut";
+import { LineChart } from "@/app/ui/line-chart";
 import { IconUsers, IconCash, IconClipboard, IconFolder } from "@/app/ui/icons";
 import { FaCheck, FaTimes, FaHourglassHalf } from "react-icons/fa";
 import { Tranche2Form } from "./tranche2-form";
@@ -76,9 +78,10 @@ export default async function EcolagePage() {
 
   // Année universitaire et niveau pilotés par les sélecteurs globaux de l'en-tête
   const [year, level] = await Promise.all([getSelectedAcademicYear(), getSelectedLevel()]);
-  const [stats, due] = await Promise.all([
+  const [stats, due, revenueTrend] = await Promise.all([
     getEcolageStats(year ?? undefined, level ?? undefined),
     listStudentsWithBalanceDue(year ?? undefined, level ?? undefined),
+    getEcolageRevenueTrend({ academicYear: year, level }),
   ]);
   const fullPct = pct(stats.full, stats.total);
   const partialPct = pct(stats.partial, stats.total);
@@ -133,68 +136,102 @@ export default async function EcolagePage() {
             Aucun dossier pour cette sélection.
           </p>
         ) : (
-          <div className="flex flex-col items-center gap-8 sm:flex-row sm:justify-center sm:gap-14">
-            <Donut
-              segments={[
-                { value: stats.full, className: "stroke-emerald-600 dark:stroke-emerald-500" },
-                { value: stats.partial, className: "stroke-amber-500 dark:stroke-amber-400" },
-                { value: stats.unpaid, className: "stroke-rose-600 dark:stroke-rose-500" },
-              ]}
-              centerValue={`${fullPct}%`}
-              centerLabel="payé"
-            />
+          <div className="grid gap-8 lg:grid-cols-[minmax(0,300px)_1fr] lg:items-start">
+            <div className="flex flex-col items-center gap-6">
+              <Donut
+                segments={[
+                  { value: stats.full, className: "stroke-emerald-600 dark:stroke-emerald-500" },
+                  { value: stats.partial, className: "stroke-amber-500 dark:stroke-amber-400" },
+                  { value: stats.unpaid, className: "stroke-rose-600 dark:stroke-rose-500" },
+                ]}
+                centerValue={`${fullPct}%`}
+                centerLabel="payé"
+                size={140}
+              />
 
-            {/* Légende détaillée */}
-            <div className="w-full max-w-xs space-y-3">
-              <div className="flex items-center gap-3 rounded-xl border border-black/5 p-3 dark:border-white/10">
-                <span className="h-4 w-4 shrink-0 rounded bg-emerald-600 dark:bg-emerald-500" />
-                <div className="flex-1">
-                  <p className="flex items-center gap-1.5 text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                    <FaCheck size={11} /> Payé intégralement
-                  </p>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                    {stats.full} étudiant(s) — totalité ou 2 tranches versées
-                  </p>
+              {/* Légende détaillée */}
+              <div className="w-full space-y-3">
+                <div className="flex items-center gap-3 rounded-xl border border-black/5 p-3 dark:border-white/10">
+                  <span className="h-4 w-4 shrink-0 rounded bg-emerald-600 dark:bg-emerald-500" />
+                  <div className="flex-1">
+                    <p className="flex items-center gap-1.5 text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                      <FaCheck size={11} /> Payé intégralement
+                    </p>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                      {stats.full} étudiant(s) — totalité ou 2 tranches versées
+                    </p>
+                  </div>
+                  <span className="text-lg font-bold text-emerald-700 dark:text-emerald-400">
+                    {fullPct}%
+                  </span>
                 </div>
-                <span className="text-lg font-bold text-emerald-700 dark:text-emerald-400">
-                  {fullPct}%
-                </span>
-              </div>
 
-              <div className="flex items-center gap-3 rounded-xl border border-black/5 p-3 dark:border-white/10">
-                <span className="h-4 w-4 shrink-0 rounded bg-amber-500 dark:bg-amber-400" />
-                <div className="flex-1">
-                  <p className="flex items-center gap-1.5 text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                    <FaHourglassHalf size={11} /> Paiement partiel
-                  </p>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                    {stats.partial} étudiant(s) — 1ère tranche versée, 2e due
-                  </p>
+                <div className="flex items-center gap-3 rounded-xl border border-black/5 p-3 dark:border-white/10">
+                  <span className="h-4 w-4 shrink-0 rounded bg-amber-500 dark:bg-amber-400" />
+                  <div className="flex-1">
+                    <p className="flex items-center gap-1.5 text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                      <FaHourglassHalf size={11} /> Paiement partiel
+                    </p>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                      {stats.partial} étudiant(s) — 1ère tranche versée, 2e due
+                    </p>
+                  </div>
+                  <span className="text-lg font-bold text-amber-700 dark:text-amber-400">
+                    {partialPct}%
+                  </span>
                 </div>
-                <span className="text-lg font-bold text-amber-700 dark:text-amber-400">
-                  {partialPct}%
-                </span>
-              </div>
 
-              <div className="flex items-center gap-3 rounded-xl border border-black/5 p-3 dark:border-white/10">
-                <span className="h-4 w-4 shrink-0 rounded bg-rose-600 dark:bg-rose-500" />
-                <div className="flex-1">
-                  <p className="flex items-center gap-1.5 text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                    <FaTimes size={11} /> Non payé
-                  </p>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                    {stats.unpaid} étudiant(s) sans aucun versement
-                  </p>
+                <div className="flex items-center gap-3 rounded-xl border border-black/5 p-3 dark:border-white/10">
+                  <span className="h-4 w-4 shrink-0 rounded bg-rose-600 dark:bg-rose-500" />
+                  <div className="flex-1">
+                    <p className="flex items-center gap-1.5 text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                      <FaTimes size={11} /> Non payé
+                    </p>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                      {stats.unpaid} étudiant(s) sans aucun versement
+                    </p>
+                  </div>
+                  <span className="text-lg font-bold text-rose-700 dark:text-rose-400">
+                    {unpaidPct}%
+                  </span>
                 </div>
-                <span className="text-lg font-bold text-rose-700 dark:text-rose-400">
-                  {unpaidPct}%
-                </span>
-              </div>
 
-              <p className="px-1 text-xs text-zinc-500 dark:text-zinc-400">
-                Total : {stats.total} dossier(s)
-                {year ? ` — année universitaire ${year}` : " — toutes années confondues"}
+                <p className="px-1 text-xs text-zinc-500 dark:text-zinc-400">
+                  Total : {stats.total} dossier(s)
+                  {year ? ` — année universitaire ${year}` : " — toutes années confondues"}
+                </p>
+              </div>
+            </div>
+
+            {/* Évolution de l'encaissement face au budget prévu */}
+            <div>
+              <h3 className="mb-1 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+                Évolution de l&apos;encaissement et du budget
+              </h3>
+              <p className="mb-3 text-xs text-zinc-500 dark:text-zinc-400">
+                Montant cumulé encaissé (Ar) au fil des mois, comparé au budget total prévu pour
+                cette sélection ({amountFormatter.format(revenueTrend.budget)} Ar).
               </p>
+              <LineChart
+                height={220}
+                labels={revenueTrend.monthLabels}
+                series={[
+                  {
+                    key: "collected",
+                    label: "Encaissé (cumulé)",
+                    color: "#1baf7a",
+                    darkColor: "#199e70",
+                    values: revenueTrend.collected,
+                  },
+                  {
+                    key: "budget",
+                    label: "Budget prévu",
+                    color: "#eb6834",
+                    darkColor: "#d95926",
+                    values: revenueTrend.months.map(() => revenueTrend.budget),
+                  },
+                ]}
+              />
             </div>
           </div>
         )}
