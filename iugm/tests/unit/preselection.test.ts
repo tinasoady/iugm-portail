@@ -1,7 +1,7 @@
 import ExcelJS from "exceljs";
 import { describe, expect, it } from "vitest";
 
-import { parsePreselectionWorkbook } from "@/lib/preselection";
+import { parsePreselectionWorkbook, toText } from "@/lib/preselection";
 
 // Construit un classeur .xlsx en mémoire (une feuille, une ligne d'en-têtes
 // puis les lignes de données fournies) pour tester le parsing sans dépendre
@@ -114,6 +114,33 @@ describe("parsePreselectionWorkbook", () => {
     const { rows, errors } = await parsePreselectionWorkbook(buffer);
     expect(rows).toEqual([]);
     expect(errors[0]).toMatch(/Colonnes de nom introuvables/);
+  });
+
+});
+
+// Régression : un fichier réel a un jour produit des centaines de fiches
+// avec prénom (voire nom) littéralement "[object Object]" en base — une
+// cellule dont la forme n'était reconnue par aucune branche de toText()
+// finissait stringifiée telle quelle plutôt que traitée comme vide. Une
+// fois en base, ces fiches ne peuvent plus être corrigées qu'à la main
+// (voir le bouton de suppression sur la page Base de données).
+describe("toText", () => {
+  it("ne renvoie jamais '[object Object]' pour une forme de cellule non reconnue", () => {
+    expect(toText({ sharedFormula: "A1" } as unknown as ExcelJS.CellValue)).toBe("");
+  });
+
+  it("ne renvoie jamais '[object Object]' si le résultat mis en cache d'une formule est lui-même un objet", () => {
+    expect(
+      toText({ formula: "A1", result: { error: "#REF!" } } as unknown as ExcelJS.CellValue),
+    ).toBe("");
+  });
+
+  it("extrait bien le texte des formes reconnues (richText, hyperlien, résultat de formule)", () => {
+    expect(toText({ richText: [{ text: "RA" }, { text: "KOTO" }] } as ExcelJS.CellValue)).toBe(
+      "RAKOTO",
+    );
+    expect(toText({ text: "RAKOTO", hyperlink: "mailto:x" } as ExcelJS.CellValue)).toBe("RAKOTO");
+    expect(toText({ formula: "A1", result: "RAKOTO" } as ExcelJS.CellValue)).toBe("RAKOTO");
   });
 });
 

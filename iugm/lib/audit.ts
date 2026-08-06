@@ -32,7 +32,8 @@ export type AuditAction =
   | "EXPORT_RATE_LIMITED"
   | "QR_TOKEN_REGENERATED"
   | "PRESELECTION_IMPORTED"
-  | "PRESELECTION_USED";
+  | "PRESELECTION_USED"
+  | "PRESELECTION_BATCH_DELETED";
 
 export async function logAction(action: AuditAction, details?: string, actorId?: string | null) {
   try {

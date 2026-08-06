@@ -5,6 +5,7 @@ import { defaultEnrollmentYear } from "@/lib/students";
 import { getPreselectionBatchSummary } from "@/lib/preselection";
 import { AppShell } from "@/app/ui/app-shell";
 import { ImportPreselectionForm } from "./import-form";
+import { DeleteBatchButton } from "./delete-batch-button";
 
 const CATEGORY_LABELS: Record<string, string> = {
   PRESELECTION: "Présélection (nouveaux L1)",
@@ -79,6 +80,8 @@ export default async function BaseDonneesPage() {
                     <th className="px-4 py-2.5 font-semibold">Type de données</th>
                     <th className="px-4 py-2.5 font-semibold">Année universitaire</th>
                     <th className="px-4 py-2.5 font-semibold">Fiches en base</th>
+                    <th className="px-4 py-2.5 font-semibold">Non utilisées</th>
+                    <th className="px-4 py-2.5 font-semibold">Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -94,6 +97,15 @@ export default async function BaseDonneesPage() {
                         {b.academicYear}
                       </td>
                       <td className="px-4 py-2.5 text-zinc-600 dark:text-zinc-400">{b.count}</td>
+                      <td className="px-4 py-2.5 text-zinc-600 dark:text-zinc-400">{b.unusedCount}</td>
+                      <td className="px-4 py-2.5">
+                        <DeleteBatchButton
+                          academicYear={b.academicYear}
+                          category={b.category}
+                          categoryLabel={CATEGORY_LABELS[b.category] ?? b.category}
+                          unusedCount={b.unusedCount}
+                        />
+                      </td>
                     </tr>
                   ))}
                 </tbody>

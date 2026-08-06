@@ -161,7 +161,7 @@ function toDate(value: ExcelJS.CellValue): Date | null {
   return null;
 }
 
-function toText(value: ExcelJS.CellValue): string {
+export function toText(value: ExcelJS.CellValue): string {
   if (value === null || value === undefined) return "";
   if (value instanceof Date) return "";
   // Cellule "vide" formatée en flux (streaming) : ExcelJS peut renvoyer NaN
@@ -183,7 +183,16 @@ function toText(value: ExcelJS.CellValue): string {
       // vérifier explicitement, sous peine de rendre "NaN" en texte (voir la
       // note plus haut — même symptôme, ici dans le résultat mis en cache
       // d'une formule plutôt que dans la valeur brute de la cellule).
-      if (result === null || result === undefined || (typeof result === "number" && Number.isNaN(result))) {
+      // Le résultat mis en cache peut lui-même être un objet (ex. une
+      // formule dont le résultat est une erreur, `{ error: "#REF!" }") :
+      // mêmes précautions que pour la valeur brute de la cellule, sous peine
+      // de retomber dans "[object Object]" une couche plus loin.
+      if (
+        result === null ||
+        result === undefined ||
+        typeof result === "object" ||
+        (typeof result === "number" && Number.isNaN(result))
+      ) {
         return "";
       }
       return String(result).trim();
@@ -193,6 +202,12 @@ function toText(value: ExcelJS.CellValue): string {
     // fichier : rien à en tirer, traitée comme une cellule vide plutôt que
     // de finir en "[object Object]".
     if ("formula" in value || "error" in value) return "";
+    // Forme de cellule ExcelJS non reconnue (ex: cellule fusionnée, référence
+    // partagée...) : impossible d'en extraire un texte fiable. Mieux vaut la
+    // traiter comme vide que de stocker littéralement "[object Object]"
+    // comme si c'était une vraie donnée (voir le bug historique qui a
+    // corrompu des noms importés avant ce correctif).
+    return "";
   }
   return String(value).trim();
 }
@@ -590,12 +605,15 @@ export async function importPreselectionRows(
             },
             actorId,
           ));
-        if (existing) studentsMatched++;
-        else studentsCreated++;
         await prisma.preselectionCandidate.update({
           where: { id: c.id },
           data: { usedByStudentId: student.id, usedAt: new Date() },
         });
+        // Comptés seulement une fois la liaison réellement écrite : sinon une
+        // ligne dont l'update échoue (ex. contrainte d'unicité) se retrouvait
+        // à la fois dans le résumé de succès et dans la liste d'erreurs.
+        if (existing) studentsMatched++;
+        else studentsCreated++;
       } catch (e) {
         errors.push(
           `${c.fullName} : dossier non créé (${e instanceof Error ? e.message : "erreur inconnue"}).`,
@@ -637,13 +655,53 @@ export async function importPreselectionFile(
 // l'écran d'import du superadmin — permet de voir d'un coup d'oeil ce qui est
 // déjà chargé avant de ré-importer).
 export async function getPreselectionBatchSummary() {
-  const rows = await prisma.preselectionCandidate.groupBy({
-    by: ["academicYear", "category"],
-    _count: { _all: true },
-  });
-  return rows
-    .map((r) => ({ academicYear: r.academicYear, category: r.category, count: r._count._all }))
+  // Deux comptages séparés : le total (affiché tel quel) et les fiches
+  // encore non utilisées (celles qu'un éventuel nettoyage peut supprimer
+  // sans jamais toucher un dossier étudiant déjà créé — voir deletePreselectionBatch).
+  const [totals, unused] = await Promise.all([
+    prisma.preselectionCandidate.groupBy({
+      by: ["academicYear", "category"],
+      _count: { _all: true },
+    }),
+    prisma.preselectionCandidate.groupBy({
+      by: ["academicYear", "category"],
+      where: { usedByStudentId: null },
+      _count: { _all: true },
+    }),
+  ]);
+  const unusedByKey = new Map(unused.map((r) => [`${r.academicYear}|${r.category}`, r._count._all]));
+  return totals
+    .map((r) => ({
+      academicYear: r.academicYear,
+      category: r.category,
+      count: r._count._all,
+      unusedCount: unusedByKey.get(`${r.academicYear}|${r.category}`) ?? 0,
+    }))
     .sort((a, b) => b.academicYear.localeCompare(a.academicYear) || a.category.localeCompare(b.category));
+}
+
+// Supprime les fiches NON utilisées d'un lot (année + catégorie). Les fiches
+// déjà reliées à un dossier étudiant (usedByStudentId non nul) sont toujours
+// conservées, jamais touchées ici : supprimer un lot n'affecte donc jamais un
+// dossier étudiant déjà créé, même s'il a été créé à partir d'une fiche
+// corrompue (voir la note sur toText() plus haut).
+export async function deletePreselectionBatch(
+  academicYear: string,
+  category: PreselectionCategory,
+  actorId: string,
+): Promise<number> {
+  const { count } = await prisma.preselectionCandidate.deleteMany({
+    where: { academicYear, category, usedByStudentId: null },
+  });
+  if (count > 0) {
+    const categoryLabel = category === "EXISTING" ? "Dossiers existants" : "Présélection";
+    await logAction(
+      "PRESELECTION_BATCH_DELETED",
+      `${categoryLabel} ${academicYear} : ${count} fiche(s) non utilisée(s) supprimée(s)`,
+      actorId,
+    );
+  }
+  return count;
 }
 
 export type PreselectionSearchResult = {
