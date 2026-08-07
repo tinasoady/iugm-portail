@@ -28,3 +28,12 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Marges d'impression resserrées (le navigateur applique sinon souvent
+   ~19mm par défaut) — sert notamment le reçu d'inscription
+   (app/agent-pedagogique/recu/[studentId]/page.tsx), pensé pour tenir sur
+   une seule page A4. */
+@page {
+  size: A4;
+  margin: 12mm;
+}

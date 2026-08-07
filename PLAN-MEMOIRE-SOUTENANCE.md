@@ -136,6 +136,51 @@ Points à couvrir :
 - Glossaire des termes métier (écolage, matricule, mention, tranche, etc.)
 - Table des matières détaillée
 
+## Journal technique détaillé — matière brute à ne pas perdre
+
+> Ce qui suit n'est pas rédigé pour être copié tel quel : c'est la mémoire brute et précise de ce qui a été fait, avec les noms de fichiers/fonctions et les chiffres réels, pour que tu puisses écrire tes propres phrases (voir la section "Pour que la rédaction sonne comme toi") sans avoir à retrouver ces détails de mémoire six mois plus tard. Classé par destination probable dans le plan.
+
+### A. Pour le Chapitre 4 (Conception de la sécurité) — durcissement du portail après un audit
+
+Un audit de sécurité complet a été mené sur le portail après sa mise en ligne, avec correction immédiate de chaque point :
+
+- **En-têtes de sécurité HTTP** (`next.config.ts`) : Content-Security-Policy, `X-Frame-Options: DENY`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, `Strict-Transport-Security`. Choix justifié : CSP *sans nonce* plutôt que via un `proxy.ts` — l'approche par nonce force le rendu dynamique sur toutes les pages, ce qui contredit le choix d'architecture déjà fait (pas de middleware, chaque page se protège elle-même). Un bon exemple de compromis technique à expliquer dans le mémoire.
+- **Rate-limiting sur les exports** (`lib/rate-limit.ts`, fonction `checkActionRateLimit`) : au-delà du login, les routes `/api/students/export` et `/api/students/export-filtered` sont maintenant limitées (5 et 20 requêtes/5 min) pour freiner un compte compromis qui aspirerait toute la base.
+- **Chiffrement du mot de passe initial en base** (`lib/secret-crypto.ts`) : `Student.initialPassword` était stocké en clair (imprimé sur le reçu, effacé au premier changement de mot de passe). Chiffré maintenant en AES-256-GCM, clé dérivée d'`AUTH_SECRET` via scrypt. Un script de migration (`scripts/encrypt-legacy-initial-passwords.ts`) a rattrapé les mots de passe déjà en clair pour les dossiers existants.
+- **Fuite de secret sur GitHub** : le fichier modèle `.env.test.example` (volontairement suivi par git) contenait par erreur le vrai mot de passe du Postgres local au lieu d'un placeholder — corrigé, et le mot de passe rotate côté local (bon exemple pour la section "pourquoi ne jamais committer un `.env`").
+- **Audit systématique des Server Actions** : chaque route/action revérifie son propre rôle et ses permissions (pas de middleware centralisé, choix assumé — voir commentaire dans `lib/auth.ts`), audité fichier par fichier pour vérifier qu'aucune n'a été oubliée.
+
+### B. Pour le Chapitre 7 (Difficultés techniques rencontrées) — bugs réels, avec la vraie histoire de leur découverte
+
+Ce sont les meilleures anecdotes pour ce chapitre, parce qu'elles montrent une vraie démarche de debug, pas juste "j'ai codé la fonctionnalité" :
+
+1. **Le bug `"[object Object]"` dans l'import Excel** — le plus gros. La page « Base de données » affichait un message d'erreur alarmant après un import pourtant globalement réussi. En creusant (requêtes directes sur la base de production), il s'est avéré que `toText()` (`lib/preselection.ts`), la fonction qui convertit une cellule Excel en texte, avait un filet de sécurité incomplet : une forme de cellule non reconnue (ex. cellule fusionnée) faisait `String(cellule)`, donnant littéralement `"[object Object]"` comme donnée. **1722 fiches corrompues** ont été trouvées en base de production (968 « Dossiers existants » + 754 « Présélection »), dont 2 vrais dossiers étudiants avec un nom illisible. Corrigé, testé (nouveau test unitaire qui appelle `toText()` directement avec une valeur mal formée), avec un bouton de nettoyage ajouté pour purger les fiches corrompues non utilisées sans toucher aux dossiers déjà créés.
+2. **Le bug de comptage qui mentait** : dans la même fonction d'import, le nombre de fiches "reliées avec succès" était incrémenté *avant* que l'écriture en base ait réellement réussi — un import pouvait donc afficher "968 relié(s)" alors qu'en réalité l'écriture avait échoué (contrainte d'unicité). Corrigé en déplaçant l'incrément après l'écriture.
+3. **Le bug de contrainte unique sur le ré-import** (celui qui faisait échouer le CI) : `PreselectionCandidate.usedByStudentId` est unique en base (une fiche = un dossier). Mais un ré-import corrigé de la même personne essayait de relier une *deuxième* fiche au même dossier déjà créé — violation de contrainte. Pas une vraie erreur métier (le dossier existe déjà, c'est le but), donc traité comme un cas normal plutôt qu'une exception.
+4. **Le montant dû à l'écolage figé à une moitié** : `listStudentsWithBalanceDue` calculait le reste dû comme `tarif_annuel / 2`, une valeur fixe, au lieu de `tarif_annuel - déjà_versé`. Un étudiant qui payait plus que le minimum requis à l'inscription se voyait quand même proposer de payer une "moitié" qui ne correspondait à rien de réel. Bon exemple pour illustrer une règle métier mal traduite en code.
+5. **Le communiqué de bienvenue, mauvais point de déclenchement** : implémenté une première fois à la validation pédagogique de l'inscription, puis corrigé après clarification — un dossier peut être validé plusieurs jours avant que l'étudiant se connecte pour la première fois, donc le message n'a de sens qu'au premier login réel. Nouveau champ `User.firstLoginAt`, posé de façon atomique (`updateMany` conditionnel) pour garantir qu'un seul communiqué est jamais envoyé même en cas de connexions simultanées.
+6. **Le déploiement Vercel n'appliquait pas les migrations Prisma automatiquement** : découvert en comparant l'état des migrations en local vs sur la base de production (Neon) via `prisma migrate status` — deux migrations restaient systématiquement en attente après chaque déploiement. Corrigé en configurant la commande de build Vercel (`npx prisma migrate deploy && npm run build`), un point à mentionner dans la partie déploiement/CI-CD.
+
+### C. Pour le Chapitre 6 (Implémentation des fonctionnalités clés) — ajouts concrets
+
+- **Accès rapide cliquable sur le tableau de bord superadmin** : les 4 cartes statistiques (Superadmin, Agents administration, Agents pédagogiques, Étudiants) filtrent maintenant la liste des utilisateurs par rôle au clic (`?role=X` en paramètre d'URL, ancre vers la section), avec mise en évidence visuelle de la carte active.
+- **Solde d'écolage réellement calculé** et affiché après vérification du paiement d'inscription ("il reste X Ar à payer"), avec un formulaire de solde de tranche qui accepte maintenant un montant explicite (pré-rempli avec le vrai reste dû) au lieu d'un montant figé.
+- **Bouton de nettoyage des fiches d'import non utilisées** (Base de données → Lots importés), scindé volontairement des fiches déjà liées à un dossier réel (jamais supprimées) pour rester une action sûre malgré son caractère destructeur.
+
+### D. Pour le Chapitre 6/7 (Responsive et UX mobile)
+
+- Testé sur téléphone réel par le maître de stage / toi-même : cartes statistiques trop hautes (empilées une par une sur petit écran), bouton de déconnexion difficile à trouver.
+- Cause réelle du problème de déconnexion : pas un mauvais emplacement, mais une barre du haut surchargée sur mobile (sélecteurs année + niveau + thème + avatar tous entassés), qui noyait le petit avatar donnant accès au menu de déconnexion. Corrigé en masquant les sélecteurs sous le seuil `sm` (~640px) plutôt qu'en redessinant tout le header — un bon exemple de "corriger la vraie cause, pas le symptôme".
+- Cartes passées à 2 colonnes dès le mobile (`grid-cols-2` au lieu de `sm:grid-cols-2`) sur les 4 tableaux de bord (Superadmin, Dossiers étudiants, Écolage, Pédagogie).
+
+### E. Chiffres et éléments concrets à réutiliser tels quels
+
+- 133-134 tests automatisés (unitaires + intégration) au moment de la rédaction, exécutés sur une vraie base PostgreSQL de test — bon chiffre à citer au Chapitre 7.
+- CI GitHub Actions (`.github/workflows/ci.yml`) : typecheck, lint, tests, build, sur un service Postgres éphémère à chaque push.
+- Déploiement : Vercel (hébergement + CD automatique au push sur `main`) + Neon (PostgreSQL managé) + Vercel Blob (stockage des fichiers uploadés — logo, photos de profil), migré depuis un stockage disque local (`public/uploads`) devenu impossible en environnement serverless.
+
+---
+
 ## Bibliographie / Webographie (1 page)
 
 Documentation officielle Next.js, Prisma, PostgreSQL, éventuels articles/cours suivis.

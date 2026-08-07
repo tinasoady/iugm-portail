@@ -68,15 +68,17 @@ export default async function ReceiptPage({
           <PrintButton matricule={student.matricule} fullName={student.fullName} />
         </div>
 
-        {/* Le reçu lui-même : fond blanc forcé pour l'impression */}
-        <div className="rounded-2xl border border-black/10 bg-white p-10 shadow-sm print:rounded-none print:border-0 print:shadow-none">
-          <header className="mb-8 border-b border-black/10 pb-6 text-center">
+        {/* Le reçu lui-même : fond blanc forcé pour l'impression. Espacements
+            resserrés en print (print:*) pour tenir sur une seule page — voir
+            aussi @page dans globals.css, l'aperçu écran garde ses marges. */}
+        <div className="rounded-2xl border border-black/10 bg-white p-10 shadow-sm print:rounded-none print:border-0 print:p-0 print:shadow-none">
+          <header className="mb-8 border-b border-black/10 pb-6 text-center print:mb-4 print:pb-3">
             {settings.logo && (
               // eslint-disable-next-line @next/next/no-img-element -- data URL, next/image inutile ici
               <img
                 src={settings.logo}
                 alt={`Logo ${settings.institutionAcronym}`}
-                className="mx-auto mb-3 h-16 w-16 object-contain"
+                className="mx-auto mb-3 h-16 w-16 object-contain print:mb-1.5 print:h-12 print:w-12"
               />
             )}
             <h1 className="text-2xl font-bold tracking-wide text-zinc-900">
@@ -89,7 +91,7 @@ export default async function ReceiptPage({
                 {[settings.phone, settings.email].filter(Boolean).join(" — ")}
               </p>
             )}
-            <p className="mt-4 text-lg font-semibold text-zinc-900 uppercase">
+            <p className="mt-4 text-lg font-semibold text-zinc-900 uppercase print:mt-2">
               Reçu d&apos;inscription définitive
             </p>
           </header>
@@ -98,16 +100,16 @@ export default async function ReceiptPage({
             <tbody>
               {rows.map(([label, value]) => (
                 <tr key={label} className="border-b border-black/5 last:border-0">
-                  <td className="py-2.5 pr-6 font-medium text-zinc-500">{label}</td>
-                  <td className="py-2.5 font-semibold text-zinc-900">{value}</td>
+                  <td className="py-2.5 pr-6 font-medium text-zinc-500 print:py-1.5">{label}</td>
+                  <td className="py-2.5 font-semibold text-zinc-900 print:py-1.5">{value}</td>
                 </tr>
               ))}
             </tbody>
           </table>
 
           {/* Identifiants du compte étudiant, remis avec le reçu */}
-          <div className="mt-8 rounded-xl border border-zinc-300 p-4 print:rounded-none">
-            <p className="mb-2 text-sm font-semibold text-zinc-900 uppercase">
+          <div className="mt-8 rounded-xl border border-zinc-300 p-4 print:mt-4 print:rounded-none print:p-3">
+            <p className="mb-2 text-sm font-semibold text-zinc-900 uppercase print:mb-1">
               Compte étudiant — portail en ligne
             </p>
             <table className="w-full text-sm">
@@ -120,26 +122,26 @@ export default async function ReceiptPage({
                 ))}
               </tbody>
             </table>
-            <p className="mt-2 text-xs text-zinc-500">
+            <p className="mt-2 text-xs text-zinc-500 print:mt-1">
               Identifiants strictement personnels. Changez ce mot de passe dès votre première
               connexion.
             </p>
           </div>
 
-          <p className="mt-8 text-sm text-zinc-700">
+          <p className="mt-8 text-sm text-zinc-700 print:mt-4">
             Le présent reçu atteste que l&apos;étudiant(e) ci-dessus a accompli l&apos;intégralité
             des formalités d&apos;inscription administrative et pédagogique au titre de
             l&apos;année universitaire en cours.
           </p>
 
-          <footer className="mt-10 flex items-end justify-between text-sm text-zinc-600">
+          <footer className="mt-10 flex items-end justify-between text-sm text-zinc-600 print:mt-6">
             <div>
               <p>
                 Fait à {settings.city ?? "—"}, le {dateFormatter.format(new Date())}
               </p>
             </div>
             <div className="text-center">
-              <p className="mb-14">L&apos;agent pédagogique</p>
+              <p className="mb-10 print:mb-8">Le responsable pédagogique</p>
               <p className="border-t border-zinc-400 px-8 pt-1">Signature et cachet</p>
             </div>
           </footer>
