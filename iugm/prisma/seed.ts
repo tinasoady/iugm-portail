@@ -4,29 +4,38 @@ import "./load-env";
 import bcrypt from "bcryptjs";
 // On importe l'instance Prisma configurée avec l'adaptateur PostgreSQL v7
 import { prisma } from "../lib/prisma";
+import { generatePassword } from "../lib/students";
 
 async function main() {
   console.log("⏳ Début du peuplement de la base de données...");
 
-  // 1. Génération d'une empreinte sécurisée pour le mot de passe
-  // Le chiffre 10 représente le "salt round" (la puissance de chiffrement)
-  const salt = await bcrypt.genSalt(10);
-  const adminPasswordHash = await bcrypt.hash("admin123", salt);
+  const email = "admin@iugm.edu";
+  const existing = await prisma.user.findUnique({ where: { email } });
+  if (existing) {
+    console.log(`ℹ️ Compte Superadmin déjà présent : ${email} (mot de passe inchangé)`);
+    return;
+  }
 
-  // 2. Création du compte SUPERADMIN
-  // L'opération 'upsert' évite les doublons : elle met à jour si l'email existe déjà, sinon elle le crée.
-  const superadmin = await prisma.user.upsert({
-    where: { email: "admin@iugm.edu" },
-    update: {},
-    create: {
-      email: "admin@iugm.edu",
+  // Mot de passe aléatoire à usage unique : jamais commité, affiché une seule
+  // fois ici. Le compte est créé avec mustChangePassword pour forcer sa
+  // définition par la personne qui se connecte réellement (voir lib/login.ts).
+  const initialPassword = generatePassword(12);
+  const salt = await bcrypt.genSalt(10);
+  const adminPasswordHash = await bcrypt.hash(initialPassword, salt);
+
+  const superadmin = await prisma.user.create({
+    data: {
+      email,
       fullName: "Super Administrateur IUGM",
       passwordHash: adminPasswordHash,
       role: "SUPERADMIN",
+      mustChangePassword: true,
     },
   });
 
-  console.log(`✅ Compte Superadmin créé : ${superadmin.email} (Mot de passe: admin123)`);
+  console.log(`✅ Compte Superadmin créé : ${superadmin.email}`);
+  console.log(`🔑 Mot de passe initial (à usage unique, ne sera plus jamais affiché) : ${initialPassword}`);
+  console.log(`   Changement obligatoire à la première connexion.`);
 }
 
 main()
