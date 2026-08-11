@@ -11,7 +11,7 @@ import {
 import { createAnnouncement, deleteAnnouncement } from "@/lib/announcements";
 
 export type AnnouncementState = { success?: string; error?: string };
-
+ // Vérifie que l'utilisateur est autorisé à accéder à la page Communiquer.
 async function requireCommuniquer() {
   const session = await getSession();
   if (
