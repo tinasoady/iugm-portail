@@ -11,6 +11,7 @@ import { getSelectedLevel } from "@/lib/level";
 import { AcademicYearSelector } from "./academic-year-selector";
 import { LevelSelector } from "./level-selector";
 import { AccountMenu } from "./account-menu";
+import { IdleLogout } from "./idle-logout";
 import type { TaskKey } from "@/lib/permissions";
 import {
   IconDashboard,
@@ -204,6 +205,7 @@ export async function AppShell({
 
   return (
     <div className="min-h-screen bg-zinc-100 dark:bg-zinc-950">
+      <IdleLogout />
       {/* Sidebar */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col bg-zinc-950 md:flex">
         <div className="flex items-center gap-3 px-6 py-6">
