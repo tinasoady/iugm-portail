@@ -4,10 +4,13 @@ import type { NextConfig } from "next";
 // En-têtes de sécurité HTTP, appliqués à toutes les routes.
 //
 // CSP sans nonce (voir node_modules/next/dist/docs/01-app/02-guides/
-// content-security-policy.md) : l'approche par nonce exige un `proxy.ts` qui
-// force le rendu dynamique sur toutes les pages, ce qui va à l'encontre du
-// choix déjà fait dans ce projet (pas de middleware, chaque page/action se
-// protège elle-même — voir lib/auth.ts). `'unsafe-inline'` reste nécessaire
+// content-security-policy.md) : l'approche par nonce forcerait le rendu
+// dynamique sur toutes les pages pour pouvoir injecter un nonce différent à
+// chaque requête. Le proxy.ts du projet (voir sa présence à la racine) ne
+// génère volontairement aucun nonce — il se limite à un contrôle de session
+// optimiste en amont des pages, qui restent statiques/ISR quand c'est
+// possible ; l'autorisation reste vérifiée finement dans chaque page/action
+// (voir lib/auth.ts). `'unsafe-inline'` reste nécessaire
 // pour script-src (script d'init du thème dans app/layout.tsx + scripts
 // d'hydratation générés par Next lui-même) et style-src (attributs `style`
 // dynamiques, ex. app/ui/line-chart.tsx) ; ce n'est pas une régression XSS
