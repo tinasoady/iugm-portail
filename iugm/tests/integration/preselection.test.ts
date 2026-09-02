@@ -135,6 +135,38 @@ describe("importPreselectionFile", () => {
     expect(rows2026.map((s) => s.formation).sort()).toEqual(["Informatique", "Management"]);
   });
 
+  it("un import L2 d'une filière n'efface pas les fiches non utilisées du L1 de la MÊME filière", async () => {
+    const actor = await createActor("SUPERADMIN");
+    const l1Batch = await buildWorkbook(
+      ["Nom", "Prénom", "Niveau", "Filière affectée"],
+      [["RABE", "Marie", "L1", "Management"]],
+    );
+    await importPreselectionFile(l1Batch, "2026-2027", actor.id, "EXISTING");
+
+    // Même filière, niveau différent : ne doit pas toucher le lot L1.
+    const l2Batch = await buildWorkbook(
+      ["Nom", "Prénom", "Niveau", "Filière affectée"],
+      [["RAKOTO", "Jean", "L2", "Management"]],
+    );
+    const result = await importPreselectionFile(l2Batch, "2026-2027", actor.id, "EXISTING");
+    expect(result.studentsCreated).toBe(1);
+    expect(result.studentsMatched).toBe(0);
+
+    const remaining = await prisma.preselectionCandidate.findMany({
+      where: { academicYear: "2026-2027" },
+      orderBy: { fullName: "asc" },
+    });
+    expect(remaining.map((r) => [r.fullName, r.level])).toEqual([
+      ["RABE Marie", "L1"],
+      ["RAKOTO Jean", "L2"],
+    ]);
+
+    const summary = await getPreselectionBatchSummary();
+    const rows2026 = summary.filter((s) => s.academicYear === "2026-2027" && s.formation === "Management");
+    expect(rows2026).toHaveLength(2);
+    expect(rows2026.map((s) => s.level).sort()).toEqual(["L1", "L2"]);
+  });
+
   it("un import 'dossiers existants' n'efface pas la présélection de la même année, et inversement", async () => {
     const actor = await createActor("SUPERADMIN");
     const preselection = await buildWorkbook(["Nom", "Prénom"], [["RAKOTO", "Jean"]]);

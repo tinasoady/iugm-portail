@@ -514,17 +514,18 @@ export type ImportPreselectionResult = {
 // Enregistre en base un lot de PreselectionRow déjà extrait (voir
 // parsePreselectionWorkbook / parseExistingRecordsFromFile ci-dessus) pour
 // une année universitaire et une catégorie : remplace le lot précédent de
-// cette année, cette catégorie ET cette filière (les fiches déjà utilisées
-// pour inscrire un étudiant sont conservées, pour ne jamais casser un
-// dossier déjà créé) puis insère les nouvelles lignes. Scoper aussi par
+// cette année, cette catégorie, cette filière ET ce niveau (les fiches déjà
+// utilisées pour inscrire un étudiant sont conservées, pour ne jamais casser
+// un dossier déjà créé) puis insère les nouvelles lignes. Scoper aussi par
 // catégorie évite qu'un ré-import des dossiers existants n'efface la
-// présélection de la même année (et vice-versa) ; scoper par filière évite
-// qu'un import filière par filière n'efface les fiches encore non utilisées
-// d'une AUTRE filière déjà importée pour la même année (voir aussi le
-// commentaire sur le matching filière dans la section EXISTING plus bas).
-// Un fichier peut contenir plusieurs filières à la fois (format "par
-// classe", une feuille par filière) : chaque filière présente dans `rows`
-// est remplacée indépendamment.
+// présélection de la même année (et vice-versa) ; scoper par filière ET
+// niveau évite qu'un import (ex. L2 d'une filière) n'efface les fiches
+// encore non utilisées d'une AUTRE classe déjà importée pour la même année
+// (une autre filière, ou la même filière à un autre niveau) — voir aussi le
+// commentaire sur le matching filière dans la section EXISTING plus bas.
+// Un fichier peut contenir plusieurs classes à la fois (format "par classe",
+// une feuille par niveau/filière) : chaque classe présente dans `rows` est
+// remplacée indépendamment.
 export async function importPreselectionRows(
   rows: PreselectionRow[],
   academicYear: string,
@@ -544,21 +545,29 @@ export async function importPreselectionRows(
 
   const errors = [...parseErrors];
 
-  // Filières présentes dans ce fichier (null inclus, pour les fiches sans
-  // filière renseignée) : seuls ces lots-là sont remplacés, jamais ceux
-  // d'une filière absente de ce fichier.
-  const formationsInFile = [...new Set(rows.map((r) => r.formation ?? null))];
+  // Classes (filière + niveau) présentes dans ce fichier (null inclus, pour
+  // les fiches sans filière/niveau renseigné) : seuls ces lots-là sont
+  // remplacés, jamais ceux d'une classe absente de ce fichier. Une paire, pas
+  // deux ensembles indépendants : un fichier "L2 Management" ne doit pas
+  // effacer "L1 Management" sous prétexte qu'ils partagent la filière.
+  const classesInFile = new Map<string, { formation: string | null; level: string | null }>();
+  for (const r of rows) {
+    const formation = r.formation ?? null;
+    const level = r.level ?? null;
+    classesInFile.set(`${formation ?? ""}|${level ?? ""}`, { formation, level });
+  }
 
   await prisma.$transaction(
     async (tx) => {
       // Les fiches déjà liées à un dossier créé restent en base : seules les
-      // fiches non utilisées de cette année, catégorie et filière sont remplacées.
+      // fiches non utilisées de cette année, catégorie, filière et niveau
+      // sont remplacées.
       await tx.preselectionCandidate.deleteMany({
         where: {
           academicYear,
           category,
           usedByStudentId: null,
-          OR: formationsInFile.map((formation) => ({ formation })),
+          OR: [...classesInFile.values()],
         },
       });
       await tx.preselectionCandidate.createMany({
@@ -699,33 +708,39 @@ export async function importPreselectionFile(
   return importPreselectionRows(rows, academicYear, actorId, category, errors);
 }
 
-// Nombre de fiches actuellement en base par année, catégorie ET filière (pour
-// l'écran d'import du superadmin — permet de voir d'un coup d'oeil ce qui est
-// déjà chargé avant de ré-importer, fichier par fichier puisqu'un import se
-// fait typiquement filière par filière — voir importPreselectionRows).
+// Nombre de fiches actuellement en base par année, catégorie, filière ET
+// niveau (pour l'écran d'import du superadmin — permet de voir d'un coup
+// d'oeil ce qui est déjà chargé avant de ré-importer, classe par classe
+// puisqu'un import se fait typiquement classe par classe — voir
+// importPreselectionRows).
 export async function getPreselectionBatchSummary() {
   // Deux comptages séparés : le total (affiché tel quel) et les fiches
   // encore non utilisées (celles qu'un éventuel nettoyage peut supprimer
   // sans jamais toucher un dossier étudiant déjà créé — voir deletePreselectionBatch).
   const [totals, unused] = await Promise.all([
     prisma.preselectionCandidate.groupBy({
-      by: ["academicYear", "category", "formation"],
+      by: ["academicYear", "category", "formation", "level"],
       _count: { _all: true },
     }),
     prisma.preselectionCandidate.groupBy({
-      by: ["academicYear", "category", "formation"],
+      by: ["academicYear", "category", "formation", "level"],
       where: { usedByStudentId: null },
       _count: { _all: true },
     }),
   ]);
-  const key = (r: { academicYear: string; category: string; formation: string | null }) =>
-    `${r.academicYear}|${r.category}|${r.formation ?? ""}`;
+  const key = (r: {
+    academicYear: string;
+    category: string;
+    formation: string | null;
+    level: string | null;
+  }) => `${r.academicYear}|${r.category}|${r.formation ?? ""}|${r.level ?? ""}`;
   const unusedByKey = new Map(unused.map((r) => [key(r), r._count._all]));
   return totals
     .map((r) => ({
       academicYear: r.academicYear,
       category: r.category,
       formation: r.formation,
+      level: r.level,
       count: r._count._all,
       unusedCount: unusedByKey.get(key(r)) ?? 0,
     }))
@@ -733,12 +748,13 @@ export async function getPreselectionBatchSummary() {
       (a, b) =>
         b.academicYear.localeCompare(a.academicYear) ||
         a.category.localeCompare(b.category) ||
-        (a.formation ?? "").localeCompare(b.formation ?? ""),
+        (a.formation ?? "").localeCompare(b.formation ?? "") ||
+        (a.level ?? "").localeCompare(b.level ?? ""),
     );
 }
 
-// Supprime les fiches NON utilisées d'un lot (année + catégorie + filière —
-// null pour le lot sans filière renseignée). Les fiches déjà reliées à un
+// Supprime les fiches NON utilisées d'un lot (année + catégorie + filière +
+// niveau — null pour un champ non renseigné). Les fiches déjà reliées à un
 // dossier étudiant (usedByStudentId non nul) sont toujours conservées,
 // jamais touchées ici : supprimer un lot n'affecte donc jamais un dossier
 // étudiant déjà créé, même s'il a été créé à partir d'une fiche corrompue
@@ -747,16 +763,18 @@ export async function deletePreselectionBatch(
   academicYear: string,
   category: PreselectionCategory,
   formation: string | null,
+  level: string | null,
   actorId: string,
 ): Promise<number> {
   const { count } = await prisma.preselectionCandidate.deleteMany({
-    where: { academicYear, category, formation, usedByStudentId: null },
+    where: { academicYear, category, formation, level, usedByStudentId: null },
   });
   if (count > 0) {
     const categoryLabel = category === "EXISTING" ? "Dossiers existants" : "Présélection";
+    const scope = [formation, level].filter(Boolean).join(" ");
     await logAction(
       "PRESELECTION_BATCH_DELETED",
-      `${categoryLabel} ${academicYear}${formation ? ` — ${formation}` : ""} : ${count} fiche(s) non utilisée(s) supprimée(s)`,
+      `${categoryLabel} ${academicYear}${scope ? ` — ${scope}` : ""} : ${count} fiche(s) non utilisée(s) supprimée(s)`,
       actorId,
     );
   }
@@ -764,22 +782,23 @@ export async function deletePreselectionBatch(
 }
 
 // Supprime les dossiers étudiants déjà créés à partir d'un lot importé (année
-// + catégorie + filière), en plus de leur compte de connexion — contrairement
-// à deletePreselectionBatch, qui ne touche jamais un dossier étudiant. Action
-// séparée et volontaire, jamais déclenchée par le simple retrait du fichier :
-// sert à annuler complètement un import chargé par erreur. Les fiches de
-// présélection elles-mêmes ne sont pas supprimées ici : la suppression du
-// Student remet automatiquement usedByStudentId à null (onDelete: SetNull),
-// donc les fiches redeviennent "non utilisées" et peuvent ensuite être
-// nettoyées via deletePreselectionBatch si besoin.
+// + catégorie + filière + niveau), en plus de leur compte de connexion —
+// contrairement à deletePreselectionBatch, qui ne touche jamais un dossier
+// étudiant. Action séparée et volontaire, jamais déclenchée par le simple
+// retrait du fichier : sert à annuler complètement un import chargé par
+// erreur. Les fiches de présélection elles-mêmes ne sont pas supprimées ici :
+// la suppression du Student remet automatiquement usedByStudentId à null
+// (onDelete: SetNull), donc les fiches redeviennent "non utilisées" et
+// peuvent ensuite être nettoyées via deletePreselectionBatch si besoin.
 export async function deleteStudentsFromBatch(
   academicYear: string,
   category: PreselectionCategory,
   formation: string | null,
+  level: string | null,
   actorId: string,
 ): Promise<number> {
   const candidates = await prisma.preselectionCandidate.findMany({
-    where: { academicYear, category, formation, usedByStudentId: { not: null } },
+    where: { academicYear, category, formation, level, usedByStudentId: { not: null } },
     select: { usedByStudentId: true },
   });
   const studentIds = candidates
@@ -803,9 +822,10 @@ export async function deleteStudentsFromBatch(
   });
 
   const categoryLabel = category === "EXISTING" ? "Dossiers existants" : "Présélection";
+  const scope = [formation, level].filter(Boolean).join(" ");
   await logAction(
     "PRESELECTION_BATCH_STUDENTS_DELETED",
-    `${categoryLabel} ${academicYear}${formation ? ` — ${formation}` : ""} : ${students.length} dossier(s) étudiant(s) supprimé(s) (import annulé)`,
+    `${categoryLabel} ${academicYear}${scope ? ` — ${scope}` : ""} : ${students.length} dossier(s) étudiant(s) supprimé(s) (import annulé)`,
     actorId,
   );
   return students.length;

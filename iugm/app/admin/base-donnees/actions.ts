@@ -106,15 +106,18 @@ export async function deletePreselectionBatchAction(
     return { error: "Type de données invalide." };
   }
 
-  // Champ caché vide = lot sans filière renseignée (voir formation: null
-  // dans PreselectionCandidate) — pas une valeur "toutes filières".
+  // Champs cachés vides = lot sans filière/niveau renseigné (voir
+  // formation: null / level: null dans PreselectionCandidate) — pas une
+  // valeur "toutes filières" / "tous niveaux".
   const formation = String(formData.get("formation") ?? "").trim() || null;
+  const level = String(formData.get("level") ?? "").trim() || null;
 
   try {
     const count = await deletePreselectionBatch(
       academicYear,
       category as "PRESELECTION" | "EXISTING",
       formation,
+      level,
       session.sub,
     );
     revalidatePath("/admin/base-donnees");
@@ -150,6 +153,7 @@ export async function deleteBatchStudentsAction(
   }
 
   const formation = String(formData.get("formation") ?? "").trim() || null;
+  const level = String(formData.get("level") ?? "").trim() || null;
 
   const confirmText = String(formData.get("confirmText") ?? "").trim();
   if (confirmText !== academicYear) {
@@ -161,6 +165,7 @@ export async function deleteBatchStudentsAction(
       academicYear,
       category as "PRESELECTION" | "EXISTING",
       formation,
+      level,
       session.sub,
     );
     revalidatePath("/admin/base-donnees");

@@ -16,19 +16,22 @@ export function DeleteBatchButton({
   category,
   categoryLabel,
   formation,
+  level,
   unusedCount,
 }: {
   academicYear: string;
   category: string;
   categoryLabel: string;
   formation: string | null;
+  level: string | null;
   unusedCount: number;
 }) {
   const [state, formAction, pending] = useActionState(deletePreselectionBatchAction, initialState);
 
   if (unusedCount === 0) return null;
 
-  const scopeLabel = formation ? `« ${categoryLabel} » — ${formation}` : `« ${categoryLabel} » (sans filière)`;
+  const classLabel = [formation, level].filter(Boolean).join(" — ");
+  const scopeLabel = classLabel ? `« ${categoryLabel} » — ${classLabel}` : `« ${categoryLabel} » (sans filière ni niveau)`;
 
   return (
     <div>
@@ -45,6 +48,7 @@ export function DeleteBatchButton({
         <input type="hidden" name="academicYear" value={academicYear} />
         <input type="hidden" name="category" value={category} />
         <input type="hidden" name="formation" value={formation ?? ""} />
+        <input type="hidden" name="level" value={level ?? ""} />
         <button
           type="submit"
           disabled={pending}

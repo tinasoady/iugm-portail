@@ -81,6 +81,7 @@ export default async function BaseDonneesPage() {
                     <th className="px-4 py-2.5 font-semibold">Type de données</th>
                     <th className="px-4 py-2.5 font-semibold">Année universitaire</th>
                     <th className="px-4 py-2.5 font-semibold">Filière</th>
+                    <th className="px-4 py-2.5 font-semibold">Niveau</th>
                     <th className="px-4 py-2.5 font-semibold">Fiches en base</th>
                     <th className="px-4 py-2.5 font-semibold">Non utilisées</th>
                     <th className="px-4 py-2.5 font-semibold">Dossiers créés</th>
@@ -92,7 +93,7 @@ export default async function BaseDonneesPage() {
                     const usedCount = b.count - b.unusedCount;
                     return (
                       <tr
-                        key={`${b.academicYear}-${b.category}-${b.formation ?? ""}`}
+                        key={`${b.academicYear}-${b.category}-${b.formation ?? ""}-${b.level ?? ""}`}
                         className="border-b border-black/5 last:border-0 dark:border-white/5"
                       >
                         <td className="px-4 py-2.5 text-zinc-600 dark:text-zinc-400">
@@ -103,6 +104,9 @@ export default async function BaseDonneesPage() {
                         </td>
                         <td className="px-4 py-2.5 text-zinc-600 dark:text-zinc-400">
                           {b.formation ?? <span className="italic text-zinc-400 dark:text-zinc-500">Sans filière</span>}
+                        </td>
+                        <td className="px-4 py-2.5 text-zinc-600 dark:text-zinc-400">
+                          {b.level ?? <span className="italic text-zinc-400 dark:text-zinc-500">Sans niveau</span>}
                         </td>
                         <td className="px-4 py-2.5 text-zinc-600 dark:text-zinc-400">{b.count}</td>
                         <td className="px-4 py-2.5 text-zinc-600 dark:text-zinc-400">{b.unusedCount}</td>
@@ -115,6 +119,7 @@ export default async function BaseDonneesPage() {
                                 category={b.category}
                                 categoryLabel={CATEGORY_LABELS[b.category] ?? b.category}
                                 formation={b.formation}
+                                level={b.level}
                                 unusedCount={b.unusedCount}
                               />
                               <DeleteBatchStudentsButton
@@ -122,6 +127,7 @@ export default async function BaseDonneesPage() {
                                 category={b.category}
                                 categoryLabel={CATEGORY_LABELS[b.category] ?? b.category}
                                 formation={b.formation}
+                                level={b.level}
                                 usedCount={usedCount}
                               />
                             </div>

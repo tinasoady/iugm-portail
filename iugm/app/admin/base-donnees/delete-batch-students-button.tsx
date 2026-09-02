@@ -16,12 +16,14 @@ export function DeleteBatchStudentsButton({
   category,
   categoryLabel,
   formation,
+  level,
   usedCount,
 }: {
   academicYear: string;
   category: string;
   categoryLabel: string;
   formation: string | null;
+  level: string | null;
   usedCount: number;
 }) {
   const [state, formAction, pending] = useActionState(deleteBatchStudentsAction, initialState);
@@ -30,7 +32,8 @@ export function DeleteBatchStudentsButton({
 
   if (usedCount === 0) return null;
 
-  const scopeLabel = formation ? `« ${categoryLabel} » — ${formation}` : `« ${categoryLabel} » (sans filière)`;
+  const classLabel = [formation, level].filter(Boolean).join(" — ");
+  const scopeLabel = classLabel ? `« ${categoryLabel} » — ${classLabel}` : `« ${categoryLabel} » (sans filière ni niveau)`;
 
   if (!open) {
     return (
@@ -65,6 +68,7 @@ export function DeleteBatchStudentsButton({
         <input type="hidden" name="academicYear" value={academicYear} />
         <input type="hidden" name="category" value={category} />
         <input type="hidden" name="formation" value={formation ?? ""} />
+        <input type="hidden" name="level" value={level ?? ""} />
         <input
           type="text"
           name="confirmText"
