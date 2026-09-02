@@ -3,7 +3,11 @@
 import { revalidatePath } from "next/cache";
 
 import { getSession } from "@/lib/auth";
-import { importPreselectionFile, deletePreselectionBatch } from "@/lib/preselection";
+import {
+  importPreselectionFile,
+  deletePreselectionBatch,
+  deleteStudentsFromBatch,
+} from "@/lib/preselection";
 
 export type ActionState = { success?: string; warning?: string; error?: string };
 
@@ -110,6 +114,51 @@ export async function deletePreselectionBatchAction(
     revalidatePath("/admin/base-donnees");
     if (count === 0) return { success: "Aucune fiche non utilisée à supprimer pour ce lot." };
     return { success: `${count} fiche(s) non utilisée(s) supprimée(s).` };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Erreur lors de la suppression." };
+  }
+}
+
+export type DeleteBatchStudentsState = { success?: string; error?: string };
+
+// Supprime aussi les dossiers étudiants déjà créés à partir du lot (et leur
+// compte de connexion) — contrairement à deletePreselectionBatchAction
+// ci-dessus, qui les préserve toujours. Action volontairement séparée et plus
+// dangereuse : confirmation renforcée côté serveur (l'année tapée doit
+// correspondre exactement), pas seulement un window.confirm côté client.
+export async function deleteBatchStudentsAction(
+  _prev: DeleteBatchStudentsState,
+  formData: FormData,
+): Promise<DeleteBatchStudentsState> {
+  const session = await requireSuperadmin();
+  if (!session) return { error: "Accès refusé." };
+
+  const academicYear = String(formData.get("academicYear") ?? "").trim();
+  if (!/^\d{4}-\d{4}$/.test(academicYear)) {
+    return { error: "Année universitaire invalide." };
+  }
+
+  const category = String(formData.get("category") ?? "");
+  if (!CATEGORIES.has(category)) {
+    return { error: "Type de données invalide." };
+  }
+
+  const confirmText = String(formData.get("confirmText") ?? "").trim();
+  if (confirmText !== academicYear) {
+    return { error: "Confirmation incorrecte : l'année tapée ne correspond pas." };
+  }
+
+  try {
+    const count = await deleteStudentsFromBatch(
+      academicYear,
+      category as "PRESELECTION" | "EXISTING",
+      session.sub,
+    );
+    revalidatePath("/admin/base-donnees");
+    revalidatePath("/etudiants");
+    revalidatePath("/agent-admin");
+    if (count === 0) return { success: "Aucun dossier étudiant lié à ce lot." };
+    return { success: `${count} dossier(s) étudiant(s) supprimé(s), compte(s) de connexion inclus.` };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Erreur lors de la suppression." };
   }

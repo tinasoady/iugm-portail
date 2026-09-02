@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { getSession } from "@/lib/auth";
+import { getSession, type SessionPayload } from "@/lib/auth";
 import {
   recordEcolagePayment,
   verifyRegistrationPayment,
@@ -37,17 +37,29 @@ async function requireAgentAdmin(task: TaskKey) {
 // ci-dessous, avec un montant saisi par l'agent plutôt que calculé.
 const VALID_PAYMENT_TYPES: EcolagePaymentTypeValue[] = ["TRANCHE_S2"];
 
-export async function recordEcolagePaymentAction(
-  _prev: ActionState,
-  formData: FormData,
-): Promise<ActionState> {
-  const session = await requireAgentAdmin("verification_paiement");
-  if (!session) return { error: "Accès refusé." };
-  if (session === "denied") return { error: PERMISSION_DENIED_MESSAGE };
+export type EcolagePaymentValues = Record<string, string>;
 
-  const studentId = String(formData.get("studentId") ?? "");
-  const receiptNumber = String(formData.get("receiptNumber") ?? "").trim();
-  const type = String(formData.get("type") ?? "");
+export type EcolagePaymentResult = ActionState & { studentId?: string; receiptNumber?: string };
+
+// Cœur métier du versement d'écolage, partagé par les deux points d'entrée :
+// - recordEcolagePaymentAction ci-dessous (soumission en ligne, via le <form>)
+// - app/api/sync/mutations/route.ts (rejeu d'une saisie faite hors ligne,
+//   voir tranche2-form.tsx et docs/OFFLINE_SYNC.md) — même principe que
+//   submitInscription (app/agent-admin/inscription/actions.ts).
+export async function submitEcolagePayment(
+  values: EcolagePaymentValues,
+  session: Pick<SessionPayload, "sub" | "role">,
+): Promise<EcolagePaymentResult> {
+  if (!["AGENT_ADMINISTRATION", "SUPERADMIN"].includes(session.role)) {
+    return { error: "Accès refusé." };
+  }
+  if (!(await hasTaskPermission(session.sub, session.role, "verification_paiement"))) {
+    return { error: PERMISSION_DENIED_MESSAGE };
+  }
+
+  const studentId = String(values.studentId ?? "");
+  const receiptNumber = String(values.receiptNumber ?? "").trim();
+  const type = String(values.type ?? "");
   if (!studentId || !receiptNumber) {
     return { error: "Numéro de reçu obligatoire." };
   }
@@ -63,7 +75,7 @@ export async function recordEcolagePaymentAction(
   // annuel dès que le premier versement a dépassé le minimum requis).
   // Optionnel : sans montant saisi, recordEcolagePayment retombe sur son
   // calcul par défaut.
-  const amountRaw = String(formData.get("amount") ?? "").trim();
+  const amountRaw = String(values.amount ?? "").trim();
   let amount: number | undefined;
   if (amountRaw) {
     amount = Number(amountRaw.replace(/\s/g, ""));
@@ -82,10 +94,25 @@ export async function recordEcolagePaymentAction(
     );
     revalidatePath("/agent-admin");
     revalidatePath("/agent-admin/ecolage");
-    return { success: `Reçu ${receiptNumber} enregistré (${payment.amount.toLocaleString("fr-FR")} Ar).` };
+    return {
+      success: `Reçu ${receiptNumber} enregistré (${payment.amount.toLocaleString("fr-FR")} Ar).`,
+      studentId,
+      receiptNumber,
+    };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Erreur lors de l'enregistrement." };
   }
+}
+
+export async function recordEcolagePaymentAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  // Une Server Action reste appelable par POST direct : on revérifie le rôle et la tâche
+  const session = await getSession();
+  if (!session) return { error: "Accès refusé." };
+  const values = Object.fromEntries(formData.entries()) as EcolagePaymentValues;
+  return submitEcolagePayment(values, session);
 }
 
 // Vérification du paiement à l'inscription (dossier ENREGISTRE) : reçu +

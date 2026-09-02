@@ -12,6 +12,7 @@ import { AcademicYearSelector } from "./academic-year-selector";
 import { LevelSelector } from "./level-selector";
 import { AccountMenu } from "./account-menu";
 import { IdleLogout } from "./idle-logout";
+import { OfflineSyncStatus } from "./offline-sync-status";
 import type { TaskKey } from "@/lib/permissions";
 import {
   IconDashboard,
@@ -276,6 +277,7 @@ export async function AppShell({
 
       {/* Contenu */}
       <div className="flex min-h-screen flex-col md:pl-64">
+        <OfflineSyncStatus />
         {/* Barre supérieure */}
         <header className="sticky top-0 z-30 border-b border-black/5 bg-white/80 backdrop-blur dark:border-white/10 dark:bg-zinc-950/80">
           <div className="flex items-center justify-between gap-4 px-6 py-3">

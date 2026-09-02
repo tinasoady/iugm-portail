@@ -6,6 +6,7 @@ import { getPreselectionBatchSummary } from "@/lib/preselection";
 import { AppShell } from "@/app/ui/app-shell";
 import { ImportPreselectionForm } from "./import-form";
 import { DeleteBatchButton } from "./delete-batch-button";
+import { DeleteBatchStudentsButton } from "./delete-batch-students-button";
 
 const CATEGORY_LABELS: Record<string, string> = {
   PRESELECTION: "Présélection (nouveaux L1)",
@@ -81,33 +82,48 @@ export default async function BaseDonneesPage() {
                     <th className="px-4 py-2.5 font-semibold">Année universitaire</th>
                     <th className="px-4 py-2.5 font-semibold">Fiches en base</th>
                     <th className="px-4 py-2.5 font-semibold">Non utilisées</th>
+                    <th className="px-4 py-2.5 font-semibold">Dossiers créés</th>
                     <th className="px-4 py-2.5 font-semibold">Action</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {batches.map((b) => (
-                    <tr
-                      key={`${b.academicYear}-${b.category}`}
-                      className="border-b border-black/5 last:border-0 dark:border-white/5"
-                    >
-                      <td className="px-4 py-2.5 text-zinc-600 dark:text-zinc-400">
-                        {CATEGORY_LABELS[b.category] ?? b.category}
-                      </td>
-                      <td className="px-4 py-2.5 font-medium text-zinc-900 dark:text-zinc-50">
-                        {b.academicYear}
-                      </td>
-                      <td className="px-4 py-2.5 text-zinc-600 dark:text-zinc-400">{b.count}</td>
-                      <td className="px-4 py-2.5 text-zinc-600 dark:text-zinc-400">{b.unusedCount}</td>
-                      <td className="px-4 py-2.5">
-                        <DeleteBatchButton
-                          academicYear={b.academicYear}
-                          category={b.category}
-                          categoryLabel={CATEGORY_LABELS[b.category] ?? b.category}
-                          unusedCount={b.unusedCount}
-                        />
-                      </td>
-                    </tr>
-                  ))}
+                  {batches.map((b) => {
+                    const usedCount = b.count - b.unusedCount;
+                    return (
+                      <tr
+                        key={`${b.academicYear}-${b.category}`}
+                        className="border-b border-black/5 last:border-0 dark:border-white/5"
+                      >
+                        <td className="px-4 py-2.5 text-zinc-600 dark:text-zinc-400">
+                          {CATEGORY_LABELS[b.category] ?? b.category}
+                        </td>
+                        <td className="px-4 py-2.5 font-medium text-zinc-900 dark:text-zinc-50">
+                          {b.academicYear}
+                        </td>
+                        <td className="px-4 py-2.5 text-zinc-600 dark:text-zinc-400">{b.count}</td>
+                        <td className="px-4 py-2.5 text-zinc-600 dark:text-zinc-400">{b.unusedCount}</td>
+                        <td className="px-4 py-2.5 text-zinc-600 dark:text-zinc-400">{usedCount}</td>
+                        <td className="px-4 py-2.5">
+                          <div className="flex flex-col items-start gap-2">
+                            <div className="flex gap-2">
+                              <DeleteBatchButton
+                                academicYear={b.academicYear}
+                                category={b.category}
+                                categoryLabel={CATEGORY_LABELS[b.category] ?? b.category}
+                                unusedCount={b.unusedCount}
+                              />
+                              <DeleteBatchStudentsButton
+                                academicYear={b.academicYear}
+                                category={b.category}
+                                categoryLabel={CATEGORY_LABELS[b.category] ?? b.category}
+                                usedCount={usedCount}
+                              />
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

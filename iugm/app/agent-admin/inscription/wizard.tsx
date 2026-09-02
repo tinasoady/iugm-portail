@@ -1,9 +1,10 @@
 ﻿"use client";
 
 import { useActionState, useRef, useState } from "react";
-import { FaCheck, FaCheckCircle, FaTimes } from "react-icons/fa";
+import { FaCheck, FaCheckCircle, FaCloudUploadAlt, FaTimes } from "react-icons/fa";
 import { registerInscriptionAction, type InscriptionState } from "./actions";
 import { MALAGASY_PHONE_PATTERN_SOURCE } from "@/lib/phone";
+import { queueMutation } from "@/lib/offline/sync";
 
 const PHONE_TITLE = "10 chiffres, commençant par 032, 033, 034, 037 ou 038";
 
@@ -155,6 +156,22 @@ export function InscriptionWizard({
   });
   const formRef = useRef<HTMLFormElement>(null);
   const [state, formAction, pending] = useActionState(registerInscriptionAction, initialState);
+  // Dossier mis en file d'attente locale faute de réseau (voir lib/offline/) :
+  // pas de matricule à ce stade, il sera attribué par le serveur à la
+  // synchronisation — voir docs/OFFLINE_SYNC.md.
+  const [queued, setQueued] = useState(false);
+
+  // Intercepte la soumission avant le déclenchement de la Server Action :
+  // hors ligne, `registerInscriptionAction` ne peut de toute façon pas
+  // aboutir (pas de réseau), donc on met le dossier en file locale à la place
+  // et on empêche la soumission normale (equivalent à un <form action> classique).
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    if (navigator.onLine) return;
+    e.preventDefault();
+    queueMutation("inscription", { ...values, preselectionId: preselectionId ?? "" }).then(() =>
+      setQueued(true),
+    );
+  }
 
   // Valide les champs de l'étape courante avant de passer à la suivante
   function next() {
@@ -168,6 +185,34 @@ export function InscriptionWizard({
       }
     }
     setStep(step + 1);
+  }
+
+  // Écran de succès hors ligne : pas de matricule tant que le dossier n'est
+  // pas synchronisé (voir handleSubmit ci-dessus et docs/OFFLINE_SYNC.md).
+  if (queued) {
+    return (
+      <div className="mx-auto max-w-lg rounded-2xl border border-black/5 bg-white p-8 text-center shadow-sm dark:border-white/10 dark:bg-zinc-900">
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 text-2xl text-amber-600 dark:bg-amber-950 dark:text-amber-400">
+          <FaCloudUploadAlt size={26} />
+        </div>
+        <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">
+          Dossier enregistré hors ligne
+        </h2>
+        <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+          Aucune connexion détectée : ce dossier restera sur cet appareil et sera envoyé
+          automatiquement au serveur — avec numéro matricule attribué à ce moment-là — dès que la
+          connexion revient. Inutile de le ressaisir.
+        </p>
+        <div className="mt-6 flex justify-center gap-3">
+          <a href="/agent-admin/inscription" className={primaryButtonClass}>
+            + Nouvelle inscription
+          </a>
+          <a href="/agent-admin" className={secondaryButtonClass}>
+            Voir les dossiers
+          </a>
+        </div>
+      </div>
+    );
   }
 
   // Écran de succès : matricule généré
@@ -248,6 +293,7 @@ export function InscriptionWizard({
       <form
         ref={formRef}
         action={formAction}
+        onSubmit={handleSubmit}
         onChange={(e) => {
           // Alimente le récapitulatif au fil de la saisie (délégation d'événement)
           const target = e.target as unknown as HTMLInputElement | HTMLSelectElement;
@@ -775,11 +821,34 @@ export function InscriptionWizard({
             ← Précédent
           </button>
           {step < STEPS.length - 1 ? (
-            <button type="button" onClick={next} className={primaryButtonClass}>
+            // `key` distinct du bouton "Valider" ci-dessous : sans ça, React
+            // réutilise le même nœud DOM entre les deux branches (même
+            // position dans l'arbre) et se contente de changer son attribut
+            // `type` de "button" à "submit" en place. Ce changement peut
+            // s'appliquer de façon synchrone, à l'intérieur du traitement du
+            // clic qui vient de déclencher `next()` (React 18+ traite les
+            // mises à jour d'état déclenchées par un événement discret comme
+            // "click" avant de rendre la main au navigateur) — et le
+            // navigateur détermine le comportement d'activation du clic
+            // (soumettre ou non) en relisant l'attribut `type` à ce
+            // moment-là, pas sa valeur au moment du rendu. Résultat observé :
+            // cliquer sur "Suivant →" à la dernière étape avant le
+            // récapitulatif soumettait réellement le formulaire (dossier créé
+            // en base) sans jamais afficher ni le récapitulatif ni l'écran de
+            // succès — un bug préexistant, indépendant du mode hors ligne,
+            // découvert en testant cette fonctionnalité dans un vrai
+            // navigateur. Une `key` différente force un nœud DOM distinct par
+            // branche : plus de mutation en place, plus de course possible.
+            <button key="suivant" type="button" onClick={next} className={primaryButtonClass}>
               Suivant →
             </button>
           ) : (
-            <button type="submit" disabled={pending} className={`${primaryButtonClass} flex items-center gap-2`}>
+            <button
+              key="valider"
+              type="submit"
+              disabled={pending}
+              className={`${primaryButtonClass} flex items-center gap-2`}
+            >
               {pending ? "Enregistrement..." : (<><FaCheck size={13} /> Valider l&apos;inscription</>)}
             </button>
           )}

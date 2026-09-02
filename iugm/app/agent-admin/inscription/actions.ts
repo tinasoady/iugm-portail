@@ -2,14 +2,16 @@
 
 import { revalidatePath } from "next/cache";
 
-import { getSession } from "@/lib/auth";
+import { getSession, type SessionPayload } from "@/lib/auth";
 import { registerStudent } from "@/lib/students";
 import {
   searchPreselectionCandidates,
   getPreselectionCandidate,
+  getPreselectionCacheForYears,
   markPreselectionUsed,
   type PreselectionSearchResult,
 } from "@/lib/preselection";
+import type { CachedCandidate } from "@/lib/offline/db";
 import {
   hasTaskPermission,
   getUserFormation,
@@ -20,6 +22,10 @@ export type InscriptionState = {
   success?: string;
   matricule?: string;
   fullName?: string;
+  // Dossier créé — utilisé par app/api/sync/mutations/route.ts (voir
+  // docs/OFFLINE_SYNC.md) pour tracer la mutation dans SyncedMutation ;
+  // jamais lu par le formulaire, sans effet sur l'écran de succès.
+  studentId?: string;
   error?: string;
 };
 
@@ -39,6 +45,24 @@ export async function searchPreselectionAction(query: string): Promise<Preselect
   const userFormation = await getUserFormation(session.sub, session.role);
   if (!userFormation) return results;
   return results.filter((r) => !r.formation || r.formation === userFormation);
+}
+
+// Jeu complet des fiches (recherche + pré-remplissage) pour les années
+// données, à mettre en cache localement (IndexedDB) pendant que l'agent est
+// en ligne — voir lib/offline/candidates.ts. Rechargé au montage de la page
+// d'inscription et à chaque retour réseau (search-entry.tsx), jamais appelé
+// hors ligne (ça n'aurait aucun sens).
+export async function getPreselectionCacheAction(academicYears: string[]): Promise<CachedCandidate[]> {
+  const session = await getSession();
+  if (!session || !["AGENT_ADMINISTRATION", "SUPERADMIN"].includes(session.role)) return [];
+  if (!(await hasTaskPermission(session.sub, session.role, "inscription"))) return [];
+
+  const results = await getPreselectionCacheForYears(academicYears);
+  const userFormation = await getUserFormation(session.sub, session.role);
+  const scoped = userFormation
+    ? results.filter((r) => !r.formation || r.formation === userFormation)
+    : results;
+  return scoped as CachedCandidate[];
 }
 
 export type PreselectionPrefill = { values: Record<string, string>; error?: string };
@@ -112,21 +136,36 @@ const REQUIRED_FIELDS: Array<[string, string]> = [
   ["level", "Niveau"],
 ];
 
-export async function registerInscriptionAction(
-  _prev: InscriptionState,
-  formData: FormData,
+// Valeurs brutes du formulaire, sous forme de simple map string -> string.
+// Une checkbox cochée vaut "on" (convention HTML par défaut, cf. `getBool`
+// ci-dessous), une checkbox décochée est simplement absente de la map — dans
+// les deux cas d'origine possibles : `Object.fromEntries(formData.entries())`
+// pour une soumission en ligne classique, ou l'état `values` du wizard
+// (app/agent-admin/inscription/wizard.tsx) recopié tel quel pour une mise en
+// file hors ligne (voir lib/offline/). Les deux représentations coïncident
+// exactement, donc cette fonction n'a besoin d'être écrite qu'une fois.
+export type InscriptionFormValues = Record<string, string>;
+
+// Cœur métier de l'inscription, partagé par les deux points d'entrée :
+// - registerInscriptionAction ci-dessous (soumission en ligne, via le <form>)
+// - app/api/sync/mutations/route.ts (rejeu d'une saisie faite hors ligne)
+// Centralisé ici plutôt que dupliqué : les deux chemins doivent appliquer
+// exactement les mêmes règles (champs obligatoires, périmètre par formation,
+// génération du matricule), sans quoi une inscription hors ligne pourrait
+// être acceptée ou refusée différemment de la même saisie faite en ligne.
+export async function submitInscription(
+  values: InscriptionFormValues,
+  session: Pick<SessionPayload, "sub" | "role">,
 ): Promise<InscriptionState> {
-  // Une Server Action reste appelable par POST direct : on revérifie le rôle et la tâche
-  const session = await getSession();
-  if (!session || !["AGENT_ADMINISTRATION", "SUPERADMIN"].includes(session.role)) {
+  if (!["AGENT_ADMINISTRATION", "SUPERADMIN"].includes(session.role)) {
     return { error: "Accès refusé." };
   }
   if (!(await hasTaskPermission(session.sub, session.role, "inscription"))) {
     return { error: PERMISSION_DENIED_MESSAGE };
   }
 
-  const get = (name: string) => String(formData.get(name) ?? "").trim();
-  const getBool = (name: string) => formData.get(name) === "on";
+  const get = (name: string) => String(values[name] ?? "").trim();
+  const getBool = (name: string) => values[name] === "on";
 
   for (const [field, label] of REQUIRED_FIELDS) {
     if (!get(field)) return { error: `Champ obligatoire manquant : ${label}.` };
@@ -219,8 +258,22 @@ export async function registerInscriptionAction(
       success: `Inscription enregistrée pour l'année ${student.academicYear} — formation ${student.mention}.`,
       matricule: student.matricule,
       fullName: student.fullName,
+      studentId: student.id,
     };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Erreur lors de l'enregistrement." };
   }
+}
+
+export async function registerInscriptionAction(
+  _prev: InscriptionState,
+  formData: FormData,
+): Promise<InscriptionState> {
+  // Une Server Action reste appelable par POST direct : on revérifie le rôle et la tâche
+  const session = await getSession();
+  if (!session) return { error: "Accès refusé." };
+
+  // Pas de fichier dans ce formulaire : toutes les entrées sont des chaînes.
+  const values = Object.fromEntries(formData.entries()) as InscriptionFormValues;
+  return submitInscription(values, session);
 }

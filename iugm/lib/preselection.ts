@@ -722,6 +722,53 @@ export async function deletePreselectionBatch(
   return count;
 }
 
+// Supprime les dossiers étudiants déjà créés à partir d'un lot importé (année
+// + catégorie), en plus de leur compte de connexion — contrairement à
+// deletePreselectionBatch, qui ne touche jamais un dossier étudiant. Action
+// séparée et volontaire, jamais déclenchée par le simple retrait du fichier :
+// sert à annuler complètement un import chargé par erreur. Les fiches de
+// présélection elles-mêmes ne sont pas supprimées ici : la suppression du
+// Student remet automatiquement usedByStudentId à null (onDelete: SetNull),
+// donc les fiches redeviennent "non utilisées" et peuvent ensuite être
+// nettoyées via deletePreselectionBatch si besoin.
+export async function deleteStudentsFromBatch(
+  academicYear: string,
+  category: PreselectionCategory,
+  actorId: string,
+): Promise<number> {
+  const candidates = await prisma.preselectionCandidate.findMany({
+    where: { academicYear, category, usedByStudentId: { not: null } },
+    select: { usedByStudentId: true },
+  });
+  const studentIds = candidates
+    .map((c) => c.usedByStudentId)
+    .filter((id): id is string => !!id);
+  if (studentIds.length === 0) return 0;
+
+  const students = await prisma.student.findMany({
+    where: { id: { in: studentIds } },
+    select: { id: true, accountId: true },
+  });
+  const accountIds = students.map((s) => s.accountId).filter((id): id is string => !!id);
+
+  // Même logique que deleteStudent (lib/students.ts) mais en lot : le dossier
+  // et son compte de connexion partent ensemble, dans une seule transaction.
+  await prisma.$transaction(async (tx) => {
+    await tx.student.deleteMany({ where: { id: { in: studentIds } } });
+    if (accountIds.length > 0) {
+      await tx.user.deleteMany({ where: { id: { in: accountIds } } });
+    }
+  });
+
+  const categoryLabel = category === "EXISTING" ? "Dossiers existants" : "Présélection";
+  await logAction(
+    "PRESELECTION_BATCH_STUDENTS_DELETED",
+    `${categoryLabel} ${academicYear} : ${students.length} dossier(s) étudiant(s) supprimé(s) (import annulé)`,
+    actorId,
+  );
+  return students.length;
+}
+
 export type PreselectionSearchResult = {
   id: string;
   fullName: string;
@@ -784,6 +831,63 @@ export async function searchPreselectionCandidates(
 // d'inscription une fois choisi dans la recherche.
 export async function getPreselectionCandidate(id: string) {
   return prisma.preselectionCandidate.findUnique({ where: { id } });
+}
+
+const dateInputValue = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : "");
+
+// Jeu complet (recherche + pré-remplissage) pour les années données, à mettre
+// en cache côté client (voir lib/offline/candidates.ts) afin que la
+// recherche du formulaire d'inscription reste utilisable hors ligne — pas
+// seulement l'envoi final du dossier. Mêmes champs que
+// getPreselectionPrefillAction (app/agent-admin/inscription/actions.ts),
+// réunis ici en une seule fonction pour ne pas dupliquer le mapping.
+export async function getPreselectionCacheForYears(academicYears: string[]) {
+  const rows = await prisma.preselectionCandidate.findMany({
+    where: { academicYear: { in: academicYears } },
+    include: { usedByStudent: { select: { matricule: true } } },
+  });
+
+  return rows.map((c) => ({
+    id: c.id,
+    fullName: c.fullName,
+    academicYear: c.academicYear,
+    category: c.category,
+    cin: c.cin,
+    baccNumber: c.baccNumber,
+    formation: c.formation,
+    level: c.level,
+    used: !!c.usedByStudentId,
+    usedMatricule: c.usedByStudent?.matricule ?? null,
+    values: {
+      lastName: c.lastName,
+      firstName: c.firstName,
+      nationality: c.nationality ?? "Malagasy",
+      gender: c.gender ?? "",
+      birthDate: dateInputValue(c.birthDate),
+      birthPlace: c.birthPlace ?? "",
+      cin: c.cin ?? "",
+      cinIssueDate: dateInputValue(c.cinIssueDate),
+      cinIssuePlace: c.cinIssuePlace ?? "",
+      phone: c.phone ?? "",
+      personalEmail: c.personalEmail ?? "",
+      address: c.address ?? "",
+      baccNumber: c.baccNumber ?? "",
+      baccSeries: c.baccSeries ?? "",
+      baccMention: c.baccMention ?? "",
+      baccYear: c.baccYear ?? "",
+      baccCenter: c.baccCenter ?? "",
+      baccCountry: c.baccCountry ?? "Madagascar",
+      previousSchool: c.previousSchool ?? "",
+      fatherName: c.fatherName ?? "",
+      motherName: c.motherName ?? "",
+      parentsPhone: c.parentsPhone ?? "",
+      parentsAddress: c.parentsAddress ?? "",
+      parentsCity: c.parentsCity ?? "",
+      formation: c.formation ?? "",
+      level: c.level ?? "L1",
+      academicYear: c.academicYear,
+    },
+  }));
 }
 
 // Marque une fiche de présélection comme utilisée par le dossier venant

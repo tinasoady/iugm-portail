@@ -440,3 +440,16 @@ model LoginAttempt {
   @@index([email, createdAt])
   @@index([ip, createdAt])
 }
+
+// Trace des mutations saisies hors ligne (voir lib/offline/) et déjà
+// synchronisées. `id` est le UUID généré côté client au moment de la mise en
+// file : la contrainte d'unicité sur cette clé garantit qu'un rejeu réseau
+// (l'agent reperd la connexion juste après avoir reçu l'accusé, ou relance la
+// synchronisation) ne peut jamais appliquer deux fois la même mutation.
+model SyncedMutation {
+  id        String   @id // clientId généré hors ligne (UUID)
+  type      String // ex: "inscription"
+  studentId String? // dossier créé, si applicable — pratique pour le support
+  queuedAt  DateTime // horodatage de la saisie hors ligne, côté client
+  appliedAt DateTime @default(now())
+}

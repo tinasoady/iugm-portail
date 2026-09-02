@@ -1,8 +1,9 @@
 ﻿"use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
 import { recordEcolagePaymentAction, type ActionState } from "../actions";
+import { queueMutation } from "@/lib/offline/sync";
 
 const initialState: ActionState = {};
 
@@ -13,12 +14,39 @@ const initialState: ActionState = {};
 // tranche). Le montant est pré-rempli avec le vrai reste dû (amountDue,
 // voir listStudentsWithBalanceDue) — pas figé à une simple moitié du tarif
 // annuel, puisque le premier versement peut l'avoir dépassé.
+//
+// Même principe hors ligne que wizard.tsx (voir docs/OFFLINE_SYNC.md) : la
+// page /agent-admin/ecolage est déjà chargée quand l'agent perd le réseau
+// (dossier et montant dû connus), donc la soumission peut être mise en file
+// locale exactement comme pour une inscription.
 export function Tranche2Form({ studentId, amountDue }: { studentId: string; amountDue: number }) {
   const [state, formAction, pending] = useActionState(recordEcolagePaymentAction, initialState);
+  const [queued, setQueued] = useState(false);
+  const [receiptNumber, setReceiptNumber] = useState("");
+  const [amount, setAmount] = useState(String(amountDue));
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    if (navigator.onLine) return;
+    e.preventDefault();
+    queueMutation("ecolage_payment", {
+      studentId,
+      type: "TRANCHE_S2",
+      receiptNumber,
+      amount,
+    }).then(() => setQueued(true));
+  }
+
+  if (queued) {
+    return (
+      <p className="text-[11px] text-amber-700 dark:text-amber-400">
+        Versement enregistré hors ligne — sera synchronisé à la reconnexion.
+      </p>
+    );
+  }
 
   return (
     <div className="space-y-1">
-      <form action={formAction} className="flex flex-wrap items-center gap-1.5">
+      <form onSubmit={handleSubmit} action={formAction} className="flex flex-wrap items-center gap-1.5">
         <input type="hidden" name="studentId" value={studentId} />
         <input type="hidden" name="type" value="TRANCHE_S2" />
         <input
@@ -26,6 +54,8 @@ export function Tranche2Form({ studentId, amountDue }: { studentId: string; amou
           type="text"
           required
           placeholder="N° du reçu"
+          value={receiptNumber}
+          onChange={(e) => setReceiptNumber(e.target.value)}
           className="w-24 rounded-lg border border-black/10 bg-white px-2 py-1 text-xs text-zinc-900 outline-none focus:ring-2 focus:ring-black/20 dark:border-white/10 dark:bg-zinc-950 dark:text-zinc-50"
         />
         <input
@@ -34,7 +64,8 @@ export function Tranche2Form({ studentId, amountDue }: { studentId: string; amou
           required
           min={0}
           step={1}
-          defaultValue={amountDue}
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
           title="Reste dû pour solder l'écolage de l'année — ajustez si le montant réellement versé diffère"
           className="w-24 rounded-lg border border-black/10 bg-white px-2 py-1 text-xs text-zinc-900 outline-none focus:ring-2 focus:ring-black/20 dark:border-white/10 dark:bg-zinc-950 dark:text-zinc-50"
         />

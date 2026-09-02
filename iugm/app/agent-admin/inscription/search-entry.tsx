@@ -1,12 +1,14 @@
 ﻿"use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   searchPreselectionAction,
   getPreselectionPrefillAction,
+  getPreselectionCacheAction,
 } from "./actions";
 import type { PreselectionSearchResult } from "@/lib/preselection";
+import { refreshCandidateCache, searchCachedCandidates, getCachedCandidate } from "@/lib/offline/candidates";
 import { InscriptionWizard } from "./wizard";
 
 // Point d'entrée de la page Inscription : l'agent cherche d'abord le
@@ -40,6 +42,26 @@ export function InscriptionEntry({
   } | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Recharge le cache local des fiches (IndexedDB) pendant que l'agent est en
+  // ligne, pour que la recherche ci-dessous reste utilisable hors ligne (voir
+  // lib/offline/candidates.ts et docs/OFFLINE_SYNC.md). Au montage, puis à
+  // chaque retour réseau — jamais hors ligne, ça n'aurait aucun sens.
+  const refreshCache = useCallback(() => {
+    if (!navigator.onLine) return;
+    getPreselectionCacheAction(years)
+      .then(refreshCandidateCache)
+      .catch(() => {
+        // Pas bloquant : la recherche hors ligne retombe simplement sur un
+        // cache pas encore à jour (ou vide, lors d'une toute première visite).
+      });
+  }, [years]);
+
+  useEffect(() => {
+    refreshCache();
+    window.addEventListener("online", refreshCache);
+    return () => window.removeEventListener("online", refreshCache);
+  }, [refreshCache]);
+
   // Débounce géré directement dans le gestionnaire de saisie (pas dans un
   // effet) : la recherche est un événement déclenché par la frappe, pas une
   // synchronisation avec un système externe.
@@ -55,8 +77,10 @@ export function InscriptionEntry({
     setSearching(true);
     debounceRef.current = setTimeout(async () => {
       try {
-        const r = await searchPreselectionAction(q);
-        setResults(r);
+        const r = navigator.onLine
+          ? await searchPreselectionAction(q)
+          : await searchCachedCandidates(q);
+        setResults(r as PreselectionSearchResult[]);
       } finally {
         setSearching(false);
       }
@@ -74,6 +98,16 @@ export function InscriptionEntry({
     setLoadingId(candidate.id);
     setPrefillError(null);
     try {
+      if (!navigator.onLine) {
+        const cached = await getCachedCandidate(candidate.id);
+        if (!cached) {
+          setPrefillError("Fiche non disponible hors ligne (cache pas encore chargé pour cette fiche).");
+          return;
+        }
+        setSelected({ id: candidate.id, values: cached.values });
+        setMode("form");
+        return;
+      }
       const { values, error } = await getPreselectionPrefillAction(candidate.id);
       if (error) {
         setPrefillError(error);
