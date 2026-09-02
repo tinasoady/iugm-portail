@@ -84,10 +84,11 @@ export async function importPreselectionAction(
 
 export type DeleteBatchState = { success?: string; error?: string };
 
-// Supprime les fiches non utilisées d'un lot (année + catégorie) — jamais les
-// fiches déjà reliées à un dossier étudiant, voir deletePreselectionBatch.
-// Sert à nettoyer des fiches définitivement bloquées (ex. import corrompu par
-// un fichier source mal formaté) sans devoir tout réimporter.
+// Supprime les fiches non utilisées d'un lot (année + catégorie + filière) —
+// jamais les fiches déjà reliées à un dossier étudiant, voir
+// deletePreselectionBatch. Sert à nettoyer des fiches définitivement
+// bloquées (ex. import corrompu par un fichier source mal formaté) sans
+// devoir tout réimporter.
 export async function deletePreselectionBatchAction(
   _prev: DeleteBatchState,
   formData: FormData,
@@ -105,10 +106,15 @@ export async function deletePreselectionBatchAction(
     return { error: "Type de données invalide." };
   }
 
+  // Champ caché vide = lot sans filière renseignée (voir formation: null
+  // dans PreselectionCandidate) — pas une valeur "toutes filières".
+  const formation = String(formData.get("formation") ?? "").trim() || null;
+
   try {
     const count = await deletePreselectionBatch(
       academicYear,
       category as "PRESELECTION" | "EXISTING",
+      formation,
       session.sub,
     );
     revalidatePath("/admin/base-donnees");
@@ -143,6 +149,8 @@ export async function deleteBatchStudentsAction(
     return { error: "Type de données invalide." };
   }
 
+  const formation = String(formData.get("formation") ?? "").trim() || null;
+
   const confirmText = String(formData.get("confirmText") ?? "").trim();
   if (confirmText !== academicYear) {
     return { error: "Confirmation incorrecte : l'année tapée ne correspond pas." };
@@ -152,6 +160,7 @@ export async function deleteBatchStudentsAction(
     const count = await deleteStudentsFromBatch(
       academicYear,
       category as "PRESELECTION" | "EXISTING",
+      formation,
       session.sub,
     );
     revalidatePath("/admin/base-donnees");

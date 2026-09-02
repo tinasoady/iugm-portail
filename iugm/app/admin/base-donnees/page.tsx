@@ -80,6 +80,7 @@ export default async function BaseDonneesPage() {
                   <tr className="border-b border-black/10 text-xs uppercase tracking-wider text-zinc-400 dark:border-white/10 dark:text-zinc-500">
                     <th className="px-4 py-2.5 font-semibold">Type de données</th>
                     <th className="px-4 py-2.5 font-semibold">Année universitaire</th>
+                    <th className="px-4 py-2.5 font-semibold">Filière</th>
                     <th className="px-4 py-2.5 font-semibold">Fiches en base</th>
                     <th className="px-4 py-2.5 font-semibold">Non utilisées</th>
                     <th className="px-4 py-2.5 font-semibold">Dossiers créés</th>
@@ -91,7 +92,7 @@ export default async function BaseDonneesPage() {
                     const usedCount = b.count - b.unusedCount;
                     return (
                       <tr
-                        key={`${b.academicYear}-${b.category}`}
+                        key={`${b.academicYear}-${b.category}-${b.formation ?? ""}`}
                         className="border-b border-black/5 last:border-0 dark:border-white/5"
                       >
                         <td className="px-4 py-2.5 text-zinc-600 dark:text-zinc-400">
@@ -99,6 +100,9 @@ export default async function BaseDonneesPage() {
                         </td>
                         <td className="px-4 py-2.5 font-medium text-zinc-900 dark:text-zinc-50">
                           {b.academicYear}
+                        </td>
+                        <td className="px-4 py-2.5 text-zinc-600 dark:text-zinc-400">
+                          {b.formation ?? <span className="italic text-zinc-400 dark:text-zinc-500">Sans filière</span>}
                         </td>
                         <td className="px-4 py-2.5 text-zinc-600 dark:text-zinc-400">{b.count}</td>
                         <td className="px-4 py-2.5 text-zinc-600 dark:text-zinc-400">{b.unusedCount}</td>
@@ -110,12 +114,14 @@ export default async function BaseDonneesPage() {
                                 academicYear={b.academicYear}
                                 category={b.category}
                                 categoryLabel={CATEGORY_LABELS[b.category] ?? b.category}
+                                formation={b.formation}
                                 unusedCount={b.unusedCount}
                               />
                               <DeleteBatchStudentsButton
                                 academicYear={b.academicYear}
                                 category={b.category}
                                 categoryLabel={CATEGORY_LABELS[b.category] ?? b.category}
+                                formation={b.formation}
                                 usedCount={usedCount}
                               />
                             </div>

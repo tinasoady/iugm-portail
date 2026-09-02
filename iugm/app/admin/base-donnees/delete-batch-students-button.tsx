@@ -15,11 +15,13 @@ export function DeleteBatchStudentsButton({
   academicYear,
   category,
   categoryLabel,
+  formation,
   usedCount,
 }: {
   academicYear: string;
   category: string;
   categoryLabel: string;
+  formation: string | null;
   usedCount: number;
 }) {
   const [state, formAction, pending] = useActionState(deleteBatchStudentsAction, initialState);
@@ -27,6 +29,8 @@ export function DeleteBatchStudentsButton({
   const [confirmText, setConfirmText] = useState("");
 
   if (usedCount === 0) return null;
+
+  const scopeLabel = formation ? `« ${categoryLabel} » — ${formation}` : `« ${categoryLabel} » (sans filière)`;
 
   if (!open) {
     return (
@@ -45,7 +49,7 @@ export function DeleteBatchStudentsButton({
     <div className="rounded-lg border border-red-300 bg-red-50 p-3 text-xs dark:border-red-900 dark:bg-red-950/40">
       <p className="mb-2 flex items-start gap-1.5 font-semibold text-red-700 dark:text-red-400">
         <FaExclamationTriangle className="mt-0.5 shrink-0" size={13} />
-        Supprimera définitivement {usedCount} dossier(s) étudiant(s) de « {categoryLabel} » (
+        Supprimera définitivement {usedCount} dossier(s) étudiant(s) de {scopeLabel} (
         {academicYear}), ainsi que leur compte de connexion.
       </p>
       <p className="mb-2 text-red-600 dark:text-red-400">
@@ -60,6 +64,7 @@ export function DeleteBatchStudentsButton({
       >
         <input type="hidden" name="academicYear" value={academicYear} />
         <input type="hidden" name="category" value={category} />
+        <input type="hidden" name="formation" value={formation ?? ""} />
         <input
           type="text"
           name="confirmText"

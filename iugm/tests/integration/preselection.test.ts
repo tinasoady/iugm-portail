@@ -7,6 +7,7 @@ import {
   importPreselectionFile,
   searchPreselectionCandidates,
   markPreselectionUsed,
+  getPreselectionBatchSummary,
 } from "@/lib/preselection";
 import { disconnectDb, resetDb } from "../setup/db";
 import { createActor, validRegisterInput } from "../setup/factories";
@@ -87,6 +88,51 @@ describe("importPreselectionFile", () => {
     // RABE Marie (non utilisée) a disparu, RAKOTO Jean (utilisée) et RASOA Paul (nouvelle) restent
     expect(remaining.map((r) => r.fullName).sort()).toEqual(["RAKOTO Jean", "RASOA Paul"]);
     expect(remaining.find((r) => r.fullName === "RAKOTO Jean")?.usedByStudentId).toBe(student.id);
+  });
+
+  it("un import d'une filière n'efface pas les fiches non utilisées d'une AUTRE filière de la même année", async () => {
+    const actor = await createActor("SUPERADMIN");
+    const managementBatch = await buildWorkbook(
+      ["Nom", "Prénom", "Filière affectée"],
+      [["RABE", "Marie", "Management"]],
+    );
+    await importPreselectionFile(managementBatch, "2026-2027", actor.id);
+
+    // Import d'une filière différente pour la même année : ne doit pas
+    // toucher le lot Management, même si RABE Marie n'est pas encore utilisée.
+    const informatiqueBatch = await buildWorkbook(
+      ["Nom", "Prénom", "Filière affectée"],
+      [["RAKOTO", "Jean", "Informatique"]],
+    );
+    const result = await importPreselectionFile(informatiqueBatch, "2026-2027", actor.id);
+    expect(result.created).toBe(1);
+
+    const remaining = await prisma.preselectionCandidate.findMany({
+      where: { academicYear: "2026-2027" },
+      orderBy: { fullName: "asc" },
+    });
+    expect(remaining.map((r) => [r.fullName, r.formation]).sort()).toEqual([
+      ["RABE Marie", "Management"],
+      ["RAKOTO Jean", "Informatique"],
+    ]);
+
+    // Un second import Management (fichier corrigé) ne touche que sa propre
+    // filière, pas Informatique importée entre-temps.
+    const managementV2 = await buildWorkbook(
+      ["Nom", "Prénom", "Filière affectée"],
+      [["RASOA", "Paul", "Management"]],
+    );
+    await importPreselectionFile(managementV2, "2026-2027", actor.id);
+    const finalRows = await prisma.preselectionCandidate.findMany({
+      where: { academicYear: "2026-2027" },
+      orderBy: { fullName: "asc" },
+    });
+    expect(finalRows.map((r) => r.fullName)).toEqual(["RAKOTO Jean", "RASOA Paul"]);
+
+    const summary = await getPreselectionBatchSummary();
+    const rows2026 = summary.filter((s) => s.academicYear === "2026-2027");
+    expect(rows2026).toHaveLength(2);
+    expect(rows2026.map((s) => s.formation).sort()).toEqual(["Informatique", "Management"]);
   });
 
   it("un import 'dossiers existants' n'efface pas la présélection de la même année, et inversement", async () => {

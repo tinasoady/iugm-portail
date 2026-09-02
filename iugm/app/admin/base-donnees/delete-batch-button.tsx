@@ -15,16 +15,20 @@ export function DeleteBatchButton({
   academicYear,
   category,
   categoryLabel,
+  formation,
   unusedCount,
 }: {
   academicYear: string;
   category: string;
   categoryLabel: string;
+  formation: string | null;
   unusedCount: number;
 }) {
   const [state, formAction, pending] = useActionState(deletePreselectionBatchAction, initialState);
 
   if (unusedCount === 0) return null;
+
+  const scopeLabel = formation ? `« ${categoryLabel} » — ${formation}` : `« ${categoryLabel} » (sans filière)`;
 
   return (
     <div>
@@ -32,7 +36,7 @@ export function DeleteBatchButton({
         action={formAction}
         onSubmit={(e) => {
           const ok = window.confirm(
-            `Supprimer les ${unusedCount} fiche(s) non utilisée(s) de « ${categoryLabel} » pour ${academicYear} ?\n` +
+            `Supprimer les ${unusedCount} fiche(s) non utilisée(s) de ${scopeLabel} pour ${academicYear} ?\n` +
               "Les fiches déjà reliées à un dossier étudiant sont conservées.",
           );
           if (!ok) e.preventDefault();
@@ -40,6 +44,7 @@ export function DeleteBatchButton({
       >
         <input type="hidden" name="academicYear" value={academicYear} />
         <input type="hidden" name="category" value={category} />
+        <input type="hidden" name="formation" value={formation ?? ""} />
         <button
           type="submit"
           disabled={pending}
