@@ -1,4 +1,4 @@
-name: CI/CD - Verification, Build & Deploy
+name: CI - Verification & Build
 
 on:
   push:
@@ -67,42 +67,44 @@ jobs:
       - name: 9. Vérifier la compilation Next.js (Build)
         run: npm run build
 
-  deploy:
-    name: Déployer sur Vercel (production)
-    needs: build-and-check
-    # Seulement sur un vrai push vers main (jamais pour une pull request, et
-    # jamais si build-and-check a échoué — "needs" bloque déjà ce cas, mais
-    # ce garde-fou explicite documente l'intention) : le déploiement continu
-    # ne part que si la CI est verte.
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    environment: production
-
-    defaults:
-      run:
-        working-directory: ./iugm
-
-    env:
-      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-
-    steps:
-      - name: 1. Récupérer le code source
-        uses: actions/checkout@v4
-
-      - name: 2. Configurer Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: 3. Installer le CLI Vercel
-        run: npm install --global vercel@latest
-
-      - name: 4. Récupérer la configuration du projet (environnement Production)
-        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
-
-      - name: 5. Builder le projet via Vercel (exécute prisma migrate deploy + next build)
-        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
-
-      - name: 6. Déployer l'artefact déjà construit
-        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+# ---------------------------------------------------------------------------
+# Déploiement automatique (CD) : mis de côté pour l'instant, pas supprimé.
+# Le blocage n'était pas le principe (build-and-check reste le vrai
+# garde-fou), mais la valeur du secret VERCEL_TOKEN sur GitHub, qui continue
+# à être refusée par le CLI Vercel ("--token": contenu invalide) malgré
+# plusieurs jetons régénérés — à reprendre au calme plutôt qu'en boucle.
+# En attendant, déploiement manuel depuis iugm/ : `vercel --prod` (fonctionne,
+# c'est ce qui a mis en prod le correctif de matching filière/import).
+#
+# Pour réactiver : décommenter le job ci-dessous, vérifier que
+# VERCEL_TOKEN/VERCEL_ORG_ID/VERCEL_PROJECT_ID sont bien sous l'onglet
+# "Secrets" (pas "Variables") de Settings → Secrets and variables → Actions,
+# et que VERCEL_TOKEN est copié sans guillemets ni espace autour.
+#
+#  deploy:
+#    name: Déployer sur Vercel (production)
+#    needs: build-and-check
+#    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+#    runs-on: ubuntu-latest
+#    environment: production
+#    defaults:
+#      run:
+#        working-directory: ./iugm
+#    env:
+#      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+#      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+#    steps:
+#      - name: 1. Récupérer le code source
+#        uses: actions/checkout@v4
+#      - name: 2. Configurer Node.js
+#        uses: actions/setup-node@v4
+#        with:
+#          node-version: '22'
+#      - name: 3. Installer le CLI Vercel
+#        run: npm install --global vercel@latest
+#      - name: 4. Récupérer la configuration du projet (environnement Production)
+#        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+#      - name: 5. Builder le projet via Vercel (exécute prisma migrate deploy + next build)
+#        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+#      - name: 6. Déployer l'artefact déjà construit
+#        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
