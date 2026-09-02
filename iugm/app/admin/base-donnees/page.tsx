@@ -35,8 +35,8 @@ export default async function BaseDonneesPage() {
       title="Base de données"
       active="/admin/base-donnees"
     >
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,420px)_1fr]">
-        <section className="h-fit rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-zinc-900">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,420px)_1fr]">
+        <section className="h-fit rounded-2xl border border-black/5 bg-white p-4 shadow-sm sm:p-5 dark:border-white/10 dark:bg-zinc-900">
           <h2 className="mb-1 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
             Importer des fiches
           </h2>
@@ -65,8 +65,8 @@ export default async function BaseDonneesPage() {
           <ImportPreselectionForm years={years} defaultYear={defaultYear} />
         </section>
 
-        <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-zinc-900">
-          <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+        <section className="rounded-2xl border border-black/5 bg-white p-4 shadow-sm sm:p-5 dark:border-white/10 dark:bg-zinc-900">
+          <h2 className="mb-3 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
             Lots importés
           </h2>
           {batches.length === 0 ? (
@@ -74,8 +74,11 @@ export default async function BaseDonneesPage() {
               Aucune fiche importée pour le moment.
             </p>
           ) : (
-            <div className="overflow-hidden rounded-xl border border-black/5 dark:border-white/10">
-              <table className="w-full text-left text-sm">
+            // overflow-x-auto (pas overflow-hidden) : ce tableau a 8 colonnes,
+            // il déborderait sur mobile/tablette sans défilement horizontal —
+            // overflow-hidden le découperait silencieusement à la place.
+            <div className="overflow-x-auto rounded-xl border border-black/5 dark:border-white/10">
+              <table className="w-full min-w-180 text-left text-sm">
                 <thead>
                   <tr className="border-b border-black/10 text-xs uppercase tracking-wider text-zinc-400 dark:border-white/10 dark:text-zinc-500">
                     <th className="px-4 py-2.5 font-semibold">Type de données</th>

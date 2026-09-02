@@ -280,7 +280,7 @@ export async function AppShell({
         <OfflineSyncStatus />
         {/* Barre supérieure */}
         <header className="sticky top-0 z-30 border-b border-black/5 bg-white/80 backdrop-blur dark:border-white/10 dark:bg-zinc-950/80">
-          <div className="flex items-center justify-between gap-4 px-6 py-3">
+          <div className="flex items-center justify-between gap-4 px-4 py-3">
             <div className="min-w-0">
               <h1 className="truncate text-lg font-semibold text-zinc-900 dark:text-zinc-50">
                 {title}
@@ -346,7 +346,7 @@ export async function AppShell({
           </nav>
         </header>
 
-        <main className="mx-auto w-full max-w-6xl flex-1 space-y-8 px-6 py-8">{children}</main>
+        <main className="mx-auto w-full max-w-6xl flex-1 space-y-8 px-4 py-8">{children}</main>
         <Footer institutionName={settings.institutionAcronym} />
       </div>
     </div>
