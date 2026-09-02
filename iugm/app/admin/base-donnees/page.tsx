@@ -40,10 +40,10 @@ export default async function BaseDonneesPage() {
           <h2 className="mb-1 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
             Importer des fiches
           </h2>
-          <p className="mb-4 text-xs text-zinc-500 dark:text-zinc-400">
+          <p className="mb-2 text-xs text-zinc-500 dark:text-zinc-400">
             Deux types de fichiers peuvent être importés, avec un traitement différent :
           </p>
-          <ul className="mb-4 list-disc space-y-1.5 pl-4 text-xs text-zinc-500 dark:text-zinc-400">
+          <ul className="mb-2 list-disc space-y-1 pl-4 text-xs text-zinc-500 dark:text-zinc-400">
             <li>
               <strong className="text-zinc-700 dark:text-zinc-300">Présélection (nouveaux L1)</strong> :
               les fiches restent en attente et apparaissent dans la recherche de la page
@@ -58,7 +58,7 @@ export default async function BaseDonneesPage() {
               pour n&apos;importe quel dossier.
             </li>
           </ul>
-          <p className="mb-4 text-xs text-zinc-500 dark:text-zinc-400">
+          <p className="mb-3 text-xs text-zinc-500 dark:text-zinc-400">
             Dans les deux cas, plus besoin de tout ressaisir à la main : ça évite de faire attendre
             les étudiants.
           </p>

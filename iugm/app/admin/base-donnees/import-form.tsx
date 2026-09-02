@@ -31,7 +31,7 @@ export function ImportPreselectionForm({
   const [category, setCategory] = useState<Category>("PRESELECTION");
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form action={formAction} className="space-y-3">
       <div>
         <p className={labelClass}>Type de données *</p>
         <div className="mt-1 flex flex-wrap gap-2">
