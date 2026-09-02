@@ -172,6 +172,31 @@ describe("importPreselectionFile — dossiers existants (catégorie EXISTING)", 
     expect(students).toHaveLength(1);
   });
 
+  it("deux personnes de même nom dans deux filières différentes restent deux dossiers distincts", async () => {
+    const actor = await createActor("SUPERADMIN");
+    const firstFile = await buildWorkbook(
+      ["Nom", "Prénom", "Niveau", "Filière affectée"],
+      [["RABE", "Marie", "L3", "Management"]],
+    );
+    const firstResult = await importPreselectionFile(firstFile, "2026-2027", actor.id, "EXISTING");
+    expect(firstResult.studentsCreated).toBe(1);
+
+    // Même nom, même année, mais une filière différente : pas la même
+    // personne relistée dans un fichier corrigé, un vrai second dossier
+    // (import filière par filière — voir le commentaire dans preselection.ts).
+    const secondFile = await buildWorkbook(
+      ["Nom", "Prénom", "Niveau", "Filière affectée"],
+      [["RABE", "Marie", "L2", "Informatique"]],
+    );
+    const secondResult = await importPreselectionFile(secondFile, "2026-2027", actor.id, "EXISTING");
+    expect(secondResult.studentsCreated).toBe(1);
+    expect(secondResult.studentsMatched).toBe(0);
+
+    const students = await prisma.student.findMany({ where: { fullName: "RABE Marie" } });
+    expect(students).toHaveLength(2);
+    expect(students.map((s) => s.mention).sort()).toEqual(["Informatique", "Management"]);
+  });
+
   it("une fiche de présélection (catégorie par défaut) ne crée jamais de dossier automatiquement", async () => {
     const actor = await createActor("SUPERADMIN");
     const buffer = await buildWorkbook(["Nom", "Prénom"], [["RAKOTO", "Jean"]]);

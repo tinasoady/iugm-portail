@@ -558,8 +558,12 @@ export async function importPreselectionRows(
   // visible tout de suite dans "Dossiers étudiants" pour que l'agent
   // complète les infos manquantes, vérifie l'écolage, valide et crée le
   // compte, comme pour n'importe quel dossier. Un nom déjà présent pour
-  // cette année est relié au dossier existant plutôt que dupliqué, pour
-  // qu'un ré-import (fichier corrigé) ne crée pas deux fois le même dossier.
+  // cette année ET cette filière est relié au dossier existant plutôt que
+  // dupliqué, pour qu'un ré-import (fichier corrigé) ne crée pas deux fois le
+  // même dossier — la filière fait partie de la clé de correspondance :
+  // l'import se fait typiquement filière par filière (un fichier par
+  // secrétariat), donc deux personnes de même nom dans deux filières
+  // différentes sont deux dossiers distincts, jamais fusionnés.
   let studentsCreated = 0;
   let studentsMatched = 0;
   if (category === "EXISTING") {
@@ -569,7 +573,17 @@ export async function importPreselectionRows(
     for (const c of pending) {
       try {
         const existing = await prisma.student.findFirst({
-          where: { academicYear, fullName: { equals: c.fullName, mode: "insensitive" } },
+          where: {
+            academicYear,
+            fullName: { equals: c.fullName, mode: "insensitive" },
+            // Filière incluse dans la clé de correspondance (voir commentaire
+            // ci-dessus) : sans `c.formation`, on exige un dossier existant
+            // sans filière non plus, plutôt qu'un `equals` sur `null` sous
+            // `mode: "insensitive"` (non supporté par Prisma pour ce cas).
+            ...(c.formation
+              ? { mention: { equals: c.formation, mode: "insensitive" } }
+              : { mention: null }),
+          },
         });
         const student =
           existing ??

@@ -51,6 +51,7 @@ ENREGISTRE → PAIEMENT_VERIFIE → ADMIN_VALIDEE → INSCRIT
 - **Journal d'audit** et **anti-bruteforce** sur les connexions (par e-mail et par IP).
 - **Base de données** : import/export Excel des dossiers, export CSV filtré, paramètres de l'établissement (nom, logo).
 - **Thème clair / sombre**, persistant, sans flash au chargement.
+- **Inscription hors ligne** : sur le formulaire d'inscription, une saisie faite sans réseau est mise en file localement et synchronisée automatiquement dès la reconnexion (matricule attribué à ce moment-là) — voir [`iugm/docs/OFFLINE_SYNC.md`](iugm/docs/OFFLINE_SYNC.md).
 
 ## Rôles et accès
 
@@ -176,7 +177,7 @@ Ouvrir [http://localhost:3000](http://localhost:3000).
 
 ## Base de données (Prisma)
 
-Modèles principaux (`prisma/schema.prisma`) : `User`, `Student`, `EnrollmentHistory`, `PreselectionCandidate`, `AcademicResult`, `Announcement` / `AnnouncementRead`, `Setting`, `Tariff`, `EcolagePayment`, `AuditLog`, `LoginAttempt`.
+Modèles principaux (`prisma/schema.prisma`) : `User`, `Student`, `EnrollmentHistory`, `PreselectionCandidate`, `AcademicResult`, `Announcement` / `AnnouncementRead`, `Setting`, `LevelFinancialInfo`, `EcolagePayment`, `AuditLog`, `LoginAttempt`, `SyncedMutation`.
 
 Commandes utiles :
 
@@ -253,6 +254,7 @@ npm run test:coverage # rapport de couverture (iugm/coverage/index.html)
 - **Audit log** and **login rate limiting** (by email and IP).
 - **Database tools**: Excel import/export, filtered CSV export, institution settings.
 - Persistent **light/dark theme**, no flash on load.
+- **Offline registration**: a submission made without network on the registration form is queued locally and synced automatically once the connection returns (matricule assigned at that point) — see [`iugm/docs/OFFLINE_SYNC.md`](iugm/docs/OFFLINE_SYNC.md).
 
 ### Roles
 
