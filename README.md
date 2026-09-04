@@ -74,7 +74,7 @@ Deux agents du même rôle peuvent avoir des permissions différentes (`app/admi
 | UI | React 19, Tailwind CSS 4, `react-icons` |
 | Base de données | PostgreSQL 16 + [Prisma 7](https://www.prisma.io) (`@prisma/adapter-pg`) |
 | Auth | Cookie de session signé maison (`lib/auth.ts`) + `bcryptjs` |
-| Fichiers | `exceljs` (import/export Excel), `qrcode` (carte étudiante) |
+| Fichiers | `exceljs` (import/export Excel), `qrcode` (carte étudiante), [`@vercel/blob`](https://vercel.com/docs/storage/vercel-blob) (stockage logo, photos, imports volumineux) |
 | Tests | [Vitest](https://vitest.dev) (unitaires + intégration sur vraie base Postgres) |
 | Qualité | TypeScript strict, ESLint (`eslint-config-next`) |
 | CI | GitHub Actions (types, lint, migrations, tests, build) |
@@ -136,6 +136,10 @@ DATABASE_URL="postgresql://iugm_admin:<mot_de_passe_fort>@localhost:5432/iugm_sc
 # Clé de signature des cookies de session — générer une valeur aléatoire longue,
 # par ex. avec : openssl rand -hex 32
 AUTH_SECRET="<valeur_aléatoire_longue>"
+
+# Jeton de stockage Vercel Blob (logo, photos de profil, import de fiches) —
+# créer un store Blob sur le projet Vercel puis copier le jeton généré
+BLOB_READ_WRITE_TOKEN="<jeton_vercel_blob>"
 ```
 
 ### 2. Démarrer PostgreSQL
@@ -173,6 +177,7 @@ Ouvrir [http://localhost:3000](http://localhost:3000).
 |---|---|---|
 | `DATABASE_URL` | ✅ | Chaîne de connexion PostgreSQL, lue par Prisma via `prisma/load-env.ts` |
 | `AUTH_SECRET` | ✅ | Clé de signature des cookies de session (JWT) — longue et aléatoire, différente en production |
+| `BLOB_READ_WRITE_TOKEN` | ✅ | Jeton d'accès au store Vercel Blob (`lib/storage.ts`, import de fiches) — lu implicitement par le SDK `@vercel/blob` |
 | `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | Docker uniquement | Initialisation du conteneur `docker-compose.yml` |
 
 ## Base de données (Prisma)
@@ -266,7 +271,7 @@ npm run test:coverage # rapport de couverture (iugm/coverage/index.html)
 | `ETUDIANT` | `/mon-profil` | Profile, results, announcements, student card |
 
 ### Tech stack
-Next.js 16 (App Router) · React 19 · Tailwind CSS 4 · PostgreSQL 16 + Prisma 7 · `bcryptjs` · `exceljs` · `qrcode` · Vitest · TypeScript · GitHub Actions CI.
+Next.js 16 (App Router) · React 19 · Tailwind CSS 4 · PostgreSQL 16 + Prisma 7 · `bcryptjs` · `exceljs` · `qrcode` · `@vercel/blob` (file storage) · Vitest · TypeScript · GitHub Actions CI.
 
 > ⚠️ This project pins **Next.js 16**, whose API can differ from older versions — see `iugm/AGENTS.md` before making substantial changes.
 
@@ -283,6 +288,7 @@ Create `iugm/.env.local`:
 ```bash
 DATABASE_URL="postgresql://POSTGRES_USER:POSTGRES_PASSWORD@localhost:5432/iugm_scolarite_db?schema=public"
 AUTH_SECRET="<long random string>"
+BLOB_READ_WRITE_TOKEN="<vercel blob token>"
 ```
 
 ```bash

@@ -23,13 +23,18 @@ const isDev = process.env.NODE_ENV === "development";
 // navigateur -> Vercel Blob (voir app/admin/base-donnees/import-form.tsx)
 // reste bloqué en silence par le CSP, sans jamais rejeter la promesse côté
 // client — d'où un bouton "Envoi du fichier..." qui semble se bloquer
-// indéfiniment plutôt que d'afficher une erreur.
+// indéfiniment plutôt que d'afficher une erreur. Deux domaines différents :
+// *.public.blob.vercel-storage.com pour lire un fichier déjà stocké (URL
+// renvoyée après upload, voir img-src), mais vercel.com/api/blob pour
+// l'upload lui-même — le SDK @vercel/blob envoie les octets du fichier à ce
+// second domaine (confirmé dans node_modules/@vercel/blob/dist/
+// chunk-*.js, fonction getApiUrl), pas au premier.
 const cspHeader = `
   default-src 'self';
   script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""};
   style-src 'self' 'unsafe-inline';
   img-src 'self' data: blob: https://*.public.blob.vercel-storage.com;
-  connect-src 'self' https://*.public.blob.vercel-storage.com https://blob.vercel-storage.com;
+  connect-src 'self' https://*.public.blob.vercel-storage.com https://vercel.com;
   font-src 'self';
   object-src 'none';
   base-uri 'self';
