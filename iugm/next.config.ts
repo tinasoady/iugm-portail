@@ -19,11 +19,17 @@ import type { NextConfig } from "next";
 // utilisateur, React échappe tout par défaut).
 const isDev = process.env.NODE_ENV === "development";
 
+// connect-src doit inclure les domaines Blob : sans ça, l'upload direct
+// navigateur -> Vercel Blob (voir app/admin/base-donnees/import-form.tsx)
+// reste bloqué en silence par le CSP, sans jamais rejeter la promesse côté
+// client — d'où un bouton "Envoi du fichier..." qui semble se bloquer
+// indéfiniment plutôt que d'afficher une erreur.
 const cspHeader = `
   default-src 'self';
   script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""};
   style-src 'self' 'unsafe-inline';
   img-src 'self' data: blob: https://*.public.blob.vercel-storage.com;
+  connect-src 'self' https://*.public.blob.vercel-storage.com https://blob.vercel-storage.com;
   font-src 'self';
   object-src 'none';
   base-uri 'self';
