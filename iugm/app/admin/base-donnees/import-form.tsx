@@ -3,6 +3,7 @@
 import { useActionState, useRef, useState, useTransition } from "react";
 import { upload } from "@vercel/blob/client";
 import { importPreselectionAction, type ActionState } from "./actions";
+import { MAX_IMPORT_FILE_BYTES, formatMegabytes } from "@/lib/import-shared";
 
 const initialState: ActionState = {};
 
@@ -35,6 +36,23 @@ export function ImportPreselectionForm({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [, startTransition] = useTransition();
 
+  // Vérifiée ici avant même de tenter l'envoi (choix du fichier ET soumission
+  // du formulaire) pour prévenir tout de suite d'un fichier trop gros, sans
+  // attendre un aller-retour réseau inutile — même limite que le jeton
+  // d'upload Blob (app/api/admin/import-upload/route.ts) et la relecture
+  // côté serveur (actions.ts), voir lib/import-shared.ts.
+  function checkFileSize(file: File): string | null {
+    if (file.size > MAX_IMPORT_FILE_BYTES) {
+      return `Fichier trop volumineux (${formatMegabytes(file.size)} Mo, ${formatMegabytes(MAX_IMPORT_FILE_BYTES)} Mo maximum).`;
+    }
+    return null;
+  }
+
+  function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    setUploadError(file ? checkFileSize(file) : null);
+  }
+
   // Le fichier part d'abord directement du navigateur vers Vercel Blob (pas
   // vers notre fonction serveur) : Vercel plafonne à ~4,5 Mo le corps d'une
   // requête vers une fonction serverless, une limite de plateforme qu'aucun
@@ -50,6 +68,11 @@ export function ImportPreselectionForm({
     const file = fileInputRef.current?.files?.[0];
     if (!file) {
       setUploadError("Choisissez un fichier Excel (.xlsx).");
+      return;
+    }
+    const sizeError = checkFileSize(file);
+    if (sizeError) {
+      setUploadError(sizeError);
       return;
     }
 
@@ -137,12 +160,14 @@ export function ImportPreselectionForm({
           type="file"
           accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
           required
+          onChange={handleFileChange}
           className="mt-1 block w-full text-sm text-zinc-600 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-100 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-zinc-700 dark:text-zinc-400 dark:file:bg-zinc-900 dark:file:text-zinc-300"
         />
         <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
           {CATEGORY_HELP[category]} Colonnes reconnues automatiquement : Nom, Prénom, Sexe,
           Date/Lieu de naissance, CIN, Bacc (numéro, série, mention, année, centre, pays),
-          établissement d&apos;origine, contacts, parents, filière, niveau.
+          établissement d&apos;origine, contacts, parents, filière, niveau. Taille maximale :{" "}
+          {formatMegabytes(MAX_IMPORT_FILE_BYTES)} Mo.
         </p>
       </div>
 

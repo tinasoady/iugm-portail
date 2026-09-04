@@ -2,15 +2,16 @@ import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { NextResponse } from "next/server";
 
 import { getSession } from "@/lib/auth";
+import { MAX_IMPORT_FILE_BYTES } from "@/lib/import-shared";
 
 // Génère le jeton d'upload direct navigateur -> Vercel Blob pour l'import de
 // fiches sur /admin/base-donnees : contourne la limite de ~4,5 Mo imposée par
 // Vercel sur le corps d'une requête vers une fonction serverless (voir
-// MAX_BYTES dans app/admin/base-donnees/actions.ts, qui reste la limite
-// applicative réelle). Le fichier ne transite jamais par notre fonction tant
-// qu'il n'est pas confirmé uploadé ; c'est l'action serveur qui va ensuite le
-// relire depuis Blob pour le traiter.
-const MAX_BYTES = 25 * 1024 * 1024; // 25 Mo
+// MAX_IMPORT_FILE_BYTES dans lib/import-shared.ts, qui reste la limite
+// applicative réelle, vérifiée aussi côté client et dans l'action serveur).
+// Le fichier ne transite jamais par notre fonction tant qu'il n'est pas
+// confirmé uploadé ; c'est l'action serveur qui va ensuite le relire depuis
+// Blob pour le traiter.
 
 export async function POST(request: Request) {
   const session = await getSession();
@@ -33,7 +34,7 @@ export async function POST(request: Request) {
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
           ],
           addRandomSuffix: true,
-          maximumSizeInBytes: MAX_BYTES,
+          maximumSizeInBytes: MAX_IMPORT_FILE_BYTES,
         };
       },
       onUploadCompleted: async () => {

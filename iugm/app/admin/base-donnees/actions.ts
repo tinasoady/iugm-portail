@@ -9,6 +9,7 @@ import {
   deletePreselectionBatch,
   deleteStudentsFromBatch,
 } from "@/lib/preselection";
+import { MAX_IMPORT_FILE_BYTES, formatMegabytes } from "@/lib/import-shared";
 
 export type ActionState = { success?: string; warning?: string; error?: string };
 
@@ -17,13 +18,6 @@ async function requireSuperadmin() {
   if (!session || session.role !== "SUPERADMIN") return null;
   return session;
 }
-
-// Limite applicative réelle (celle affichée à l'utilisateur) : le fichier
-// arrive déjà sur Vercel Blob à ce stade (voir import-form.tsx), donc ce
-// n'est plus la limite de ~4,5 Mo du corps de requête Vercel qui s'applique
-// ici, seulement celle-ci. Doit rester <= maximumSizeInBytes dans
-// app/api/admin/import-upload/route.ts.
-const MAX_BYTES = 25 * 1024 * 1024; // 25 Mo
 
 const CATEGORIES = new Set(["PRESELECTION", "EXISTING"]);
 
@@ -55,8 +49,8 @@ export async function importPreselectionAction(
       return { error: "Le fichier envoyé est introuvable, réessayez l'import." };
     }
     const contentLength = Number(blobResponse.headers.get("content-length") ?? "0");
-    if (contentLength > MAX_BYTES) {
-      return { error: "Fichier trop volumineux (25 Mo maximum)." };
+    if (contentLength > MAX_IMPORT_FILE_BYTES) {
+      return { error: `Fichier trop volumineux (${formatMegabytes(contentLength)} Mo, ${formatMegabytes(MAX_IMPORT_FILE_BYTES)} Mo maximum).` };
     }
     const buffer = Buffer.from(await blobResponse.arrayBuffer());
     const result = await importPreselectionFile(
