@@ -1,6 +1,7 @@
 ﻿"use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState, useTransition } from "react";
+import { upload } from "@vercel/blob/client";
 import { importPreselectionAction, type ActionState } from "./actions";
 
 const initialState: ActionState = {};
@@ -11,7 +12,7 @@ const labelClass = "block text-sm font-medium text-zinc-700 dark:text-zinc-200";
 const pillClass =
   "cursor-pointer rounded-full border border-black/10 px-4 py-2 text-sm font-medium text-zinc-700 transition select-none has-checked:border-indigo-600 has-checked:bg-indigo-600 has-checked:text-white dark:border-white/10 dark:text-zinc-300 dark:has-checked:border-indigo-500 dark:has-checked:bg-indigo-600 dark:has-checked:text-white";
 
-type Category = "PRESELECTION" | "EXISTING";
+type Category = "PRESELECTION" | "EXISTING"; 
 
 const CATEGORY_HELP: Record<Category, string> = {
   PRESELECTION:
@@ -29,9 +30,51 @@ export function ImportPreselectionForm({
 }) {
   const [state, formAction, pending] = useActionState(importPreselectionAction, initialState);
   const [category, setCategory] = useState<Category>("PRESELECTION");
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [, startTransition] = useTransition();
+
+  // Le fichier part d'abord directement du navigateur vers Vercel Blob (pas
+  // vers notre fonction serveur) : Vercel plafonne à ~4,5 Mo le corps d'une
+  // requête vers une fonction serverless, une limite de plateforme qu'aucun
+  // réglage applicatif ne peut lever (voir app/api/admin/import-upload pour
+  // le jeton d'upload, et actions.ts qui relit ensuite le fichier depuis
+  // l'URL Blob obtenue ici).
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setUploadError(null);
+
+    const form = event.currentTarget;
+    const academicYear = String(new FormData(form).get("academicYear") ?? "");
+    const file = fileInputRef.current?.files?.[0];
+    if (!file) {
+      setUploadError("Choisissez un fichier Excel (.xlsx).");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const blob = await upload(`imports/${file.name}`, file, {
+        access: "public",
+        handleUploadUrl: "/api/admin/import-upload",
+      });
+      const formData = new FormData();
+      formData.set("academicYear", academicYear);
+      formData.set("category", category);
+      formData.set("blobUrl", blob.url);
+      startTransition(() => formAction(formData));
+    } catch (e) {
+      setUploadError(e instanceof Error ? e.message : "Erreur lors de l'envoi du fichier.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  const busy = uploading || pending;
 
   return (
-    <form action={formAction} className="space-y-3">
+    <form onSubmit={handleSubmit} className="space-y-3">
       <div>
         <p className={labelClass}>Type de données *</p>
         <div className="mt-1 flex flex-wrap gap-2">
@@ -88,6 +131,7 @@ export function ImportPreselectionForm({
           Fichier (.xlsx) *
         </label>
         <input
+          ref={fileInputRef}
           id="file"
           name="file"
           type="file"
@@ -102,6 +146,11 @@ export function ImportPreselectionForm({
         </p>
       </div>
 
+      {uploadError && (
+        <p className="rounded-xl bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950 dark:text-red-300">
+          {uploadError}
+        </p>
+      )}
       {state.error && (
         <p className="rounded-xl bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950 dark:text-red-300">
           {state.error}
@@ -120,10 +169,10 @@ export function ImportPreselectionForm({
 
       <button
         type="submit"
-        disabled={pending}
+        disabled={busy}
         className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-indigo-500 disabled:opacity-50"
       >
-        {pending ? "Import en cours..." : "Importer le fichier"}
+        {uploading ? "Envoi du fichier..." : pending ? "Import en cours..." : "Importer le fichier"}
       </button>
     </form>
   );

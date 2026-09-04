@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { del } from "@vercel/blob";
 
 import { getSession } from "@/lib/auth";
 import {
@@ -17,7 +18,13 @@ async function requireSuperadmin() {
   return session;
 }
 
-const MAX_BYTES = 10 * 1024 * 1024; // 10 Mo
+// Limite applicative réelle (celle affichée à l'utilisateur) : le fichier
+// arrive déjà sur Vercel Blob à ce stade (voir import-form.tsx), donc ce
+// n'est plus la limite de ~4,5 Mo du corps de requête Vercel qui s'applique
+// ici, seulement celle-ci. Doit rester <= maximumSizeInBytes dans
+// app/api/admin/import-upload/route.ts.
+const MAX_BYTES = 25 * 1024 * 1024; // 25 Mo
+
 const CATEGORIES = new Set(["PRESELECTION", "EXISTING"]);
 
 export async function importPreselectionAction(
@@ -37,16 +44,21 @@ export async function importPreselectionAction(
     return { error: "Type de données invalide." };
   }
 
-  const file = formData.get("file");
-  if (!(file instanceof File) || file.size === 0) {
+  const blobUrl = String(formData.get("blobUrl") ?? "").trim();
+  if (!blobUrl.includes(".public.blob.vercel-storage.com/")) {
     return { error: "Choisissez un fichier Excel (.xlsx)." };
-  }
-  if (file.size > MAX_BYTES) {
-    return { error: "Fichier trop volumineux (10 Mo maximum)." };
   }
 
   try {
-    const buffer = Buffer.from(await file.arrayBuffer());
+    const blobResponse = await fetch(blobUrl);
+    if (!blobResponse.ok) {
+      return { error: "Le fichier envoyé est introuvable, réessayez l'import." };
+    }
+    const contentLength = Number(blobResponse.headers.get("content-length") ?? "0");
+    if (contentLength > MAX_BYTES) {
+      return { error: "Fichier trop volumineux (25 Mo maximum)." };
+    }
+    const buffer = Buffer.from(await blobResponse.arrayBuffer());
     const result = await importPreselectionFile(
       buffer,
       academicYear,
@@ -79,6 +91,10 @@ export async function importPreselectionAction(
     return { success: summary };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Erreur lors de l'import du fichier." };
+  } finally {
+    // Fichier temporaire uniquement le temps de l'import (succès ou échec) —
+    // inutile de le garder sur Vercel Blob une fois lu ici.
+    await del(blobUrl).catch(() => {});
   }
 }
 
