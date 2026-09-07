@@ -1,0 +1,1615 @@
+{
+  "running_header": "Portail des Inscriptions IUGM — Mémoire de fin d'études",
+  "footer_program": "Génie Informatique — ISSTM / Université de Mahajanga",
+  "cover": {
+    "logo_left": "logo_uma.png",
+    "logo_right": "logo_isstm.png",
+    "pays_ligne1": "REPOBLIKAN'I MADAGASIKARA",
+    "pays_ligne2": "Fitiavana – Tanindrazana – Fandrosoana",
+    "ministere_lignes": [
+      "MINISTÈRE DE L'ENSEIGNEMENT SUPÉRIEUR ET DE LA",
+      "RECHERCHE SCIENTIFIQUE"
+    ],
+    "etablissement_lignes": [
+      "UNIVERSITÉ DE MAHAJANGA",
+      "INSTITUT SUPÉRIEUR DES SCIENCES ET DE TECHNOLOGIE"
+    ],
+    "sigle": "ISSTM",
+    "info_lignes": [
+      "Mention : Sciences et Techniques du Numérique et Physiques Appliquées",
+      "Parcours : Génie Informatique",
+      "Niveau : Licence Professionnelle"
+    ],
+    "type_document": "Mémoire de fin d'études présenté en vue de l'obtention de la Licence Professionnelle",
+    "titre": "Conception et développement d'une plateforme web centralisée de gestion des inscriptions universitaires : cas de l'IUGM",
+    "auteur": "TINASOADY Judès Edinand",
+    "encadreurs": [
+      {
+        "role": "Maître de stage et tuteur pédagogique",
+        "nom": "Dr Chrysostome"
+      }
+    ],
+    "annee_universitaire": "2025-2026"
+  },
+  "blocks": [
+    {
+      "type": "heading",
+      "level": 1,
+      "text": "DÉDICACE",
+      "pageBreakBefore": false
+    },
+    {
+      "type": "paragraph",
+      "text": "[Espace réservé — dédie ce mémoire aux personnes de ton choix (famille, proches, ami·e·s). Quelques lignes personnelles suffisent ; c'est un passage que toi seul peux écrire.]",
+      "italic": true
+    },
+    {
+      "type": "heading",
+      "level": 1,
+      "text": "REMERCIEMENTS",
+      "pageBreakBefore": true
+    },
+    {
+      "type": "paragraph",
+      "text": "Ce mémoire est l'aboutissement d'un stage mené au sein de l'Institut Universitaire de Gestion et de Management (IUGM) de l'Université de Mahajanga, du 7 juillet au 10 septembre 2026, et je tiens à en remercier ici les personnes qui l'ont rendu possible."
+    },
+    {
+      "type": "paragraph",
+      "text": "Je remercie en premier lieu Dr Chrysostome, qui a assuré à la fois mon encadrement professionnel au sein de l'IUGM et le suivi pédagogique de ce travail. Sa disponibilité et ses conseils tout au long du stage ont largement contribué à la qualité du projet livré."
+    },
+    {
+      "type": "paragraph",
+      "text": "Mes remerciements vont également à l'ensemble du personnel de l'IUGM, aussi bien au service Administration en ville qu'au service Pédagogique du campus d'Ambondrona, pour leur accueil et pour le temps qu'ils ont pris à m'expliquer leurs pratiques quotidiennes. C'est cette écoute du terrain qui a permis de construire une application réellement adaptée à leurs besoins, plutôt qu'une solution générique plaquée sur un métier mal compris."
+    },
+    {
+      "type": "paragraph",
+      "text": "Je remercie enfin le corps enseignant et administratif de l'Institut Supérieur des Sciences et de Technologie de Mahajanga (ISSTM) pour la formation reçue durant ce cursus de Licence Professionnelle, ainsi que ma famille et mes proches pour leur soutien constant."
+    },
+    {
+      "type": "heading",
+      "level": 1,
+      "text": "TABLE DES MATIÈRES",
+      "pageBreakBefore": true
+    },
+    {
+      "type": "toc"
+    },
+    {
+      "type": "heading",
+      "level": 1,
+      "text": "LISTE DES ABRÉVIATIONS ET SIGLES",
+      "pageBreakBefore": true
+    },
+    {
+      "type": "table",
+      "headers": [
+        "Sigle",
+        "Signification"
+      ],
+      "colWidths": [
+        25,
+        75
+      ],
+      "rows": [
+        [
+          "IUGM",
+          "Institut Universitaire de Gestion et de Management"
+        ],
+        [
+          "ISSTM",
+          "Institut Supérieur des Sciences et de Technologie de Mahajanga"
+        ],
+        [
+          "SGBDR",
+          "Système de Gestion de Base de Données Relationnelle"
+        ],
+        [
+          "ORM",
+          "Object-Relational Mapping"
+        ],
+        [
+          "UML",
+          "Unified Modeling Language"
+        ],
+        [
+          "MCD",
+          "Modèle Conceptuel de Données"
+        ],
+        [
+          "MLD",
+          "Modèle Logique de Données"
+        ],
+        [
+          "API",
+          "Application Programming Interface"
+        ],
+        [
+          "CI/CD",
+          "Intégration Continue / Déploiement Continu"
+        ],
+        [
+          "CSP",
+          "Content Security Policy"
+        ],
+        [
+          "HMAC",
+          "Hash-based Message Authentication Code"
+        ],
+        [
+          "AES",
+          "Advanced Encryption Standard"
+        ],
+        [
+          "CSV",
+          "Comma-Separated Values"
+        ],
+        [
+          "JSON",
+          "JavaScript Object Notation"
+        ],
+        [
+          "QR",
+          "Quick Response (code)"
+        ],
+        [
+          "BNI",
+          "Bankin'ny Indostria (établissement bancaire)"
+        ],
+        [
+          "CIN",
+          "Carte d'Identité Nationale"
+        ],
+        [
+          "TD",
+          "Travaux Dirigés"
+        ],
+        [
+          "Ar",
+          "Ariary (monnaie malgache)"
+        ]
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 1,
+      "text": "LISTE DES FIGURES ET TABLEAUX",
+      "pageBreakBefore": true
+    },
+    {
+      "type": "paragraph",
+      "text": "Cette liste sera complétée en fin de rédaction, une fois toutes les figures et tous les tableaux du mémoire numérotés dans leur ordre définitif d'apparition.",
+      "italic": true
+    },
+    {
+      "type": "heading",
+      "level": 1,
+      "text": "INTRODUCTION GÉNÉRALE",
+      "pageBreakBefore": true
+    },
+    {
+      "type": "paragraph",
+      "text": "La gestion des inscriptions dans l'enseignement supérieur reste, dans de nombreux établissements malgaches, un processus largement manuel : registres papier, ressaisie sur tableur, dossiers physiques qui transitent d'un service à l'autre. Cette organisation, héritée d'une époque où l'informatique n'était pas encore la norme, montre aujourd'hui ses limites à mesure que les effectifs étudiants augmentent — erreurs de saisie sur les noms ou les numéros de matricule, dossiers égarés, absence de visibilité en temps réel sur l'état d'avancement d'une inscription."
+    },
+    {
+      "type": "paragraph",
+      "text": "L'Institut Universitaire de Gestion et de Management (IUGM), l'un des instituts de l'Université de Mahajanga, n'échappe pas à ce constat — sa situation est même rendue plus complexe par une répartition géographique en deux sites distincts. Le service Administration, en ville, gère la direction, les finances et la vérification des paiements ; le service Pédagogique, au campus d'Ambondrona, prend en charge la scolarité et le suivi des étudiants. Entre les deux, c'est jusqu'ici l'étudiant lui-même qui sert de vecteur physique à son propre dossier, ce qui ralentit le processus d'inscription et double le travail de saisie."
+    },
+    {
+      "type": "paragraph",
+      "text": "C'est dans ce contexte que s'inscrit le stage à l'origine de ce mémoire : comment moderniser et sécuriser l'ensemble du cycle d'inscription — de l'enregistrement du dossier jusqu'à la délivrance de la carte étudiante, en passant par la vérification des paiements d'écolage et la validation pédagogique — pour plusieurs profils d'utilisateurs aux droits différents, tout en tenant compte d'une contrainte bien réelle du terrain : une connectivité internet à Mahajanga qui reste instable et sujette à des coupures ?"
+    },
+    {
+      "type": "paragraph",
+      "text": "L'objectif confié par l'IUGM était de concevoir et de déployer une application web centralisée capable de répondre à cette problématique : supprimer la double saisie entre les deux sites, automatiser la génération du matricule étudiant dès la validation administrative, et garantir malgré tout une continuité de service en cas de coupure réseau."
+    },
+    {
+      "type": "paragraph",
+      "text": "Ce mémoire retrace la démarche suivie pour y parvenir. Une première partie présente le cadre général du stage : l'organisme d'accueil, puis l'analyse des besoins qui a précédé la conception. Une deuxième partie détaille la méthodologie adoptée et les choix de conception, notamment le modèle de données et l'architecture logicielle retenus. Une troisième partie, la plus longue, décrit la réalisation proprement dite : l'environnement de développement, l'implémentation des fonctionnalités clés, ainsi que la stratégie de test et de déploiement mise en place. Une quatrième et dernière partie dresse le bilan du stage et ouvre sur les perspectives d'évolution du portail."
+    },
+    {
+      "type": "heading",
+      "level": 1,
+      "text": "PARTIE I — CADRE GÉNÉRAL DU STAGE",
+      "pageBreakBefore": true
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "Chapitre 1 — Présentation de l'organisme d'accueil"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "1.1. Historique et missions de l'IUGM"
+    },
+    {
+      "type": "paragraph",
+      "text": "L'Institut Universitaire de Gestion et de Management a été créé par l'Arrêté n° 5079/2001 du 25 avril 2001, qui portait ouverture de la formation « Formation Supérieure en Gestion des Entreprises et des Administrations » (FSGEA) au sein de l'Université de Mahajanga. Cette formation a ensuite donné naissance à un établissement à part entière par le Décret n° 2005/369 du 1er juillet 2005, qui a porté création de l'Établissement d'Enseignement Supérieur dénommé Institut Universitaire de Gestion et de Management (IUGM). Ce texte fait de l'IUGM un établissement universitaire professionnalisé, dont la mission est de former des techniciens supérieurs et des licenciés en gestion de haut niveau, aptes à répondre aux besoins et aux exigences des entreprises, des sociétés et des organismes implantés à Madagascar. L'IUGM se présente ainsi comme un centre de référence et d'appui du secteur tertiaire au développement socio-économique régional et national."
+    },
+    {
+      "type": "paragraph",
+      "text": "L'histoire de l'établissement est cependant plus ancienne que sa création officielle : dès 1992, le Centre d'Appui Technologique et d'Informatique (CATI) avait été mis en place pour assurer un rôle d'assistance technique à l'Université de Mahajanga dans le domaine de l'informatique. La formation en Finance et Comptabilité a suivi en 2001, avec un premier débouché de teneur de livre de comptabilité en entreprise. L'année 2002 a vu l'ouverture de deux nouveaux programmes, Commerce International (débouché : technicien de commerce et de transit) et Informatique de Gestion (débouché : programmeur). Depuis 2005, l'établissement délivre le diplôme de Licence, tout en continuant à décerner un Diplôme de Technicien Supérieur (DTS) à l'issue de la deuxième année ; 2008 a marqué l'ouverture d'un nouveau programme de formation en Gestion des Ressources Humaines."
+    },
+    {
+      "type": "paragraph",
+      "text": "L'IUGM figure aujourd'hui parmi les établissements constitutifs de l'Université de Mahajanga, aux côtés notamment de la Faculté des Sciences, de la Faculté de Médecine, de l'ISSTM et de l'UFP. Comme les autres établissements publics malgaches, il ne peut recourir à la publicité télévisée ou radiodiffusée pour se faire connaître des jeunes bacheliers ; sa politique de communication passe donc principalement par l'affichage et par les campagnes de courrier, y compris sur Internet."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "1.2. Organisation administrative et pédagogique"
+    },
+    {
+      "type": "paragraph",
+      "text": "L'IUGM est structuré en deux services géographiquement distincts, une organisation qui a directement motivé le projet développé durant le stage. Le service Administration, situé en ville, est chargé de la direction de l'institut, des finances, de la vérification des paiements d'écolage (via les reçus bancaires de la BNI), de la délivrance des diplômes et de la tenue du livre d'or. Le service Pédagogique, situé au Campus d'Ambondrona, prend en charge la scolarité, les services techniques, la répartition des étudiants dans leurs classes et groupes de travaux dirigés, ainsi que le suivi du personnel enseignant."
+    },
+    {
+      "type": "image_placeholder",
+      "label": "Organigramme de l'IUGM",
+      "description": "Schéma hiérarchique de l'organisme d'accueil : direction, service Administration (ville) et service Pédagogique (campus d'Ambondrona), avec les postes clés de chaque service."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "1.3. Présentation du service d'affectation"
+    },
+    {
+      "type": "paragraph",
+      "text": "[À compléter par l'étudiant : au sein de quel service (Administration en ville, ou Pédagogique à Ambondrona) le stage s'est-il déroulé concrètement ? Quelles étaient les missions confiées au quotidien, au-delà du développement de l'application elle-même — participation aux tâches du service, réunions, points d'avancement ?]",
+      "italic": true
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "1.4. Déroulement du stage"
+    },
+    {
+      "type": "paragraph",
+      "text": "Le stage s'est déroulé du 7 juillet au 10 septembre 2026, sous la responsabilité de Dr Chrysostome, à la fois maître de stage au sein de l'IUGM et tuteur pédagogique du côté de l'ISSTM — un point de contact unique tout au long du projet, aussi bien pour les questions de terrain que pour le suivi de la rédaction du mémoire."
+    },
+    {
+      "type": "paragraph",
+      "text": "La méthode de travail adoptée a été itérative : plutôt que de livrer l'ensemble de l'application en une seule fois en fin de stage, les fonctionnalités ont été développées et présentées progressivement, au fil d'échanges réguliers avec le maître de stage qui permettaient d'ajuster les priorités selon les retours du terrain. Cette organisation se retrouve dans l'historique du dépôt de code, détaillé au chapitre 5, qui distingue sept phases de travail successives sur l'ensemble de la période."
+    },
+    {
+      "type": "paragraph",
+      "text": "[À compléter par l'étudiant : rythme précis du stage (temps plein, nombre de jours par semaine), modalités concrètes des points d'avancement avec le maître de stage (réunions hebdomadaires, échanges informels...).]",
+      "italic": true
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "1.5. Outils déjà en place avant l'arrivée"
+    },
+    {
+      "type": "paragraph",
+      "text": "Avant le début du stage, l'inscription d'un étudiant à l'IUGM se faisait en deux étapes obligatoires et déconnectées l'une de l'autre. En ville, le service Administration traitait les dossiers de manière manuscrite, dans des registres physiques. L'étudiant se déplaçait ensuite au campus d'Ambondrona, où le service Pédagogique effectuait une seconde saisie, manuelle également, cette fois sur un tableur Microsoft Excel. Aucun outil numérique ne reliait les deux sites : la seule passerelle entre eux était le dossier papier que l'étudiant transportait lui-même."
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "Chapitre 2 — Cadrage et analyse des besoins"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "2.1. Étude de l'existant"
+    },
+    {
+      "type": "paragraph",
+      "text": "Un audit de terrain mené auprès du personnel de l'IUGM, en amont de la conception, a permis de mettre en évidence trois problèmes majeurs dans le processus d'inscription existant."
+    },
+    {
+      "type": "paragraph",
+      "text": "Le premier est une fracture géographique doublée d'une rupture technologique : l'inscription se fait en deux étapes obligatoires, sans continuité numérique entre elles. L'administration traite les dossiers à la main dans des registres, puis les restitue à l'étudiant, qui doit ensuite se déplacer au campus d'Ambondrona pour qu'ils soient ressaisis sur Excel par le service pédagogique."
+    },
+    {
+      "type": "paragraph",
+      "text": "Le deuxième est un risque d'erreur et une perte de temps directement liés à cette double saisie : la recopie manuscrite, puis la ressaisie sur tableur, augmentent mécaniquement les risques de fautes d'orthographe sur les noms ou de mauvaise numérotation des matricules. L'étudiant, en servant de vecteur physique à son propre dossier, ralentit d'autant le processus global."
+    },
+    {
+      "type": "paragraph",
+      "text": "Le troisième est une contrainte d'infrastructure réseau : si les deux sites disposent d'un accès internet, la connectivité à Mahajanga reste instable et sujette à des coupures fréquentes. Cette réalité de terrain interdisait de fait une solution entièrement dépendante du réseau, sans mécanisme de secours — une contrainte qui a directement orienté les choix de conception présentés au chapitre 4."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "2.2. Objectifs fonctionnels du projet"
+    },
+    {
+      "type": "paragraph",
+      "text": "Face à ce constat, l'objectif principal fixé au projet était de concevoir et déployer une application web centralisée en ligne permettant d'unifier les services de l'IUGM, tout en garantissant la résilience du système en cas de coupure réseau. Cet objectif général se déclinait en quatre axes concrets."
+    },
+    {
+      "type": "bullets",
+      "items": [
+        "Zéro double saisie : les données saisies en ville par l'administration doivent être instantanément accessibles au campus d'Ambondrona, sans ressaisie manuelle.",
+        "Automatisation : génération automatique et sécurisée du numéro de matricule dès la validation administrative du dossier.",
+        "Résilience réseau, selon une approche hybride : un module d'export/import de données permettant la continuité de l'activité sur chaque site en cas de panne internet.",
+        "Pérennité physique : un module d'impression optimisé pour éditer les reçus pédagogiques, les fiches étudiants et les sauvegardes papier demandées par l'administration."
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "2.3. Recensement des acteurs et de leurs besoins"
+    },
+    {
+      "type": "paragraph",
+      "text": "Le cahier des charges initial distinguait trois profils d'utilisateurs : l'agent d'administration, l'agent pédagogique et l'administrateur système. Au fil du développement, un quatrième profil s'est imposé de lui-même : celui de l'étudiant, qui a fini par disposer de son propre espace pour consulter son dossier, ses résultats et sa carte étudiante numérique — une évolution naturelle une fois le reste du système en place, plutôt qu'un besoin identifié dès le départ."
+    },
+    {
+      "type": "table",
+      "headers": [
+        "Acteur",
+        "Besoins principaux"
+      ],
+      "colWidths": [
+        25,
+        75
+      ],
+      "rows": [
+        [
+          "Superadmin",
+          "Gestion des comptes utilisateurs, des tarifs, des paramètres de l'établissement et des permissions accordées à chaque agent."
+        ],
+        [
+          "Agent d'administration",
+          "Inscription et réinscription des étudiants, vérification des paiements, suivi de l'écolage, export des données en cas de coupure réseau."
+        ],
+        [
+          "Agent pédagogique",
+          "Validation pédagogique des dossiers, saisie des résultats académiques et des mentions, appréciation de la conduite, communiqués."
+        ],
+        [
+          "Étudiant",
+          "Consultation du profil et des résultats, carte étudiante numérique, communiqués reçus, changement de mot de passe."
+        ]
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "2.4. Besoins non fonctionnels"
+    },
+    {
+      "type": "bullets",
+      "items": [
+        "Sécurité : authentification de chaque profil, protection des données personnelles et financières des étudiants.",
+        "Traçabilité : conservation d'un historique des actions sensibles, pour pouvoir répondre à la question « qui a validé quel dossier, et quand ? ».",
+        "Performance de recherche : retrouver rapidement un dossier étudiant parmi un volume important d'inscriptions, y compris avec une orthographe approximative.",
+        "Disponibilité : continuité du service même en cas de coupure du réseau internet à Mahajanga, conformément à la contrainte de terrain identifiée en 2.1."
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "2.5. Cahier des charges synthétique"
+    },
+    {
+      "type": "table",
+      "headers": [
+        "Exigence",
+        "Type",
+        "Description"
+      ],
+      "colWidths": [
+        30,
+        20,
+        50
+      ],
+      "rows": [
+        [
+          "Suppression de la double saisie",
+          "Fonctionnelle",
+          "Une donnée saisie sur un site est immédiatement visible sur l'autre."
+        ],
+        [
+          "Génération automatique du matricule",
+          "Fonctionnelle",
+          "Le matricule est attribué par le système à la validation administrative, jamais saisi à la main."
+        ],
+        [
+          "Résilience hors ligne",
+          "Fonctionnelle",
+          "Export/import de secours au format universel en cas de coupure réseau prolongée."
+        ],
+        [
+          "Module d'impression",
+          "Fonctionnelle",
+          "Édition des reçus, fiches étudiants et sauvegardes physiques demandées par l'administration."
+        ],
+        [
+          "Sécurité des accès",
+          "Non fonctionnelle",
+          "Authentification par profil, permissions différenciées selon le rôle et la filière."
+        ],
+        [
+          "Traçabilité",
+          "Non fonctionnelle",
+          "Journalisation des actions sensibles (validations, connexions)."
+        ]
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 1,
+      "text": "PARTIE II — ANALYSE ET CONCEPTION",
+      "pageBreakBefore": true
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "Chapitre 3 — Méthodologie et spécification"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "3.1. Démarche adoptée"
+    },
+    {
+      "type": "paragraph",
+      "text": "Plutôt que de suivre un cycle en cascade où l'ensemble des besoins aurait été figé avant tout développement, le projet a été mené de façon itérative, fonctionnalité par fonctionnalité. Chaque brique — inscription, réinscription, écolage, communiqués, carte étudiante... — a été développée puis présentée au maître de stage, dont les retours orientaient la priorité suivante. Cette organisation se lit directement dans l'historique du dépôt de code : sept phases de travail successives, détaillées au chapitre 5, se distinguent nettement sur les 34 jours qu'a duré le développement, avec des journées de stabilisation dédiées (24 juillet, 7 août) qui viennent corriger et consolider ce qui avait été construit les jours précédents plutôt qu'ajouter de nouvelles fonctionnalités sans revenir en arrière."
+    },
+    {
+      "type": "paragraph",
+      "text": "Ce choix méthodologique s'est révélé pertinent sur un point précis : la définition des acteurs elle-même a évolué en cours de route (voir 2.3), et une démarche itérative a permis d'absorber ce changement sans remise à plat du projet — un espace étudiant s'est ajouté une fois le socle du workflow d'inscription stabilisé, plutôt que d'avoir été anticipé dès la phase de spécification initiale."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "3.2. Diagrammes de cas d'utilisation"
+    },
+    {
+      "type": "paragraph",
+      "text": "Quatre diagrammes de cas d'utilisation ont été établis, un par rôle du système, afin de délimiter précisément le périmètre d'action de chaque profil."
+    },
+    {
+      "type": "image_placeholder",
+      "label": "Diagramme de cas d'utilisation — Superadmin",
+      "description": "Diagramme UML représentant les cas d'utilisation du rôle Superadmin : gérer les utilisateurs, gérer les permissions et le périmètre par formation, gérer les tarifs (LevelFinancialInfo), gérer les paramètres de l'établissement, importer la base de données, consulter le journal d'audit."
+    },
+    {
+      "type": "image_placeholder",
+      "label": "Diagramme de cas d'utilisation — Agent d'administration",
+      "description": "Diagramme UML représentant les cas d'utilisation du rôle Agent d'administration : s'authentifier, créer/rechercher un dossier étudiant, enregistrer un paiement d'écolage, vérifier un paiement, valider l'inscription administrative, exporter les données."
+    },
+    {
+      "type": "image_placeholder",
+      "label": "Diagramme de cas d'utilisation — Agent pédagogique",
+      "description": "Diagramme UML représentant les cas d'utilisation du rôle Agent pédagogique : s'authentifier, consulter les dossiers admis, valider pédagogiquement un dossier, saisir les résultats académiques, imprimer un reçu, rédiger un communiqué."
+    },
+    {
+      "type": "image_placeholder",
+      "label": "Diagramme de cas d'utilisation — Étudiant",
+      "description": "Diagramme UML représentant les cas d'utilisation du rôle Étudiant : s'authentifier, consulter son profil et ses résultats, consulter sa carte étudiante numérique, consulter ses communiqués, changer son mot de passe."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "3.3. Description textuelle des cas d'utilisation principaux"
+    },
+    {
+      "type": "heading",
+      "level": 4,
+      "text": "3.3.1. Inscription administrative"
+    },
+    {
+      "type": "table",
+      "headers": [
+        "Champ",
+        "Description"
+      ],
+      "colWidths": [
+        25,
+        75
+      ],
+      "rows": [
+        [
+          "Acteur principal",
+          "Agent d'administration"
+        ],
+        [
+          "Pré-condition",
+          "L'agent est authentifié et dispose de la permission d'inscription."
+        ],
+        [
+          "Scénario nominal",
+          "1. L'agent recherche éventuellement le candidat dans les fiches de présélection importées. 2. Il saisit ou complète le dossier via le formulaire multi-étapes (identité, bacc, contact, parents, pièces du dossier). 3. Il enregistre le numéro de reçu bancaire BNI et le montant versé. 4. Le dossier est créé avec le statut ENREGISTRE, puis passe à PAIEMENT_VERIFIE une fois le reçu contrôlé."
+        ],
+        [
+          "Post-condition",
+          "Le dossier existe en base avec un statut à jour ; aucun matricule n'est encore attribué à ce stade."
+        ]
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 4,
+      "text": "3.3.2. Réinscription"
+    },
+    {
+      "type": "table",
+      "headers": [
+        "Champ",
+        "Description"
+      ],
+      "colWidths": [
+        25,
+        75
+      ],
+      "rows": [
+        [
+          "Acteur principal",
+          "Agent d'administration"
+        ],
+        [
+          "Pré-condition",
+          "L'étudiant possède déjà un dossier INSCRIT pour une année universitaire antérieure."
+        ],
+        [
+          "Scénario nominal",
+          "1. L'agent retrouve le dossier existant. 2. L'année universitaire précédente (statuts, dates de vérification, documents) est archivée dans l'historique de scolarité (EnrollmentHistory). 3. Le dossier est remis à l'état ENREGISTRE pour la nouvelle année, prêt pour un nouveau cycle de validation."
+        ],
+        [
+          "Post-condition",
+          "L'historique complet des années précédentes reste consultable, notamment pour le graphique d'évolution du tableau de bord, sans être mélangé aux données de l'année en cours."
+        ]
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 4,
+      "text": "3.3.3. Validation pédagogique"
+    },
+    {
+      "type": "table",
+      "headers": [
+        "Champ",
+        "Description"
+      ],
+      "colWidths": [
+        25,
+        75
+      ],
+      "rows": [
+        [
+          "Acteur principal",
+          "Agent pédagogique"
+        ],
+        [
+          "Pré-condition",
+          "Le dossier est au statut ADMIN_VALIDEE."
+        ],
+        [
+          "Scénario nominal",
+          "1. L'agent pédagogique consulte la liste des dossiers validés administrativement. 2. Il assigne l'étudiant à sa classe et son groupe de travaux dirigés. 3. Il valide pédagogiquement le dossier, ce qui fait passer le statut à INSCRIT et déclenche la création du compte étudiant."
+        ],
+        [
+          "Post-condition",
+          "Le compte étudiant est créé avec un mot de passe initial (le matricule ou un mot de passe généré, à changer à la première connexion) ; un communiqué de bienvenue lui sera envoyé à sa première connexion réelle, et non à cette étape."
+        ]
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 4,
+      "text": "3.3.4. Paiement de l'écolage"
+    },
+    {
+      "type": "table",
+      "headers": [
+        "Champ",
+        "Description"
+      ],
+      "colWidths": [
+        25,
+        75
+      ],
+      "rows": [
+        [
+          "Acteur principal",
+          "Agent d'administration"
+        ],
+        [
+          "Pré-condition",
+          "L'étudiant est inscrit pour l'année universitaire en cours, avec un tarif défini pour son niveau et sa filière."
+        ],
+        [
+          "Scénario nominal",
+          "1. L'agent consulte le solde restant dû, calculé à partir du tarif annuel du niveau et des versements déjà enregistrés. 2. Il enregistre un nouveau versement, en tranche (premier ou second semestre) ou en totalité — ces deux modes sont mutuellement exclusifs pour une même année. 3. Le système empêche tout doublement d'un même type de versement grâce à une contrainte d'unicité sur le triplet étudiant/année/type."
+        ],
+        [
+          "Post-condition",
+          "Le solde dû est recalculé et immédiatement visible par l'agent d'administration comme par l'agent pédagogique."
+        ]
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "Chapitre 4 — Conception détaillée"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "4.1. Modèle de données"
+    },
+    {
+      "type": "paragraph",
+      "text": "Le schéma final du portail compte treize modèles et six énumérations, résultat de vingt-huit migrations successives qui ont fait évoluer le modèle depuis un unique modèle User jusqu'à cette structure complète (l'historique détaillé des migrations est présenté au chapitre 5). Six énumérations structurent les données : Role distingue les quatre profils d'utilisateurs ; StudentStatus formalise le workflow central du portail en quatre étapes (ENREGISTRE → PAIEMENT_VERIFIE → ADMIN_VALIDEE → INSCRIT) ; PreselectionCategory distingue deux origines d'import (nouveaux candidats présélectionnés, dossiers déjà existants) pour qu'un ré-import de l'une n'écrase jamais l'autre ; Mention calcule automatiquement l'appréciation littérale d'une moyenne sur 20 ; AnnouncementKind distingue un communiqué manuel d'un avis d'admission ou d'un message de bienvenue automatique ; EcolagePaymentType distingue les deux tranches semestrielles du paiement total."
+    },
+    {
+      "type": "table",
+      "headers": [
+        "Modèle",
+        "Rôle métier"
+      ],
+      "colWidths": [
+        25,
+        75
+      ],
+      "rows": [
+        [
+          "User",
+          "Authentification et profils de tous les rôles : e-mail unique, mot de passe haché, permissions par tâche, périmètre par filière pour les agents."
+        ],
+        [
+          "Student",
+          "Dossier étudiant géré par les agents, distinct du compte User : identité complète, pièces du dossier, statut du workflow, horodatages dédiés de vérification."
+        ],
+        [
+          "EnrollmentHistory",
+          "Archive d'une année universitaire passée, créée à chaque réinscription, pour ne jamais perdre les événements passés du graphique de suivi."
+        ],
+        [
+          "PreselectionCandidate",
+          "Fiche importée en lot depuis un fichier Excel, reliée de façon unique à un dossier une fois utilisée."
+        ],
+        [
+          "AcademicResult",
+          "Résultat académique par semestre : moyenne sur 20 et mention calculée."
+        ],
+        [
+          "Announcement / AnnouncementRead",
+          "Communiqués ciblés par filière et niveau, ou personnels, avec suivi de lecture par étudiant."
+        ],
+        [
+          "Setting",
+          "Paramètres de l'établissement, stockés en clé/valeur (nom, adresse, logo)."
+        ],
+        [
+          "LevelFinancialInfo",
+          "Renseignements financiers par niveau d'études — remplace l'ancien modèle Tariff (voir ci-dessous)."
+        ],
+        [
+          "EcolagePayment",
+          "Un versement d'écolage pour une année donnée, avec son type et l'agent qui l'a vérifié."
+        ],
+        [
+          "AuditLog",
+          "Journal des actions sensibles du système."
+        ],
+        [
+          "LoginAttempt",
+          "Tentatives de connexion, utilisées pour l'anti-bruteforce par e-mail et par IP."
+        ]
+      ]
+    },
+    {
+      "type": "paragraph",
+      "text": "Un point de conception mérite d'être souligné : le modèle Tariff, créé dès la migration du 15 juillet pour porter les tarifs par filière, a été entièrement remplacé le 5 août par LevelFinancialInfo, structuré par niveau d'études plutôt que par filière. Ce n'est pas un détail à passer sous silence mais une évolution de conception réelle, révélatrice de la façon dont la compréhension du métier — les tarifs dépendent en réalité du niveau, pas de la filière — s'est affinée au fil des échanges avec le terrain."
+    },
+    {
+      "type": "image_placeholder",
+      "label": "Modèle conceptuel de données (MCD) du portail",
+      "description": "Schéma entités-associations complet, ou export annoté du schéma Prisma, représentant les treize modèles et leurs relations (User, Student, EnrollmentHistory, PreselectionCandidate, AcademicResult, Announcement, Setting, LevelFinancialInfo, EcolagePayment, AuditLog, LoginAttempt)."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "4.2. Diagrammes de séquence"
+    },
+    {
+      "type": "image_placeholder",
+      "label": "Diagramme de séquence — Workflow d'inscription complet",
+      "description": "Diagramme de séquence illustrant les quatre étapes du workflow (ENREGISTRE → PAIEMENT_VERIFIE → ADMIN_VALIDEE → INSCRIT), avec les acteurs (agent d'administration, agent pédagogique) et les horodatages posés à chaque transition (receiptVerifiedAt, pedagoValidatedAt)."
+    },
+    {
+      "type": "image_placeholder",
+      "label": "Diagramme de séquence — Paiement de l'écolage",
+      "description": "Diagramme de séquence illustrant le calcul du montant dû à partir du tarif de la filière (LevelFinancialInfo), l'enregistrement d'un versement (EcolagePayment) et la mise à jour du solde restant."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "4.3. Architecture logicielle"
+    },
+    {
+      "type": "paragraph",
+      "text": "L'application repose sur Next.js dans sa configuration App Router, avec les Server Actions comme mécanisme principal de mutation des données — un choix qui écarte volontairement la construction d'une API REST classique pour les opérations internes de l'application. Prisma sert de couche d'accès aux données au-dessus d'une base PostgreSQL, avec l'adaptateur @prisma/adapter-pg. Le code source est organisé en deux répertoires aux responsabilités distinctes : app/, qui regroupe à la fois les routes et l'interface, découpé par rôle (admin/, agent-admin/, agent-pedagogique/) ; et lib/, qui concentre la logique métier partagée, indépendante de toute route particulière."
+    },
+    {
+      "type": "code",
+      "text": "app/\n├── admin/              # Espace SUPERADMIN\n├── agent-admin/        # Espace agent d'administration\n├── agent-pedagogique/  # Espace agent pédagogique\n├── mon-profil/         # Espace étudiant\n└── api/                # 3 routes API (export, auth)\nlib/                    # Logique métier partagée (20 fichiers)"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "4.4. Choix technologiques justifiés"
+    },
+    {
+      "type": "paragraph",
+      "text": "Next.js 16 et son App Router permettent de garder la logique de mutation au plus près de l'interface via les Server Actions, sans maintenir une couche d'API séparée pour des opérations qui ne sont de toute façon jamais consommées que par ce même front-end. React 19 est la version attendue par cette version de Next.js. Prisma 7, associé à l'adaptateur pilote @prisma/adapter-pg plutôt qu'à son moteur binaire historique, s'intègre plus proprement à un environnement de déploiement serverless comme Vercel. Tailwind CSS 4 a été retenu pour sa rapidité d'itération sur les nombreux tableaux de bord de l'application, chacun avec ses propres indicateurs visuels. Côté sécurité, bcryptjs assure le hachage des mots de passe sans dépendance native à compiler, ce qui simplifie le déploiement. La génération de la carte étudiante s'appuie sur qrcode, et l'édition des reçus et récépissés imprimables sur puppeteer-core, qui permet de produire un rendu PDF fidèle à l'interface web plutôt que de maintenir un gabarit d'impression séparé."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "4.5. Conception de la sécurité"
+    },
+    {
+      "type": "paragraph",
+      "text": "La sécurité du portail repose sur plusieurs mécanismes complémentaires plutôt que sur un unique point de contrôle. La session de chaque utilisateur est portée par un cookie HTTP-only signé (lib/auth.ts), marqué secure en production, sans dépendance à une bibliothèque JWT externe. Les mots de passe sont hachés avec bcrypt ; les comptes créés avec un mot de passe initial (le matricule, ou un mot de passe généré) portent un indicateur mustChangePassword qui force sa redéfinition dès la première connexion. Les tentatives de connexion sont limitées par e-mail et par adresse IP pour contrer le bruteforce, et chaque action sensible est consignée dans un journal d'audit."
+    },
+    {
+      "type": "paragraph",
+      "text": "Au-delà de l'authentification elle-même, le système de permissions ne se limite pas à un rôle figé : chaque agent dispose d'une liste de permissions individuelles par tâche, et peut en plus être cantonné à une filière donnée. Chaque route et chaque Server Action revérifie elle-même le rôle et les permissions de l'utilisateur courant — un audit systématique, mené fichier par fichier sur les quatorze fichiers actions.ts de l'application, a permis de vérifier qu'aucune n'avait été oubliée ; seule la page de connexion elle-même échappe naturellement à ce contrôle, puisqu'elle en est le point d'entrée."
+    },
+    {
+      "type": "paragraph",
+      "text": "Cette architecture de contrôle par page et par action, solide tant qu'aucune n'est oubliée, ne garantissait cependant rien pour une future route ajoutée sans y penser. Un filet de sécurité global a donc été ajouté par la suite, sous la forme d'un fichier proxy.ts à la racine du projet (l'équivalent, renommé dans Next.js 16, de l'ancien middleware.ts), qui bloque en amont de toute page l'accès à tout ce qui n'est pas explicitement public si le cookie de session n'est pas valide. Ce contrôle reste volontairement « optimiste » — il vérifie la signature et l'expiration du cookie sans requête en base — les vérifications fines de rôle et de permission restant dans chaque page et chaque action, seules à avoir accès à la base de données pour les mener correctement. Cette évolution illustre un principe de défense en profondeur : plusieurs lignes de contrôle indépendantes plutôt qu'un unique verrou, une architecture de sécurité qui s'est construite par itérations plutôt qu'un choix figé dès le premier jour."
+    },
+    {
+      "type": "paragraph",
+      "text": "D'autres mesures sont venues renforcer le dispositif à la suite d'un audit de sécurité mené après la mise en ligne du portail : des en-têtes de sécurité HTTP complets (Content-Security-Policy, X-Frame-Options, Strict-Transport-Security...), un chiffrement AES-256-GCM du mot de passe initial de l'étudiant — auparavant stocké en clair pour figurer sur le reçu imprimé — et un rate-limiting spécifique sur les routes d'export, pour freiner un compte compromis qui tenterait d'aspirer l'intégralité de la base. Le chapitre 7 revient plus en détail sur la découverte et la correction de deux incidents concrets liés à la gestion des secrets."
+    },
+    {
+      "type": "heading",
+      "level": 1,
+      "text": "PARTIE III — RÉALISATION ET MISE EN ŒUVRE",
+      "pageBreakBefore": true
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "Chapitre 5 — Environnement et organisation du projet"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "5.1. Environnement de développement"
+    },
+    {
+      "type": "paragraph",
+      "text": "Le développement s'est appuyé sur Node.js 22 — la même version que celle utilisée ensuite en intégration continue, pour éviter tout écart de comportement entre poste local et pipeline. La base de données PostgreSQL 16 tourne en local dans un conteneur Docker Compose : un service unique db, nommé iugm_postgres_db, dont les identifiants sont lus depuis le fichier .env.local plutôt que définis en dur dans le fichier de configuration — un choix documenté directement en commentaire dans docker-compose.yml, pour éviter que Compose n'interpole silencieusement des valeurs vides si ce fichier venait à manquer. Le port 5432 est exposé et les données persistent dans un volume nommé."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "5.2. Structure du dépôt et logique de découpage"
+    },
+    {
+      "type": "paragraph",
+      "text": "Le code applicatif suit l'organisation imposée par l'App Router de Next.js, avec un découpage par rôle qui reflète directement les quatre espaces identifiés au chapitre 2 : admin/, agent-admin/, agent-pedagogique/, mon-profil/. Ce parti pris — un dossier par rôle plutôt qu'un découpage par fonctionnalité transversale — facilite le contrôle d'accès : chaque page sait, par sa seule position dans l'arborescence, quel rôle est censé y accéder."
+    },
+    {
+      "type": "table",
+      "headers": [
+        "Élément",
+        "Volume"
+      ],
+      "colWidths": [
+        50,
+        50
+      ],
+      "rows": [
+        [
+          "Pages (app/**/page.tsx)",
+          "22"
+        ],
+        [
+          "Fichiers de Server Actions (app/**/actions.ts)",
+          "14"
+        ],
+        [
+          "Routes API (app/api/**/route.ts)",
+          "3, plus 1 ajoutée le 04/09"
+        ],
+        [
+          "Fichiers utilitaires (lib/)",
+          "20"
+        ]
+      ]
+    },
+    {
+      "type": "paragraph",
+      "text": "Le fichier le plus volumineux du projet, lib/students.ts (1690 lignes), concentre l'essentiel du cœur métier : inscription, réinscription, écolage, résultats, export CSV et génération du QR code. Ce choix de centralisation, plutôt qu'un éclatement en de nombreux petits fichiers, a facilité la réutilisation d'une même logique entre la soumission en ligne classique et le rejeu de synchronisation hors ligne (voir 6.11)."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "5.3. Gestion des migrations Prisma"
+    },
+    {
+      "type": "paragraph",
+      "text": "Le schéma de données a évolué par vingt-huit migrations successives, depuis un modèle User isolé jusqu'au schéma final à treize modèles. Cet historique, loin d'être un détail technique secondaire, retrace fidèlement la façon dont la compréhension du métier s'est affinée au fil du stage."
+    },
+    {
+      "type": "table",
+      "headers": [
+        "Date",
+        "Migration",
+        "Contenu"
+      ],
+      "colWidths": [
+        12,
+        30,
+        58
+      ],
+      "rows": [
+        [
+          "14/07",
+          "init",
+          "Enum Role, table User"
+        ],
+        [
+          "14/07",
+          "add_audit_log",
+          "Table AuditLog"
+        ],
+        [
+          "14/07",
+          "add_student_model",
+          "Enum StudentStatus, table Student"
+        ],
+        [
+          "14/07",
+          "add_academic_results",
+          "Enum Mention, table AcademicResult"
+        ],
+        [
+          "14/07",
+          "full_student_registration",
+          "Ajout massif des champs Student (identité, CIN, bacc, contact, parents)"
+        ],
+        [
+          "15/07",
+          "settings_and_tariffs",
+          "Tables Setting et Tariff (Tariff sera supprimé plus tard)"
+        ],
+        [
+          "15/07",
+          "add_conduct",
+          "Student.conduct"
+        ],
+        [
+          "15/07",
+          "inscription_administrative_fields",
+          "Champs pièces du dossier et infos complémentaires"
+        ],
+        [
+          "15/07",
+          "initial_password",
+          "Student.initialPassword"
+        ],
+        [
+          "15/07",
+          "must_change_password",
+          "User.mustChangePassword"
+        ],
+        [
+          "15/07",
+          "user_active",
+          "User.active"
+        ],
+        [
+          "17/07",
+          "enrollment_history",
+          "Table EnrollmentHistory"
+        ],
+        [
+          "18/07",
+          "user_task_permissions",
+          "User.jobTitle, User.permissions"
+        ],
+        [
+          "18/07",
+          "user_photo",
+          "User.photo"
+        ],
+        [
+          "19/07",
+          "user_formation_scope",
+          "User.formation"
+        ],
+        [
+          "19/07",
+          "announcements",
+          "Tables Announcement, AnnouncementRead"
+        ],
+        [
+          "21/07",
+          "login_attempts",
+          "Table LoginAttempt"
+        ],
+        [
+          "21/07",
+          "student_search_trgm_index",
+          "Extension pg_trgm et index GIN trigram sur Student"
+        ],
+        [
+          "24/07",
+          "student_step_timestamps",
+          "receiptVerifiedAt / pedagoValidatedAt (remplace les index trigram)"
+        ],
+        [
+          "24/07",
+          "enrollment_history_timestamps",
+          "Mêmes horodatages sur EnrollmentHistory"
+        ],
+        [
+          "24/07",
+          "ecolage_payments",
+          "Enum EcolagePaymentType, table EcolagePayment"
+        ],
+        [
+          "28/07",
+          "student_qr_token",
+          "Student.qrToken (unique)"
+        ],
+        [
+          "31/07",
+          "preselection_candidates",
+          "Table PreselectionCandidate"
+        ],
+        [
+          "01/08",
+          "preselection_category",
+          "Enum PreselectionCategory"
+        ],
+        [
+          "05/08",
+          "level_financial_info",
+          "Table LevelFinancialInfo (remplace le concept de Tariff)"
+        ],
+        [
+          "05/08",
+          "drop_tariff",
+          "Suppression définitive de Tariff"
+        ],
+        [
+          "05/08",
+          "reinscription_level_rules",
+          "Enum AnnouncementKind, champs de ciblage sur Announcement"
+        ],
+        [
+          "07/08",
+          "add_welcome_announcement_kind",
+          "Valeur WELCOME ajoutée à AnnouncementKind"
+        ],
+        [
+          "07/08",
+          "add_user_first_login_at",
+          "User.firstLoginAt"
+        ]
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "5.4. Chronologie réelle du développement"
+    },
+    {
+      "type": "paragraph",
+      "text": "L'historique du dépôt compte 44 commits répartis sur 19 jours d'activité distincts, sur une période totale de 34 jours. Sept phases s'y distinguent nettement, une progression bien plus parlante qu'une simple liste de fonctionnalités livrées."
+    },
+    {
+      "type": "numbered",
+      "items": [
+        "Bootstrap et template UI (7 au 16 juillet, 6 commits) : commit initial, intégration d'un template UI/UX, premiers ajustements de menu et de l'espace admin.",
+        "Fonctionnalités et permissions (18 au 22 juillet, 4 commits) : introduction du système de permissions et de rôles, première version fonctionnelle.",
+        "Mise en place de la CI/CD (24 juillet, 9 commits en une seule journée) : plusieurs itérations pour stabiliser le workflow GitHub Actions, correction d'un bug de génération Prisma en CI et du graphique d'évolution, puis câblage de la suite Vitest.",
+        "Stabilisation et ajustements (25 juillet au 3 août, 6 commits) : retouches de graphiques, ajustements généraux, début de la rédaction du plan de mémoire.",
+        "Structuration base de données et préparation du déploiement (5 au 6 août, 6 commits) : restructuration du schéma, revue de code, premières versions de déploiement sur Vercel.",
+        "Corrections post-déploiement (7 août, 8 commits en une journée) : correction d'une fuite de mot de passe local, ajout du communiqué de bienvenue — avec sa propre correction de point de déclenchement le jour même —, correctifs responsive mobile et bug de ré-import en CI.",
+        "Durcissement sécurité (10 août, 3 commits) : ajout du filet de sécurité global proxy.ts et mise à jour du plan de mémoire."
+      ]
+    },
+    {
+      "type": "paragraph",
+      "text": "La troisième phase mérite qu'on s'y attarde : neuf commits en une seule journée pour stabiliser un pipeline d'intégration continue n'est pas un signe de désorganisation, mais la trace d'une méthode — corriger, pousser, observer le résultat du pipeline, corriger à nouveau — qui a permis d'aboutir à une CI fiable plutôt que de deviner la bonne configuration a priori."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "5.5. Variables d'environnement et configuration"
+    },
+    {
+      "type": "paragraph",
+      "text": "La configuration du projet distingue un fichier .env.local, jamais commité, pour les secrets réels (chaîne de connexion PostgreSQL, clé de signature des sessions AUTH_SECRET, jeton Vercel Blob), et un fichier .env.test.example, volontairement suivi par git, censé ne servir que de modèle. Ce dernier a d'ailleurs été à l'origine d'un incident concret, détaillé au chapitre 7 : il contenait par erreur un vrai mot de passe local au lieu d'un simple placeholder."
+    },
+    {
+      "type": "code",
+      "text": "DATABASE_URL=\"postgresql://user:pass@localhost:5432/iugm_scolarite_db\"\nAUTH_SECRET=\"<valeur aléatoire longue>\"\nBLOB_READ_WRITE_TOKEN=\"<jeton Vercel Blob>\""
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "Chapitre 6 — Implémentation des fonctionnalités clés"
+    },
+    {
+      "type": "paragraph",
+      "text": "Ce chapitre reprend, fonctionnalité par fonctionnalité, le triptyque suivi tout au long du développement : le besoin métier auquel elle répond, la façon dont elle a été implémentée, et une capture de l'interface réelle."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "6.1. Authentification par rôle et redirection"
+    },
+    {
+      "type": "paragraph",
+      "text": "Besoin : chacun des quatre profils doit accéder uniquement à son propre espace, sans page d'accueil commune qui l'obligerait à naviguer pour trouver ses fonctions."
+    },
+    {
+      "type": "paragraph",
+      "text": "Implémentation : à la connexion, authenticateUser (lib/login.ts) vérifie les identifiants, pose le cookie de session signé, puis la page racine redirige immédiatement vers l'espace correspondant au rôle contenu dans la session."
+    },
+    {
+      "type": "code",
+      "text": "switch (session.role) {\n  case \"SUPERADMIN\": redirect(\"/admin\"); break;\n  case \"AGENT_ADMINISTRATION\": redirect(\"/agent-admin\"); break;\n  case \"AGENT_PEDAGOGIQUE\": redirect(\"/agent-pedagogique\"); break;\n  case \"ETUDIANT\": redirect(\"/mon-profil\"); break;\n}"
+    },
+    {
+      "type": "image_placeholder",
+      "label": "Écran de connexion",
+      "description": "Capture de la page /login."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "6.2. Permissions granulaires et périmètre par formation"
+    },
+    {
+      "type": "paragraph",
+      "text": "Besoin : au sein d'un même rôle, deux agents n'ont pas nécessairement les mêmes tâches à effectuer — l'un peut être autorisé à exporter des données quand l'autre ne l'est pas — et un agent peut n'être responsable que d'une seule filière parmi les sept que compte l'IUGM."
+    },
+    {
+      "type": "paragraph",
+      "text": "Implémentation : le champ permissions de User stocke la liste des tâches individuelles accordées, et le champ formation limite le périmètre visible d'un agent lorsqu'il est renseigné. Ces deux contrôles sont revérifiés dans chaque Server Action concernée, jamais supposés acquis depuis l'interface."
+    },
+    {
+      "type": "image_placeholder",
+      "label": "Page de gestion des permissions",
+      "description": "Capture de /admin/permissions montrant l'attribution des tâches et du périmètre par formation à un agent."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "6.3. Processus d'inscription administrative"
+    },
+    {
+      "type": "paragraph",
+      "text": "Besoin : remplacer la double saisie papier puis Excel par un formulaire numérique unique, incluant le contrôle des pièces du dossier (certificat de résidence, CIN, photos, bordereau de versement...)."
+    },
+    {
+      "type": "paragraph",
+      "text": "Implémentation : un formulaire multi-étapes (wizard.tsx) guide l'agent à travers les différentes sections du dossier, avec possibilité de préremplir les champs depuis une fiche de présélection importée. La dernière étape avant validation affiche un récapitulatif complet du dossier saisi."
+    },
+    {
+      "type": "image_placeholder",
+      "label": "Formulaire d'inscription (wizard)",
+      "description": "Capture d'une étape du formulaire multi-étapes d'inscription administrative."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "6.4. Réinscription et archivage de l'historique"
+    },
+    {
+      "type": "paragraph",
+      "text": "Besoin : permettre à un étudiant déjà inscrit de se réinscrire l'année suivante sans perdre la trace de son parcours antérieur, notamment pour le graphique d'évolution du tableau de bord."
+    },
+    {
+      "type": "paragraph",
+      "text": "Implémentation : la réinscription copie l'état complet de l'année en cours (statuts, dates de vérification, documents) dans une ligne EnrollmentHistory avant de remettre le dossier Student à l'état ENREGISTRE pour la nouvelle année — un choix qui évite de perdre les événements passés tout en gardant une table Student focalisée sur l'année en cours."
+    },
+    {
+      "type": "image_placeholder",
+      "label": "Formulaire de réinscription",
+      "description": "Capture de /agent-admin/reinscription."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "6.5. Validation pédagogique et calcul de la mention"
+    },
+    {
+      "type": "paragraph",
+      "text": "Besoin : permettre à l'agent pédagogique de saisir les résultats académiques (moyenne sur 20) et d'en déduire automatiquement la mention, selon un barème fixe."
+    },
+    {
+      "type": "paragraph",
+      "text": "Implémentation : la fonction de calcul applique un barème à cinq niveaux — de Échec (moins de 10) à Très Bien (16 et plus) — appliqué uniformément à chaque semestre saisi, avec une contrainte d'unicité qui empêche la double saisie d'un même semestre pour un même étudiant."
+    },
+    {
+      "type": "code",
+      "text": "function computeMention(average: number): Mention {\n  if (average < 10) return \"ECHEC\";\n  if (average < 12) return \"PASSABLE\";\n  if (average < 14) return \"ASSEZ_BIEN\";\n  if (average < 16) return \"BIEN\";\n  return \"TRES_BIEN\";\n}"
+    },
+    {
+      "type": "image_placeholder",
+      "label": "Saisie des résultats académiques",
+      "description": "Capture de l'interface agent pédagogique de saisie des moyennes et mentions."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "6.6. Gestion des tarifs et suivi de l'écolage"
+    },
+    {
+      "type": "paragraph",
+      "text": "Besoin : calculer et suivre le paiement de l'écolage, qui peut se faire en une ou deux tranches semestrielles selon le niveau et la filière de l'étudiant."
+    },
+    {
+      "type": "paragraph",
+      "text": "Implémentation : le solde dû est calculé comme la différence entre le tarif annuel du niveau (LevelFinancialInfo) et la somme des versements déjà enregistrés — et non comme une simple moitié fixe du tarif, une erreur de calcul initiale corrigée et détaillée au chapitre 7. Le formulaire de règlement d'une tranche est désormais préempli avec ce solde réel."
+    },
+    {
+      "type": "image_placeholder",
+      "label": "Suivi de l'écolage",
+      "description": "Capture de /agent-admin/ecolage montrant le solde dû et l'historique des versements d'un étudiant."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "6.7. Carte étudiante numérique et QR code"
+    },
+    {
+      "type": "paragraph",
+      "text": "Besoin : fournir à l'étudiant une carte consultable et vérifiable sans qu'il ait à se connecter, tout en évitant qu'un tiers puisse deviner l'identifiant d'un autre étudiant."
+    },
+    {
+      "type": "paragraph",
+      "text": "Implémentation : chaque étudiant reçoit un jeton opaque qrToken, distinct de son matricule et de son identifiant interne, régénérable à la demande. Le QR code encode une URL publique (carte-etudiant/[token]) qui affiche les informations essentielles du dossier sans authentification, mais sans jamais exposer d'identifiant devinable."
+    },
+    {
+      "type": "image_placeholder",
+      "label": "Carte étudiante numérique",
+      "description": "Capture de la page publique de vérification par QR code."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "6.8. Communiqués ciblés et suivi de lecture"
+    },
+    {
+      "type": "paragraph",
+      "text": "Besoin : diffuser une information à un groupe précis d'étudiants (une filière, un niveau) ou à un étudiant en particulier, et savoir qui l'a effectivement lue."
+    },
+    {
+      "type": "paragraph",
+      "text": "Implémentation : un communiqué cible soit un couple filière/niveau, soit un étudiant précis, ces deux modes étant mutuellement exclusifs. La table AnnouncementRead associe chaque lecture à un utilisateur et un communiqué, avec une contrainte d'unicité qui empêche qu'une même lecture soit comptée deux fois."
+    },
+    {
+      "type": "image_placeholder",
+      "label": "Rédaction d'un communiqué",
+      "description": "Capture de /communiquer."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "6.9. Tableau de bord et statistiques"
+    },
+    {
+      "type": "paragraph",
+      "text": "Besoin : donner à chaque agent une vue d'ensemble immédiate de son périmètre — nombre d'inscriptions, encaissements, répartition par statut — sans qu'il ait à consulter les listes détaillées."
+    },
+    {
+      "type": "paragraph",
+      "text": "Implémentation : des agrégats mensuels (lib/dashboard.ts) alimentent un graphique d'évolution des inscriptions et des cartes de synthèse. Sur le tableau de bord superadmin, les cartes de synthèse par rôle sont cliquables et filtrent directement la liste des utilisateurs correspondante."
+    },
+    {
+      "type": "image_placeholder",
+      "label": "Tableau de bord superadmin",
+      "description": "Capture de /admin montrant les cartes de synthèse et le graphique d'évolution des inscriptions."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "6.10. Journal d'audit des actions sensibles"
+    },
+    {
+      "type": "paragraph",
+      "text": "Besoin : pouvoir répondre après coup à la question de qui a effectué une action sensible, et quand."
+    },
+    {
+      "type": "paragraph",
+      "text": "Implémentation : chaque action sensible (validation, connexion réussie ou échouée...) écrit une ligne dans AuditLog via une fonction dédiée (lib/audit.ts), conçue pour ne jamais faire échouer l'action elle-même si l'écriture du journal rencontre un problème."
+    },
+    {
+      "type": "image_placeholder",
+      "label": "Journal d'audit",
+      "description": "Capture de /admin/journal."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "6.11. Saisie d'inscription hors ligne avec synchronisation automatique"
+    },
+    {
+      "type": "paragraph",
+      "text": "Besoin : le portail est une application server-first classique, sans donnée en base côté navigateur — sans réseau, elle ne fonctionne pas. Sur le terrain, en zone à connexion intermittente, une inscription en cours de saisie qui échoue faute de réseau représente une vraie perte de travail pour l'agent."
+    },
+    {
+      "type": "paragraph",
+      "text": "Implémentation : la portée de cette fonctionnalité a été volontairement limitée au seul formulaire d'inscription, plutôt qu'étendue à toute l'application via un service worker — mettre en cache des pages authentifiées côté navigateur aurait rouvert une question de sécurité distincte (données visibles hors ligne sur un poste partagé), jugée trop importante pour être traitée au passage. Le matricule n'est jamais généré côté client, pour éviter tout risque de collision entre deux agents hors ligne simultanément : le dossier mis en file reste sans matricule jusqu'à sa synchronisation, moment où le serveur l'attribue avec le même mécanisme de retry que pour une inscription en ligne. Chaque saisie hors ligne reçoit un identifiant généré par le navigateur (crypto.randomUUID()), et la table SyncedMutation garantit qu'un rejeu réseau ne peut jamais créer un dossier en double. Un même point d'entrée métier, submitInscription(), est appelé aussi bien par la soumission en ligne normale que par le rejeu de synchronisation, pour que les deux chemins appliquent exactement les mêmes règles."
+    },
+    {
+      "type": "code",
+      "text": "// Idempotence : la clé primaire de SyncedMutation est l'UUID\n// généré côté client au moment de la mise en file, pas un id serveur.\nawait db.syncedMutation.create({ data: { id: clientMutationId, ... } });"
+    },
+    {
+      "type": "paragraph",
+      "text": "Pour la démonstration, ce mécanisme est facile à montrer en direct : couper le réseau pendant une saisie fait apparaître un bandeau ambre, la validation affiche alors un écran « Dossier enregistré hors ligne » sans matricule, puis le retour du réseau déclenche automatiquement la synchronisation et l'attribution du matricule."
+    },
+    {
+      "type": "image_placeholder",
+      "label": "Bandeau de statut hors ligne",
+      "description": "Capture du bandeau ambre affiché pendant une saisie sans réseau, puis du bandeau de synchronisation au retour de la connexion."
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "Chapitre 7 — Tests, qualité et déploiement"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "7.1. Stratégie de test"
+    },
+    {
+      "type": "paragraph",
+      "text": "La suite de tests couvre deux niveaux distincts : des tests unitaires, qui portent sur la logique pure sans base de données (barème des mentions, construction des requêtes de liste, permissions), et des tests d'intégration, exécutés contre une vraie base PostgreSQL de test, distincte de la base de développement. Au total, 119 tests automatisés — 38 unitaires et 81 d'intégration — sont répartis sur 15 fichiers."
+    },
+    {
+      "type": "table",
+      "headers": [
+        "Fichier",
+        "Type",
+        "Cas"
+      ],
+      "colWidths": [
+        40,
+        25,
+        35
+      ],
+      "rows": [
+        [
+          "students.test.ts",
+          "Unitaire",
+          "9"
+        ],
+        [
+          "permissions.test.ts",
+          "Unitaire",
+          "4"
+        ],
+        [
+          "group-students.test.ts",
+          "Unitaire",
+          "6"
+        ],
+        [
+          "phone.test.ts",
+          "Unitaire",
+          "6"
+        ],
+        [
+          "preselection.test.ts",
+          "Unitaire",
+          "13"
+        ],
+        [
+          "registration-workflow.test.ts",
+          "Intégration",
+          "12"
+        ],
+        [
+          "reenrollment.test.ts",
+          "Intégration",
+          "11"
+        ],
+        [
+          "ecolage-payments.test.ts",
+          "Intégration",
+          "10"
+        ],
+        [
+          "announcements.test.ts",
+          "Intégration",
+          "9"
+        ],
+        [
+          "dashboard.test.ts",
+          "Intégration",
+          "9"
+        ],
+        [
+          "permissions.test.ts (intégration)",
+          "Intégration",
+          "7"
+        ],
+        [
+          "preselection.test.ts (intégration)",
+          "Intégration",
+          "11"
+        ],
+        [
+          "rate-limit.test.ts",
+          "Intégration",
+          "5"
+        ],
+        [
+          "student-qr.test.ts",
+          "Intégration",
+          "4"
+        ],
+        [
+          "update-student.test.ts",
+          "Intégration",
+          "3"
+        ]
+      ]
+    },
+    {
+      "type": "paragraph",
+      "text": "Les scénarios d'intégration les plus significatifs couvrent le workflow d'inscription complet de bout en bout, la réinscription avec archivage, l'anti-bruteforce de connexion, le périmètre par formation, et l'évolution du tableau de bord — des cas qui n'ont de sens que contre une vraie base de données, ce qu'un test unitaire ne peut pas vérifier."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "7.2. Intégration continue"
+    },
+    {
+      "type": "paragraph",
+      "text": "Le pipeline GitHub Actions (.github/workflows/ci.yml) se déclenche à chaque push et pull request vers la branche principale, avec un service PostgreSQL éphémère (postgres:16-alpine) démarré pour l'occasion. Neuf étapes s'exécutent dans l'ordre : récupération du code, configuration de Node.js 22, installation des dépendances, génération du client Prisma, vérification des types (tsc --noEmit), lint ESLint, application des migrations sur la base de test, exécution de la suite Vitest, puis build de production."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "7.3. Déploiement"
+    },
+    {
+      "type": "paragraph",
+      "text": "L'application est hébergée sur Vercel, avec déploiement continu à chaque push sur la branche principale ; la commande de build (prisma migrate deploy && npm run build) applique systématiquement les migrations en attente avant de reconstruire l'application, un point qui a d'ailleurs fait l'objet d'un incident détaillé ci-dessous. La base de données de production est hébergée chez Neon, un service PostgreSQL managé, et les fichiers uploadés (logo, photos de profil, imports Excel) transitent par Vercel Blob plutôt que par un stockage disque local, incompatible avec un environnement serverless."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "7.4. Difficultés techniques rencontrées"
+    },
+    {
+      "type": "paragraph",
+      "text": "Cette section revient sur quelques incidents réels rencontrés pendant et après le développement, avec la véritable histoire de leur découverte plutôt qu'une présentation lissée — c'est souvent dans ce genre de détail qu'une vraie démarche de débogage se raconte le mieux."
+    },
+    {
+      "type": "heading",
+      "level": 4,
+      "text": "7.4.1. Le bug \"[object Object]\" dans l'import Excel"
+    },
+    {
+      "type": "paragraph",
+      "text": "La page « Base de données » affichait un message d'erreur alarmant après un import pourtant globalement réussi. En creusant par des requêtes directes sur la base de production, il s'est avéré que la fonction toText() (lib/preselection.ts), chargée de convertir une cellule Excel en texte, avait un filet de sécurité incomplet : une forme de cellule non reconnue — une cellule fusionnée, par exemple — déclenchait un simple String(cellule), produisant littéralement la chaîne \"[object Object]\" comme donnée. 1722 fiches corrompues ont été retrouvées en base de production, dont deux vrais dossiers étudiants au nom devenu illisible. Le correctif s'est accompagné d'un nouveau test unitaire appelant directement toText() avec une valeur mal formée, et d'un bouton de nettoyage permettant de purger les fiches corrompues non utilisées sans toucher aux dossiers déjà créés."
+    },
+    {
+      "type": "heading",
+      "level": 4,
+      "text": "7.4.2. Le bouton « Suivant » qui inscrivait l'étudiant sans jamais le montrer"
+    },
+    {
+      "type": "paragraph",
+      "text": "Probablement l'anecdote de débogage la plus instructive du projet, découverte en testant le mode hors ligne dans un vrai navigateur plutôt qu'avec la suite de tests automatisés. Cliquer sur « Suivant → » à l'avant-dernière étape du formulaire d'inscription déclenchait silencieusement une vraie soumission, créant un dossier complet en base sans jamais afficher le récapitulatif ni l'écran de succès — invisible pour l'agent, mais confirmé en base par plusieurs dossiers fantômes créés à chaque clic de test. La cause : les boutons « Suivant → » (type=\"button\") et « Valider l'inscription » (type=\"submit\") occupaient la même position dans le JSX sans clé distincte, ce qui poussait React à réutiliser le même nœud DOM entre les deux écrans et à changer simplement son attribut type en place. Ce changement s'exécutait de façon synchrone à l'intérieur même du traitement du clic qui venait de le déclencher, et le navigateur relit l'attribut type au moment précis de l'activation du clic — pas sa valeur de départ. Un bouton « Suivant » devenait ainsi un bouton « submit » avant même que le clic qui l'avait actionné soit terminé. Donner une clé React distincte à chaque branche a suffi à corriger le problème, en forçant le montage d'un nœud DOM différent plutôt que sa mutation en place. Ce bug n'avait été détecté ni par les 119 tests automatisés — qui n'exercent jamais un vrai clic de souris dans un navigateur réel — ni par l'usage manuel habituel : seul un test de bout en bout avec de vrais événements de clic pouvait le révéler."
+    },
+    {
+      "type": "heading",
+      "level": 4,
+      "text": "7.4.3. L'import Excel volumineux et deux limites de plateforme superposées"
+    },
+    {
+      "type": "paragraph",
+      "text": "Signalé par une simple capture d'écran d'erreur générique du navigateur, sans message applicatif exploitable, ce dysfonctionnement tenait en réalité à deux limites de plateforme distinctes, jamais visibles en développement local avec un petit fichier de test. La première est une limite fixe de Vercel sur la taille du corps d'une requête serverless (environ 4,5 Mo), indépendante du réglage bodySizeLimit de Next.js. Contournée en faisant transiter le fichier directement du navigateur vers Vercel Blob plutôt que par le corps de la requête serveur, elle a immédiatement révélé une seconde limite, silencieuse elle aussi : l'absence de directive connect-src explicite dans la Content-Security-Policy du site bloquait toute connexion sortante vers un domaine externe, sans qu'aucune erreur exploitable ne remonte côté page. Une première tentative de correction, ajoutant le domaine de lecture des fichiers déjà stockés à cette directive, n'a pas suffi : seule la lecture du code source du SDK @vercel/blob a permis d'établir que l'upload lui-même transite par une passerelle d'ingestion séparée (vercel.com/api/blob), distincte du domaine de lecture."
+    },
+    {
+      "type": "paragraph",
+      "text": "Ces trois blocages silencieux — une limite d'infrastructure serveur, puis deux variantes d'un même blocage côté sécurité navigateur — produisaient à chaque fois le même symptôme : un échec sans message exploitable, invisible en développement local. Un bon rappel que les tests automatisés et l'usage local ne suffisent jamais, à eux seuls, à garantir un comportement correct en production, en particulier lorsqu'une politique de sécurité stricte comme la CSP déplace une partie du risque vers ce type de panne silencieuse si elle n'est pas testée en conditions réelles à chaque nouvelle intégration externe."
+    },
+    {
+      "type": "heading",
+      "level": 4,
+      "text": "7.4.4. Autres corrections notables"
+    },
+    {
+      "type": "bullets",
+      "items": [
+        "Un bug de comptage : le nombre de fiches « reliées avec succès » lors d'un import était incrémenté avant que l'écriture en base ait réellement réussi, pouvant afficher un succès partiellement faux en cas d'échec d'écriture.",
+        "Le montant dû à l'écolage était calculé comme une simple moitié fixe du tarif annuel, au lieu de la différence entre le tarif et les versements déjà effectués — corrigé (voir 6.6).",
+        "Le communiqué de bienvenue, déclenché initialement à la validation pédagogique, a été déplacé à la première connexion réelle de l'étudiant, avec un verrou atomique (User.firstLoginAt) garantissant qu'il n'est jamais envoyé deux fois, y compris en cas de connexions simultanées.",
+        "Le déploiement Vercel n'appliquait pas les migrations Prisma automatiquement, découvert en comparant l'état des migrations entre l'environnement local et la base de production — corrigé en intégrant prisma migrate deploy à la commande de build."
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 1,
+      "text": "PARTIE IV — BILAN ET PERSPECTIVES",
+      "pageBreakBefore": true
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "Chapitre 8 — Bilan du stage"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "8.1. Apports techniques"
+    },
+    {
+      "type": "paragraph",
+      "text": "Ce stage a été l'occasion d'une première mise en pratique approfondie de l'App Router de Next.js et des Server Actions, un modèle qui déplace une partie de la logique traditionnellement confiée à une API REST directement dans les composants serveur. La manipulation quotidienne de Prisma, de sa gestion des migrations jusqu'à l'écriture de requêtes plus complexes (agrégats du tableau de bord, recherche trigram), a consolidé une compréhension concrète de la couche d'accès aux données. La mise en place d'une vraie suite de tests d'intégration, contre une base PostgreSQL réelle plutôt que des mocks, a également été une découverte marquante : plusieurs des bugs décrits au chapitre 7, en particulier celui du bouton de soumission, n'auraient jamais été révélés par une suite entièrement unitaire."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "8.2. Apports méthodologiques et humains"
+    },
+    {
+      "type": "paragraph",
+      "text": "[À compléter par l'étudiant : ce paragraphe gagne à être écrit à partir d'un vécu précis — un exemple de communication avec le maître de stage qui a fait changer une décision, une difficulté à traduire un besoin exprimé par un agent de terrain en règle de gestion claire, une leçon tirée de la gestion du temps sur 34 jours de développement. Un souvenir concret vaut mieux qu'une généralité ici.]",
+      "italic": true
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "8.3. Difficultés rencontrées"
+    },
+    {
+      "type": "paragraph",
+      "text": "Au-delà des difficultés techniques déjà détaillées au chapitre 7, le projet a dû composer avec une contrainte organisationnelle de fond : deux services géographiquement séparés, aux pratiques et aux besoins parfois différents, à faire converger vers un seul et même outil sans que l'un ne se sente subordonné à l'autre. Traduire des règles de gestion jusque-là informelles — par exemple, ce qui constitue exactement un dossier « complet » aux yeux de l'administration — en contraintes explicites du système a demandé plusieurs allers-retours avec le terrain plutôt qu'une seule séance de recueil des besoins."
+    },
+    {
+      "type": "paragraph",
+      "text": "[À compléter par l'étudiant : une difficulté non technique vécue personnellement — organisationnelle, de communication, de gestion du temps entre le développement et la rédaction du mémoire — appuierait utilement ce paragraphe.]",
+      "italic": true
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "8.4. Perspectives d'évolution du portail"
+    },
+    {
+      "type": "paragraph",
+      "text": "Le mode de saisie hors ligne (voir 6.11) n'est qu'un premier pas : il ne couvre pour l'instant que le formulaire d'inscription, et pourrait être étendu selon le même principe aux écrans de réinscription et de paiement d'écolage, également concernés par les coupures réseau observées sur le terrain. Reste posée, et volontairement écartée de cette itération, la question d'un fonctionnement entièrement hors ligne — service worker, démarrage à froid sans réseau — qui mérite d'être traitée comme un sujet à part entière, vu ses implications de sécurité sur une application entièrement authentifiée où les données affichées concernent des mineurs ou de jeunes majeurs."
+    },
+    {
+      "type": "bullets",
+      "items": [
+        "Étendre la synchronisation hors ligne aux formulaires de réinscription et de paiement d'écolage.",
+        "Notifications (e-mail ou SMS) lors des changements de statut d'un dossier, pour réduire le besoin de consultation manuelle.",
+        "Exports et statistiques avancées pour la direction (taux de réussite par filière, évolution pluriannuelle des effectifs).",
+        "Étude d'une application mobile dédiée aux étudiants, pour la consultation de la carte et des résultats."
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 1,
+      "text": "CONCLUSION GÉNÉRALE",
+      "pageBreakBefore": true
+    },
+    {
+      "type": "paragraph",
+      "text": "Le stage à l'origine de ce mémoire répondait à une problématique concrète : comment unifier deux services géographiquement séparés de l'IUGM, supprimer la double saisie qui ralentissait chaque inscription, et garantir malgré tout une continuité de service face à une connectivité internet instable à Mahajanga. Le portail développé y répond par un workflow d'inscription explicite en quatre étapes, un système de permissions granulaires par tâche et par filière, et un mécanisme de résilience réseau qui va, avec l'ajout de la saisie hors ligne synchronisée, au-delà du simple export-import de secours initialement envisagé au cahier des charges."
+    },
+    {
+      "type": "paragraph",
+      "text": "Les vingt-huit migrations et les sept phases de développement retracées dans ce mémoire montrent un projet qui s'est construit par itérations successives, au contact direct des besoins du terrain, plutôt que selon un plan figé dès le premier jour — l'évolution du modèle de tarification, le déplacement du déclenchement du communiqué de bienvenue, ou l'ajout tardif d'un espace étudiant en sont autant d'illustrations concrètes. Les 119 tests automatisés et le pipeline d'intégration continue offrent aujourd'hui un filet de sécurité qui n'existait pas au début du stage, sans pour autant garantir à eux seuls un comportement correct en production, comme l'ont montré les incidents détaillés au chapitre 7."
+    },
+    {
+      "type": "paragraph",
+      "text": "Ce travail ouvre naturellement sur plusieurs prolongements, du renforcement de la résilience hors ligne à d'autres écrans jusqu'à l'exploration d'une application mobile dédiée aux étudiants. Au-delà de l'outil lui-même, ce stage a été l'occasion de mesurer, très concrètement, l'écart qui sépare une spécification initiale d'un système réellement utilisable par des utilisateurs de terrain — un écart qui ne se comble qu'au fil d'échanges répétés, et non en une seule séance de recueil des besoins."
+    },
+    {
+      "type": "heading",
+      "level": 1,
+      "text": "ANNEXES",
+      "pageBreakBefore": true
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "Annexe A — Glossaire des termes métier"
+    },
+    {
+      "type": "table",
+      "headers": [
+        "Terme",
+        "Définition"
+      ],
+      "colWidths": [
+        25,
+        75
+      ],
+      "rows": [
+        [
+          "Écolage",
+          "Frais de scolarité annuels dus par l'étudiant, payables en une ou deux tranches semestrielles."
+        ],
+        [
+          "Matricule",
+          "Numéro d'identification unique de l'étudiant, attribué automatiquement à la validation administrative du dossier."
+        ],
+        [
+          "Mention",
+          "Appréciation littérale (Échec à Très Bien) calculée à partir de la moyenne semestrielle sur 20."
+        ],
+        [
+          "Tranche",
+          "Versement partiel de l'écolage, correspondant à un semestre (S1 ou S2), par opposition à un paiement en totalité."
+        ],
+        [
+          "Présélection",
+          "Liste de candidats importée en lot depuis un fichier Excel avant leur inscription effective."
+        ],
+        [
+          "Formation",
+          "Filière d'études suivie par l'étudiant (Management, Finance-Comptabilité, Commerce International...)."
+        ]
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "Annexe B — Diagrammes complets"
+    },
+    {
+      "type": "image_placeholder",
+      "label": "Diagramme de classes complet",
+      "description": "Version pleine page du modèle de données, à insérer ici (voir 4.1)."
+    },
+    {
+      "type": "image_placeholder",
+      "label": "Captures d'écran complémentaires",
+      "description": "Une capture par interface principale non encore illustrée dans le corps du mémoire, une par rôle."
+    },
+    {
+      "type": "paragraph",
+      "text": "Une table des matières détaillée (jusqu'au niveau 4) peut être insérée en fin d'annexe si l'établissement l'exige en plus de la table des matières générale placée en pages liminaires.",
+      "italic": true
+    },
+    {
+      "type": "heading",
+      "level": 1,
+      "text": "BIBLIOGRAPHIE ET WEBOGRAPHIE",
+      "pageBreakBefore": true
+    },
+    {
+      "type": "paragraph",
+      "text": "Liste à compléter par l'étudiant avec les ouvrages, cours ou articles réellement consultés pendant le stage — seules les sources ci-dessous, citées dans le plan de rédaction initial, sont reprises telles quelles ; toute source supplémentaire doit être une source réellement utilisée, jamais une référence de circonstance.",
+      "italic": true
+    },
+    {
+      "type": "bibliography",
+      "items": [
+        {
+          "text": "Documentation officielle Next.js (App Router, Server Actions). [En ligne]. https://nextjs.org/docs",
+          "note": "Référence principale pour l'architecture logicielle (chapitre 4) et l'implémentation des fonctionnalités (chapitre 6)."
+        },
+        {
+          "text": "Documentation officielle Prisma (schéma, migrations, adaptateurs). [En ligne]. https://www.prisma.io/docs",
+          "note": "Référence pour la conception du modèle de données (chapitre 4) et la gestion des migrations (chapitre 5)."
+        },
+        {
+          "text": "Documentation officielle PostgreSQL. [En ligne]. https://www.postgresql.org/docs/",
+          "note": "Référence pour la base de données relationnelle et l'extension pg_trgm (recherche trigram)."
+        }
+      ]
+    }
+  ]
+}
