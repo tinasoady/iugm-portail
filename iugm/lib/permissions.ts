@@ -17,8 +17,10 @@ export type TaskKey =
   | "modification_dossier"
   | "validation_pedagogique"
   | "resultats"
+  | "notes"
   | "conduite"
-  | "communiquer";
+  | "communiquer"
+  | "matieres";
 
 export const TASKS: Record<TaskKey, { label: string; roles: string[] }> = {
   // Tâches du domaine agent d'administration
@@ -59,6 +61,10 @@ export const TASKS: Record<TaskKey, { label: string; roles: string[] }> = {
     label: "Assigner les résultats académiques",
     roles: ["AGENT_PEDAGOGIQUE"],
   },
+  notes: {
+    label: "Assigner les notes par matière, par semestre",
+    roles: ["AGENT_PEDAGOGIQUE"],
+  },
   conduite: {
     label: "Rédiger les appréciations de conduite",
     roles: ["AGENT_PEDAGOGIQUE"],
@@ -66,6 +72,14 @@ export const TASKS: Record<TaskKey, { label: string; roles: string[] }> = {
   // Tâche commune aux deux rôles d'agents
   communiquer: {
     label: "Envoyer des communiqués aux étudiants",
+    roles: ["AGENT_ADMINISTRATION", "AGENT_PEDAGOGIQUE"],
+  },
+  // Le catalogue des matières (nom, filière, niveau) n'est alimenté que par
+  // le superadmin (Admin > Matières) ; cette tâche ne couvre que la décision
+  // obligatoire/facultatif, laissée au secrétaire de formation ou à l'agent
+  // pédagogique — voir Subject.mandatory dans prisma/schema.prisma.
+  matieres: {
+    label: "Déclarer une matière obligatoire ou facultative",
     roles: ["AGENT_ADMINISTRATION", "AGENT_PEDAGOGIQUE"],
   },
 };

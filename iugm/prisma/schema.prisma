@@ -51,6 +51,13 @@ model User {
   announcementReads       AnnouncementRead[]
   ecolagePaymentsVerified EcolagePayment[]
   preselectionImports     PreselectionCandidate[]
+  // Matières ajoutées au catalogue (superadmin) et décisions
+  // obligatoire/facultatif portées sur ces matières (secrétaire ou agent
+  // pédagogique) — voir Subject.
+  createdSubjects         Subject[]               @relation("SubjectCreatedBy")
+  subjectRequirementsSet  Subject[]               @relation("SubjectMandatorySetBy")
+  // Notes assignées aux étudiants, par matière — voir Grade.
+  gradesRecorded          Grade[]
 }
 
 // Workflow d'inscription d'un étudiant
@@ -154,6 +161,9 @@ model Student {
   // Années universitaires précédentes (archivées à chaque réinscription)
   enrollmentHistory EnrollmentHistory[]
   results           AcademicResult[]
+  // Notes par matière, par année/semestre — assignées par l'agent
+  // pédagogique, distinctes de la moyenne générale (AcademicResult).
+  grades            Grade[]
   ecolagePayments   EcolagePayment[]
   // Fiche de présélection (Université de Mahajanga) à partir de laquelle ce
   // dossier a été créé, le cas échéant — voir PreselectionCandidate.
@@ -302,6 +312,71 @@ model AcademicResult {
 
   @@unique([studentId, academicYear, semester])
   @@index([mention])
+}
+
+// Matière du catalogue pédagogique, propre à une filière et un niveau.
+// Le catalogue (nom, filière, niveau) n'est alimenté QUE par le superadmin,
+// depuis Admin > Matières — jamais par les agents. En revanche, le caractère
+// obligatoire ou facultatif de la matière est une décision pédagogique
+// laissée au secrétaire de formation ou à l'agent pédagogique (tâche
+// "matieres", voir lib/permissions.ts), pas au superadmin : `mandatory` est
+// donc modifiable après création, avec sa propre traçabilité
+// (mandatorySetBy/At) distincte de createdBy/At.
+model Subject {
+  id        String  @id @default(cuid())
+  name      String
+  // Filière ciblée — même valeur que Student.mention/program et User.formation
+  // (le libellé FORMATIONS, ex "Management"), pour que le rapprochement avec
+  // le dossier étudiant fonctionne directement.
+  formation String
+  level     String // L1, L2, L3, M1, M2 — voir lib/level-shared.ts
+  mandatory Boolean @default(true)
+
+  createdBy   User?    @relation("SubjectCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  // Dernière personne (secrétaire ou agent pédagogique) ayant fixé le
+  // caractère obligatoire/facultatif, et quand — null tant que personne n'a
+  // encore ajusté la valeur par défaut posée à la création.
+  mandatorySetBy   User?     @relation("SubjectMandatorySetBy", fields: [mandatorySetById], references: [id], onDelete: SetNull)
+  mandatorySetById String?
+  mandatorySetAt   DateTime?
+
+  updatedAt DateTime @updatedAt
+  grades    Grade[]
+
+  // Une matière est unique pour une filière et un niveau donnés
+  @@unique([formation, level, name])
+  @@index([formation, level])
+}
+
+// Note d'un étudiant dans une matière, pour une année/semestre donnés —
+// assignée par l'agent pédagogique (tâche "notes"). Distincte de
+// AcademicResult, qui reste la moyenne générale du semestre (utilisée pour
+// la mention et le passage de niveau) : Grade détaille cette moyenne matière
+// par matière, sans recalculer automatiquement AcademicResult.average.
+model Grade {
+  id           String  @id @default(cuid())
+  student      Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId    String
+  subject      Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  subjectId    String
+  academicYear String // ex "2025-2026"
+  semester     String // "S1", "S2"
+
+  value Float // note sur 20
+
+  recordedBy   User?    @relation(fields: [recordedById], references: [id], onDelete: SetNull)
+  recordedById String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Une seule note par étudiant, matière, année et semestre (ré-enregistrer
+  // remplace la précédente, voir assignGrade dans lib/subjects.ts)
+  @@unique([studentId, subjectId, academicYear, semester])
+  @@index([studentId, academicYear, semester])
+  @@index([subjectId])
 }
 
 // Origine d'un communiqué : rédigé manuellement par un agent, ou généré

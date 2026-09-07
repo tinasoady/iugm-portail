@@ -26,9 +26,11 @@ import {
   IconShield,
   IconUser,
   IconMegaphone,
+  IconChart,
 } from "./icons";
 import { ThemeToggle } from "./theme-toggle";
 import { BsClipboardData, BsDatabase } from "react-icons/bs";
+import { FaBook, FaTasks } from "react-icons/fa";
 
 const ROLE_LABELS: Record<string, string> = {
   SUPERADMIN: "Super administrateur",
@@ -94,6 +96,20 @@ const NAV_ITEMS: NavItem[] = [
     roles: ["SUPERADMIN", "AGENT_PEDAGOGIQUE"],
   },
   {
+    href: "/agent-pedagogique/notes",
+    label: "Notes par matière",
+    icon: <IconChart />,
+    roles: ["SUPERADMIN", "AGENT_PEDAGOGIQUE"],
+    task: "notes",
+  },
+  {
+    href: "/matieres",
+    label: "Matières (oblig./facult.)",
+    icon: <FaTasks />,
+    roles: ["SUPERADMIN", "AGENT_ADMINISTRATION", "AGENT_PEDAGOGIQUE"],
+    task: "matieres",
+  },
+  {
     href: "/etudiants",
     label: "Liste étudiants",
     icon: <IconUsers />,
@@ -105,6 +121,12 @@ const NAV_ITEMS: NavItem[] = [
     icon: <IconMegaphone />,
     roles: ["SUPERADMIN", "AGENT_ADMINISTRATION", "AGENT_PEDAGOGIQUE"],
     task: "communiquer",
+  },
+  {
+    href: "/admin/matieres",
+    label: "Matières (catalogue)",
+    icon: <FaBook />,
+    roles: ["SUPERADMIN"],
   },
   {
     href: "/admin/base-donnees",
@@ -233,7 +255,7 @@ export async function AppShell({
         <p className="px-6 pt-2 pb-2 text-[11px] font-semibold tracking-[0.2em] text-zinc-500">
           MENUS
         </p>
-        <nav className="flex-1 space-y-1 px-3">
+        <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 pb-4">
           {nav.map((item) => {
             const isActive = item.href === active;
             return (

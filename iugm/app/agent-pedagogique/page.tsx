@@ -235,6 +235,7 @@ export default async function AgentPedagogiquePage({
                     <th className="py-2 pr-4 font-medium">Filière / Niveau / Dépt</th>
                     <th className="py-2 pr-4 font-medium">Résultats</th>
                     <th className="py-2 pr-4 font-medium">Assigner un résultat</th>
+                    <th className="py-2 pr-4 font-medium">Notes</th>
                     <th className="py-2 font-medium">Reçu</th>
                   </tr>
                 </thead>
@@ -267,6 +268,14 @@ export default async function AgentPedagogiquePage({
                       </td>
                       <td className="py-2.5 pr-4">
                         <AssignResultForm studentId={s.id} defaultYear={defaultYear} />
+                      </td>
+                      <td className="py-2.5 pr-4">
+                        <a
+                          href={`/agent-pedagogique/notes?studentId=${s.id}&academicYear=${defaultYear}`}
+                          className="flex w-fit items-center gap-1.5 whitespace-nowrap rounded-lg border border-black/10 px-3 py-1.5 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100 dark:border-white/10 dark:text-zinc-200 dark:hover:bg-zinc-900"
+                        >
+                          <IconChart className="h-3 w-3" /> Notes
+                        </a>
                       </td>
                       <td className="py-2.5">
                         <a
