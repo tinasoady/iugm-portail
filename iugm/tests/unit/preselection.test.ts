@@ -196,7 +196,9 @@ describe("parsePreselectionWorkbook — format « par classe » (une feuille par
     l1.addRow([null, "[ 1 ]", "[ 2 ]"]);
     l1.addRow([null, "RAKOTO", "Jean"]);
 
-    const m2 = workbook.addWorksheet("M2 - GRH");
+    // "RH" (spécialisation de master) — distinct de "GRH" (mention de
+    // licence) depuis que lib/formations.ts sépare les deux listes par niveau.
+    const m2 = workbook.addWorksheet("M2 - RH");
     m2.addRow([null, null, "bandeau"]);
     m2.addRow([null, "NOM", "PRENOMS"]);
     m2.addRow([null, "[ 1 ]", "[ 2 ]"]);
@@ -209,12 +211,12 @@ describe("parsePreselectionWorkbook — format « par classe » (une feuille par
     const { rows, errors } = await parsePreselectionWorkbook(buffer);
     expect(errors).toEqual([]);
     expect(rows.map((r) => [r.fullName, r.level, r.formation]).sort()).toEqual([
-      ["RABE Marie", "M2", "Gestion des Ressources Humaines"],
+      ["RABE Marie", "M2", "Ressources Humaines"],
       ["RAKOTO Jean", "L1", "Management"],
     ]);
   });
 
-  it("un code de filière inconnu retombe sur le code brut", async () => {
+  it("résout un code de spécialisation de master (M1/M2), distinct des mentions de licence", async () => {
     const buffer = await buildClassSheetWorkbook(
       "M1 - CCA",
       [null, "NOM", "PRENOMS"],
@@ -223,7 +225,20 @@ describe("parsePreselectionWorkbook — format « par classe » (une feuille par
     );
 
     const { rows } = await parsePreselectionWorkbook(buffer);
-    expect(rows[0].formation).toBe("CCA");
+    expect(rows[0].formation).toBe("Comptabilité, Contrôle et Audit");
+    expect(rows[0].level).toBe("M1");
+  });
+
+  it("un code de filière inconnu retombe sur le code brut", async () => {
+    const buffer = await buildClassSheetWorkbook(
+      "M1 - XYZ",
+      [null, "NOM", "PRENOMS"],
+      [null, "[ 1 ]", "[ 2 ]"],
+      [[null, "RASOA", "Paul"]],
+    );
+
+    const { rows } = await parsePreselectionWorkbook(buffer);
+    expect(rows[0].formation).toBe("XYZ");
     expect(rows[0].level).toBe("M1");
   });
 });

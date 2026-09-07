@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 
 import { getSession } from "@/lib/auth";
 import { listSubjects } from "@/lib/subjects";
-import { FORMATIONS } from "@/lib/formations";
 import { LEVELS } from "@/lib/level-shared";
 import { AppShell } from "@/app/ui/app-shell";
 import { CreateSubjectForm, DeleteSubjectButton } from "./subject-forms";
@@ -45,7 +44,7 @@ export default async function AdminMatieresPage() {
           secrétaire de formation ou l&apos;agent pédagogique, depuis la page{" "}
           <span className="font-medium">Matières</span> de leur espace.
         </p>
-        <CreateSubjectForm formations={FORMATIONS.map((f) => f.label)} levels={LEVELS} />
+        <CreateSubjectForm levels={LEVELS} />
       </section>
 
       <section className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-black">

@@ -14,7 +14,7 @@ import { logAction } from "./audit";
 
 export type CreateSubjectInput = {
   name: string;
-  formation: string; // libellé FORMATIONS, ex "Management" — même valeur que Student.mention
+  formation: string; // libellé lib/formations.ts (licence ou master selon le niveau), ex "Management" — même valeur que Student.mention
   level: string; // L1..M2, voir lib/level-shared.ts
 };
 

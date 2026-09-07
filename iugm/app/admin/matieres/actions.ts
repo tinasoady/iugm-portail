@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth";
 import { createSubject, deleteSubject } from "@/lib/subjects";
 import { LEVELS } from "@/lib/level-shared";
-import { FORMATIONS } from "@/lib/formations";
+import { formationsForLevel } from "@/lib/formations";
 
 // Le catalogue des matières (nom, filière, niveau) n'est alimenté QUE par le
 // superadmin — voir la note sur Subject dans prisma/schema.prisma. La
@@ -19,8 +19,6 @@ async function requireSuperadmin() {
 
 export type SubjectState = { success?: string; error?: string };
 
-const FORMATION_LABELS = FORMATIONS.map((f) => f.label);
-
 export async function createSubjectAction(
   _prev: SubjectState,
   formData: FormData,
@@ -32,11 +30,14 @@ export async function createSubjectAction(
   const formation = String(formData.get("formation") ?? "");
   const level = String(formData.get("level") ?? "");
 
-  if (!FORMATION_LABELS.includes(formation as (typeof FORMATION_LABELS)[number])) {
-    return { error: "Filière invalide." };
-  }
   if (!LEVELS.includes(level as (typeof LEVELS)[number])) {
     return { error: "Niveau invalide." };
+  }
+  // Filière valide pour CE niveau : mentions de licence en L1-L3,
+  // spécialisations de master en M1-M2 (lib/formations.ts) — les deux listes
+  // diffèrent, une filière de l'une n'est pas valide pour l'autre.
+  if (!formationsForLevel(level).some((f) => f.label === formation)) {
+    return { error: "Filière invalide pour ce niveau." };
   }
 
   try {

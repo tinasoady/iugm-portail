@@ -17,7 +17,7 @@ const STEPS = [
   { title: "Récapitulatif", subtitle: "Vérification avant validation" },
 ];
 
-import { FORMATIONS } from "@/lib/formations";
+import { formationsForLevel } from "@/lib/formations";
 
 // Pièces du dossier à vérifier à la réception
 const DOCUMENTS: Array<[string, string]> = [
@@ -154,6 +154,10 @@ export function InscriptionWizard({
     ...(userFormation ? { formation: userFormation } : {}),
     ...initialValues,
   });
+  // Pilote la liste de filières proposées à l'étape Inscription (mentions de
+  // licence en L1-L3, spécialisations de master en M1-M2, voir
+  // lib/formations.ts) — recalculée à chaque changement de niveau.
+  const currentLevel = values.level || "L1";
   const formRef = useRef<HTMLFormElement>(null);
   const [state, formAction, pending] = useActionState(registerInscriptionAction, initialState);
   // Dossier mis en file d'attente locale faute de réseau (voir lib/offline/) :
@@ -674,7 +678,7 @@ export function InscriptionWizard({
             <p className={labelClass}>Niveau *</p>
             <RadioPills
               name="level"
-              value={values.level ?? "L1"}
+              value={currentLevel}
               options={LEVELS.map((l) => ({ value: l, label: l }))}
             />
             <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
@@ -689,8 +693,14 @@ export function InscriptionWizard({
               filières sont désactivées pour éviter une erreur d&apos;inscription.
             </p>
           )}
+          {(currentLevel === "M1" || currentLevel === "M2") && (
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              Niveau {currentLevel} : spécialisations de master, distinctes des mentions de
+              licence.
+            </p>
+          )}
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {FORMATIONS.map((f) => {
+            {formationsForLevel(currentLevel).map((f) => {
               const disabled = !!userFormation && f.label !== userFormation;
               return (
                 <label

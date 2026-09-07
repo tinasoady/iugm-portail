@@ -4,7 +4,7 @@ import { useActionState, useState } from "react";
 import { FaCheckCircle } from "react-icons/fa";
 import { reenrollAction, type ReenrollState } from "./actions";
 import { nextLevel } from "@/lib/level-shared";
-import { FORMATIONS } from "@/lib/formations";
+import { formationsForLevel } from "@/lib/formations";
 
 const fieldClass =
   "rounded-lg border border-black/10 bg-white px-2.5 py-1.5 text-xs text-zinc-900 outline-none focus:ring-2 focus:ring-indigo-500/40 dark:border-white/10 dark:bg-zinc-950 dark:text-zinc-50";
@@ -51,6 +51,11 @@ export function ReenrollForm({
   }
 
   const showForceReason = canForce && levelChoice === "next" && !eligible;
+  // Filières proposées pour le niveau réellement visé par cette
+  // réinscription (redoublement = niveau actuel, passage = niveau suivant) :
+  // mentions de licence en L1-L3, spécialisations de master en M1-M2.
+  const targetLevel = levelChoice === "next" ? next : currentLevel;
+  const targetFormations = formationsForLevel(targetLevel);
 
   return (
     <div className="space-y-1.5">
@@ -82,10 +87,10 @@ export function ReenrollForm({
             title="Changement de filière (reconversion) : cas particulier"
             className={fieldClass}
           >
-            {currentMention && !FORMATIONS.some((f) => f.label === currentMention) && (
+            {currentMention && !targetFormations.some((f) => f.label === currentMention) && (
               <option value={currentMention}>{currentMention}</option>
             )}
-            {FORMATIONS.map((f) => (
+            {targetFormations.map((f) => (
               <option key={f.code} value={f.label}>
                 {f.label}
               </option>

@@ -1,8 +1,9 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { FaTrash } from "react-icons/fa";
 import { createSubjectAction, deleteSubjectAction, type SubjectState } from "./actions";
+import { formationsForLevel } from "@/lib/formations";
 
 const initialState: SubjectState = {};
 
@@ -11,15 +12,14 @@ const fieldClass =
 
 // Ajoute une matière au catalogue : nom, filière, niveau. Réservé au
 // superadmin — le caractère obligatoire/facultatif se règle ailleurs
-// (page Matières, accessible au secrétaire et à l'agent pédagogique).
-export function CreateSubjectForm({
-  formations,
-  levels,
-}: {
-  formations: string[];
-  levels: readonly string[];
-}) {
+// (page Matières, accessible au secrétaire et à l'agent pédagogique). Le
+// niveau se choisit en premier : la liste de filières proposée en dépend
+// (mentions de licence en L1-L3, spécialisations de master en M1-M2, voir
+// lib/formations.ts).
+export function CreateSubjectForm({ levels }: { levels: readonly string[] }) {
   const [state, formAction, pending] = useActionState(createSubjectAction, initialState);
+  const [level, setLevel] = useState("");
+  const formations = formationsForLevel(level || undefined);
 
   return (
     <form action={formAction} className="flex flex-wrap items-end gap-2">
@@ -34,27 +34,33 @@ export function CreateSubjectForm({
         />
       </div>
       <div className="flex flex-col gap-1">
-        <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Filière</label>
-        <select name="formation" required defaultValue="" className={fieldClass}>
-          <option value="" disabled>
-            Choisir...
-          </option>
-          {formations.map((f) => (
-            <option key={f} value={f}>
-              {f}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="flex flex-col gap-1">
         <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Niveau</label>
-        <select name="level" required defaultValue="" className={fieldClass}>
+        <select
+          name="level"
+          required
+          value={level}
+          onChange={(e) => setLevel(e.target.value)}
+          className={fieldClass}
+        >
           <option value="" disabled>
             Choisir...
           </option>
           {levels.map((l) => (
             <option key={l} value={l}>
               {l}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="flex flex-col gap-1">
+        <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Filière</label>
+        <select name="formation" required defaultValue="" className={fieldClass}>
+          <option value="" disabled>
+            Choisir...
+          </option>
+          {formations.map((f) => (
+            <option key={f.code} value={f.label}>
+              {f.label}
             </option>
           ))}
         </select>

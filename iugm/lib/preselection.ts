@@ -4,7 +4,7 @@ import { Prisma, type PreselectionCategory } from "@prisma/client";
 import { prisma } from "./prisma";
 import { logAction } from "./audit";
 import { createStudentFromExistingRecord } from "./students";
-import { FORMATIONS } from "./formations";
+import { formationsForLevel } from "./formations";
 
 // ---------------------------------------------------------------------------
 // Base de données : fiches importées en lot pour pré-remplir l'inscription
@@ -24,7 +24,7 @@ import { FORMATIONS } from "./formations";
 // pièces et valide comme d'habitude.
 //
 // Format "par classe" (une feuille par niveau/filière, ex. le fichier reçu
-// directement de l'IUGM) : chaque feuille nommée "L1 - PGI", "M2 - GRH"...
+// directement de l'IUGM) : chaque feuille nommée "L1 - PGI", "M2 - RH"...
 // porte un bandeau ministériel avant les colonnes (en-tête pas forcément en
 // ligne 1) et n'a pas de colonne Niveau/Filière par ligne — ces deux valeurs
 // se déduisent du nom de la feuille. parsePreselectionWorkbook et
@@ -113,11 +113,12 @@ function hasUsableColumns(columns: Map<number, FieldKey>): boolean {
   return (values.includes("lastName") && values.includes("firstName")) || values.includes("fullName");
 }
 
-// Feuille "par classe" : nom du type "L1 - PGI", "M2 - GRH"... Le niveau et
+// Feuille "par classe" : nom du type "L1 - PGI", "M2 - RH"... Le niveau et
 // le code de filière s'en déduisent ; le code est ensuite résolu vers le
-// libellé officiel (lib/formations.ts) quand il y correspond, pour rester
-// cohérent avec le reste de l'application (filtres, périmètre des
-// secrétaires de formation) — sinon le code brut sert de repli.
+// libellé officiel (lib/formations.ts, dans la liste licence ou master selon
+// ce niveau) quand il y correspond, pour rester cohérent avec le reste de
+// l'application (filtres, périmètre des secrétaires de formation) — sinon le
+// code brut sert de repli.
 const LEVEL_PREFIX_RE = /^([LM][1-3])\s*-\s*([A-Za-zÀ-ÖØ-öø-ÿ]+)/;
 
 function levelAndFormationFromSheetName(name: string): { level: string | null; code: string | null } {
@@ -126,8 +127,13 @@ function levelAndFormationFromSheetName(name: string): { level: string | null; c
   return { level: m[1].toUpperCase(), code: m[2].toUpperCase() };
 }
 
-function formationLabelForCode(code: string): string {
-  const known = FORMATIONS.find((f) => f.code === code);
+// `level` (déduit du même nom de feuille, voir levelAndFormationFromSheetName)
+// détermine la liste où chercher le code : mentions de licence en L1-L3,
+// spécialisations de master en M1-M2 — nécessaire depuis que ces deux listes
+// sont distinctes (lib/formations.ts), certains codes de master (CCA, EDDT...)
+// n'existant pas côté licence.
+function formationLabelForCode(code: string, level: string | null): string {
+  const known = formationsForLevel(level).find((f) => f.code === code);
   return known ? known.label : code;
 }
 
@@ -388,7 +394,7 @@ export async function parsePreselectionWorkbook(buffer: Buffer): Promise<ParsePr
     anyHeaderFound = true;
 
     const { level: sheetLevel, code: sheetCode } = levelAndFormationFromSheetName(sheet.name);
-    const sheetFormation = sheetCode ? formationLabelForCode(sheetCode) : null;
+    const sheetFormation = sheetCode ? formationLabelForCode(sheetCode, sheetLevel) : null;
 
     for (let rowNumber = headerRowNumber + 1; rowNumber <= sheet.rowCount; rowNumber++) {
       const row = sheet.getRow(rowNumber);
@@ -445,7 +451,7 @@ export async function parseExistingRecordsFromFile(filePath: string): Promise<Pa
     if (!LEVEL_PREFIX_RE.test(sheetName)) continue;
 
     const { level: sheetLevel, code: sheetCode } = levelAndFormationFromSheetName(sheetName);
-    const sheetFormation = sheetCode ? formationLabelForCode(sheetCode) : null;
+    const sheetFormation = sheetCode ? formationLabelForCode(sheetCode, sheetLevel) : null;
 
     let columns: Map<number, FieldKey> | null = null;
     let rowNumber = 0;

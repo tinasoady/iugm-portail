@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { getStudentProfile } from "@/lib/students";
 import { hasTaskPermission, canManageStudent, getUserFormation } from "@/lib/permissions";
-import { FORMATIONS } from "@/lib/formations";
+import { formationsForLevel } from "@/lib/formations";
 import { AppShell } from "@/app/ui/app-shell";
 import { EditStudentForm } from "./edit-form";
 
@@ -46,7 +46,7 @@ export default async function ModifierEtudiantPage({
         <EditStudentForm
           studentId={student.id}
           matricule={student.matricule}
-          formations={FORMATIONS.map((f) => f.label)}
+          formations={formationsForLevel(student.level).map((f) => f.label)}
           lockedFormation={userFormation}
           defaults={{
             lastName: student.lastName ?? "",
