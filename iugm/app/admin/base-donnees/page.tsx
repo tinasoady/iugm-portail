@@ -5,8 +5,7 @@ import { defaultEnrollmentYear } from "@/lib/students";
 import { getPreselectionBatchSummary } from "@/lib/preselection";
 import { AppShell } from "@/app/ui/app-shell";
 import { ImportPreselectionForm } from "./import-form";
-import { DeleteBatchButton } from "./delete-batch-button";
-import { DeleteBatchStudentsButton } from "./delete-batch-students-button";
+import { BatchesTable } from "./batches-table";
 
 const CATEGORY_LABELS: Record<string, string> = {
   PRESELECTION: "Présélection (nouveaux L1)",
@@ -75,74 +74,7 @@ export default async function BaseDonneesPage() {
               Aucune fiche importée pour le moment.
             </p>
           ) : (
-            // overflow-x-auto (pas overflow-hidden) : ce tableau a 8 colonnes,
-            // il déborderait sur mobile/tablette sans défilement horizontal —
-            // overflow-hidden le découperait silencieusement à la place.
-            <div className="overflow-x-auto rounded-xl border border-black/5 dark:border-white/10">
-              <table className="w-full min-w-180 text-left text-sm">
-                <thead>
-                  <tr className="border-b border-black/10 text-xs uppercase tracking-wider text-zinc-400 dark:border-white/10 dark:text-zinc-500">
-                    <th className="px-4 py-2.5 font-semibold">Type de données</th>
-                    <th className="px-4 py-2.5 font-semibold">Année universitaire</th>
-                    <th className="px-4 py-2.5 font-semibold">Filière</th>
-                    <th className="px-4 py-2.5 font-semibold">Niveau</th>
-                    <th className="px-4 py-2.5 font-semibold">Fiches en base</th>
-                    <th className="px-4 py-2.5 font-semibold">Non utilisées</th>
-                    <th className="px-4 py-2.5 font-semibold">Dossiers créés</th>
-                    <th className="px-4 py-2.5 font-semibold">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {batches.map((b) => {
-                    const usedCount = b.count - b.unusedCount;
-                    return (
-                      <tr
-                        key={`${b.academicYear}-${b.category}-${b.formation ?? ""}-${b.level ?? ""}`}
-                        className="border-b border-black/5 last:border-0 dark:border-white/5"
-                      >
-                        <td className="px-4 py-2.5 text-zinc-600 dark:text-zinc-400">
-                          {CATEGORY_LABELS[b.category] ?? b.category}
-                        </td>
-                        <td className="px-4 py-2.5 font-medium text-zinc-900 dark:text-zinc-50">
-                          {b.academicYear}
-                        </td>
-                        <td className="px-4 py-2.5 text-zinc-600 dark:text-zinc-400">
-                          {b.formation ?? <span className="italic text-zinc-400 dark:text-zinc-500">Sans filière</span>}
-                        </td>
-                        <td className="px-4 py-2.5 text-zinc-600 dark:text-zinc-400">
-                          {b.level ?? <span className="italic text-zinc-400 dark:text-zinc-500">Sans niveau</span>}
-                        </td>
-                        <td className="px-4 py-2.5 text-zinc-600 dark:text-zinc-400">{b.count}</td>
-                        <td className="px-4 py-2.5 text-zinc-600 dark:text-zinc-400">{b.unusedCount}</td>
-                        <td className="px-4 py-2.5 text-zinc-600 dark:text-zinc-400">{usedCount}</td>
-                        <td className="px-4 py-2.5">
-                          <div className="flex flex-col items-start gap-2">
-                            <div className="flex gap-2">
-                              <DeleteBatchButton
-                                academicYear={b.academicYear}
-                                category={b.category}
-                                categoryLabel={CATEGORY_LABELS[b.category] ?? b.category}
-                                formation={b.formation}
-                                level={b.level}
-                                unusedCount={b.unusedCount}
-                              />
-                              <DeleteBatchStudentsButton
-                                academicYear={b.academicYear}
-                                category={b.category}
-                                categoryLabel={CATEGORY_LABELS[b.category] ?? b.category}
-                                formation={b.formation}
-                                level={b.level}
-                                usedCount={usedCount}
-                              />
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <BatchesTable batches={batches} categoryLabels={CATEGORY_LABELS} />
           )}
         </section>
       </div>
