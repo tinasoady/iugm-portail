@@ -255,12 +255,25 @@ export type ExistingStudentInput = {
   level?: string | null;
 };
 
+// Marqueur posé sur le versement d'écolage créé automatiquement par
+// createStudentFromExistingRecord (voir plus bas) : sert à la fois de
+// numéro de reçu affiché (il n'existe pas de reçu bancaire réel pour un
+// versement supposé déjà réglé avant l'import) et de repère pour proposer
+// son annulation depuis la fiche du dossier (cancelImportedEcolagePayment).
+export const IMPORTED_PAYMENT_RECEIPT_LABEL = "Import — dossier déjà existant";
+
 // Crée directement un dossier "Enregistré" à partir d'une fiche déjà
 // existante à l'université (import en lot par le superadmin) : l'étudiant
 // n'a pas besoin de repasser par le guichet d'inscription, son dossier
 // apparaît tout de suite dans "Dossiers étudiants" pour que l'agent complète
-// les infos manquantes, vérifie l'écolage, valide et crée le compte —
-// exactement les mêmes démarches qu'après une inscription classique.
+// les infos manquantes, valide et crée le compte. Contrairement à une
+// inscription classique, l'écolage de l'année d'import est présumé déjà
+// intégralement réglé (ces étudiants sont déjà sur place, pas de reçu
+// bancaire à vérifier) : un versement TOTALITE est enregistré automatiquement
+// ci-dessous, ce qui fait directement passer le dossier à PAIEMENT_VERIFIE.
+// Reste néanmoins un enregistrement ordinaire, modifiable/annulable comme
+// n'importe quel dossier (voir cancelImportedEcolagePayment) si l'hypothèse
+// se révèle fausse pour tel ou tel étudiant.
 export async function createStudentFromExistingRecord(input: ExistingStudentInput, actorId: string) {
   if (!/^\d{4}-\d{4}$/.test(input.academicYear)) {
     throw new Error("Année universitaire invalide (format attendu : 2026-2027).");
@@ -315,6 +328,28 @@ export async function createStudentFromExistingRecord(input: ExistingStudentInpu
     `Dossier ${student.matricule} créé pour ${fullName} depuis un import de dossiers existants (${input.academicYear})`,
     actorId,
   );
+
+  // Écolage présumé déjà réglé (voir commentaire de la fonction) : au
+  // meilleur effort seulement, un niveau manquant ou un souci de calcul ne
+  // doit jamais empêcher la création du dossier lui-même — l'agent complète
+  // alors l'écolage manuellement, comme pour une inscription classique.
+  if (student.level) {
+    try {
+      await recordEcolagePayment(
+        student.id,
+        "TOTALITE",
+        IMPORTED_PAYMENT_RECEIPT_LABEL,
+        actorId,
+      );
+    } catch (e) {
+      await logAction(
+        "ECOLAGE_PAYMENT_RECORDED",
+        `Écolage non présumé payé pour ${student.matricule} (${fullName}) : ${e instanceof Error ? e.message : "erreur inconnue"} — à vérifier manuellement.`,
+        actorId,
+      );
+    }
+  }
+
   return student;
 }
 
@@ -550,6 +585,52 @@ export async function getEcolagePaymentState(studentId: string) {
     nextTypes = ["TRANCHE_S1", "TOTALITE"];
   }
   return { payments, nextTypes };
+}
+
+// Annule le versement présumé automatiquement à l'import d'un dossier
+// existant (voir IMPORTED_PAYMENT_RECEIPT_LABEL et
+// createStudentFromExistingRecord) — pour corriger le cas où l'hypothèse
+// « déjà payé » se révèle fausse pour cet étudiant. Volontairement limitée
+// au dossier encore à l'étape PAIEMENT_VERIFIE (celle où ce versement l'a
+// fait entrer) : au-delà (validation administrative ou pédagogique déjà
+// passée), défaire l'écolage toucherait à un dossier déjà avancé dans le
+// circuit — l'agent doit alors passer par le superadmin plutôt que par ce
+// raccourci. Remet le dossier à ENREGISTRE, prêt pour une vérification de
+// paiement normale (verifyRegistrationPayment) avec le vrai montant/reçu.
+export async function cancelImportedEcolagePayment(studentId: string, actorId: string) {
+  const student = await prisma.student.findUnique({ where: { id: studentId } });
+  if (!student) throw new Error("Dossier introuvable.");
+  if (!student.academicYear) throw new Error("Ce dossier n'a pas d'année universitaire définie.");
+  if (student.status !== "PAIEMENT_VERIFIE") {
+    throw new Error(
+      "Ce dossier a déjà avancé dans le circuit de validation : l'écolage ne peut plus être annulé directement, contactez le superadmin.",
+    );
+  }
+
+  const payment = await prisma.ecolagePayment.findFirst({
+    where: {
+      studentId,
+      academicYear: student.academicYear,
+      receiptNumber: IMPORTED_PAYMENT_RECEIPT_LABEL,
+    },
+  });
+  if (!payment) {
+    throw new Error("Aucun versement présumé (import) à annuler pour ce dossier.");
+  }
+
+  await prisma.$transaction([
+    prisma.ecolagePayment.delete({ where: { id: payment.id } }),
+    prisma.student.update({
+      where: { id: studentId },
+      data: { status: "ENREGISTRE", receiptNumber: null, receiptVerifiedAt: null },
+    }),
+  ]);
+
+  await logAction(
+    "ECOLAGE_PAYMENT_CANCELLED",
+    `Versement présumé (import) annulé pour ${student.fullName} (${student.matricule}) — année ${student.academicYear}, dossier remis en attente de vérification du paiement`,
+    actorId,
+  );
 }
 
 // 3. Agent d'administration : valide l'inscription administrative
@@ -1170,6 +1251,7 @@ export async function getStudentProfile(studentId: string) {
       account: { select: { email: true, createdAt: true } },
       results: { orderBy: [{ academicYear: "desc" }, { semester: "desc" }] },
       enrollmentHistory: { orderBy: { archivedAt: "desc" } },
+      ecolagePayments: { orderBy: { verifiedAt: "desc" } },
     },
   });
 }

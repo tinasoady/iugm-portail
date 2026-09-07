@@ -53,9 +53,10 @@ export default async function BaseDonneesPage() {
             <li>
               <strong className="text-zinc-700 dark:text-zinc-300">Dossiers existants (autres niveaux)</strong> :
               chaque fiche crée directement un dossier « Enregistré », visible tout de suite dans
-              « Dossiers étudiants » — l&apos;agent n&apos;a plus qu&apos;à compléter les infos
-              manquantes, vérifier l&apos;écolage, valider et créer le compte de connexion, comme
-              pour n&apos;importe quel dossier.
+              « Dossiers étudiants », avec l&apos;écolage de l&apos;année présumé déjà réglé (pas
+              de reçu bancaire à vérifier) — l&apos;agent n&apos;a plus qu&apos;à compléter les
+              infos manquantes, valider et créer le compte de connexion, et peut corriger
+              l&apos;écolage au cas par cas si besoin.
             </li>
           </ul>
           <p className="mb-3 text-xs text-zinc-500 dark:text-zinc-400">

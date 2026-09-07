@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { logAction } from "@/lib/audit";
-import { deleteStudent } from "@/lib/students";
+import { deleteStudent, cancelImportedEcolagePayment } from "@/lib/students";
 import {
   hasTaskPermission,
   canManageStudent,
@@ -81,5 +81,38 @@ export async function updateConductAction(
     return { success: "Appréciation de conduite enregistrée." };
   } catch {
     return { error: "Dossier introuvable." };
+  }
+}
+
+export type CancelImportedPaymentState = { success?: string; error?: string };
+
+// Corrige l'hypothèse « écolage déjà payé » posée automatiquement à l'import
+// d'un dossier existant (voir createStudentFromExistingRecord) quand elle se
+// révèle fausse pour cet étudiant — relève de la gestion d'écolage.
+export async function cancelImportedPaymentAction(
+  _prev: CancelImportedPaymentState,
+  formData: FormData,
+): Promise<CancelImportedPaymentState> {
+  const session = await getSession();
+  if (!session || !["AGENT_ADMINISTRATION", "SUPERADMIN"].includes(session.role)) {
+    return { error: "Accès refusé : seul l'agent d'administration peut corriger l'écolage." };
+  }
+  if (!(await hasTaskPermission(session.sub, session.role, "ecolage"))) {
+    return { error: PERMISSION_DENIED_MESSAGE };
+  }
+
+  const studentId = String(formData.get("studentId") ?? "");
+  if (!studentId) return { error: "Dossier manquant." };
+  if (!(await canManageStudent(session.sub, session.role, studentId))) {
+    return { error: FORMATION_DENIED_MESSAGE };
+  }
+
+  try {
+    await cancelImportedEcolagePayment(studentId, session.sub);
+    revalidatePath(`/etudiants/${studentId}`);
+    revalidatePath("/agent-admin/ecolage");
+    return { success: "Versement présumé annulé : dossier remis en attente de vérification du paiement." };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Erreur lors de l'annulation." };
   }
 }

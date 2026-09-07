@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { FaPrint, FaPen, FaCheck, FaTimes } from "react-icons/fa";
 
 import { getSession } from "@/lib/auth";
-import { getStudentProfile } from "@/lib/students";
+import { getStudentProfile, IMPORTED_PAYMENT_RECEIPT_LABEL } from "@/lib/students";
 import { hasTaskPermission, canManageStudent } from "@/lib/permissions";
 import { decryptSecret } from "@/lib/secret-crypto";
 import { AppShell } from "@/app/ui/app-shell";
@@ -16,6 +16,7 @@ import {
   REPEAT_LABELS,
 } from "@/app/ui/student-status";
 import { ConductForm } from "./conduct-form";
+import { CancelImportedPaymentButton } from "./cancel-imported-payment-button";
 
 const dateFormatter = new Intl.DateTimeFormat("fr-FR", { dateStyle: "long" });
 const shortDateFormatter = new Intl.DateTimeFormat("fr-FR", { dateStyle: "short" });
@@ -59,8 +60,17 @@ export default async function StudentProfilePage({
   const canEditConduct = await hasTaskPermission(session.sub, session.role, "conduite");
   const canEditDossier = await hasTaskPermission(session.sub, session.role, "modification_dossier");
   const canPrintReceipt = ["AGENT_PEDAGOGIQUE", "SUPERADMIN"].includes(session.role);
+  const canManageEcolage = await hasTaskPermission(session.sub, session.role, "ecolage");
   // Écolage considéré payé dès que le reçu bancaire a été vérifié
   const feePaid = student.status !== "ENREGISTRE";
+  // Versement présumé automatiquement à l'import d'un dossier existant (voir
+  // createStudentFromExistingRecord) : encore corrigeable tant que le
+  // dossier n'a pas dépassé l'étape PAIEMENT_VERIFIE qu'il a débloquée.
+  const importedPayment = student.ecolagePayments.find(
+    (p) => p.academicYear === student.academicYear && p.receiptNumber === IMPORTED_PAYMENT_RECEIPT_LABEL,
+  );
+  const canCorrectImportedPayment =
+    canManageEcolage && importedPayment !== undefined && student.status === "PAIEMENT_VERIFIE";
 
   return (
     <AppShell
@@ -218,6 +228,16 @@ export default async function StudentProfilePage({
               </span>
             )}
           </div>
+          {importedPayment && (
+            <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300">
+              <p>
+                Écolage {student.academicYear} présumé déjà réglé automatiquement : ce dossier
+                provient d&apos;un import de dossiers déjà existants à l&apos;université, sans reçu
+                bancaire réel à vérifier.
+              </p>
+              {canCorrectImportedPayment && <CancelImportedPaymentButton studentId={student.id} />}
+            </div>
+          )}
           <InfoRow label="N° du reçu bancaire" value={student.receiptNumber} />
           <InfoRow
             label="Étape du dossier"

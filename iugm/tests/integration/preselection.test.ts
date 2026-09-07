@@ -2,7 +2,7 @@ import ExcelJS from "exceljs";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import { prisma } from "@/lib/prisma";
-import { registerStudent } from "@/lib/students";
+import { registerStudent, IMPORTED_PAYMENT_RECEIPT_LABEL } from "@/lib/students";
 import {
   importPreselectionFile,
   searchPreselectionCandidates,
@@ -203,7 +203,7 @@ describe("importPreselectionFile", () => {
 });
 
 describe("importPreselectionFile — dossiers existants (catégorie EXISTING)", () => {
-  it("crée directement un dossier « Enregistré » pour chaque fiche, sans passer par l'inscription", async () => {
+  it("crée directement un dossier « Enregistré » pour chaque fiche, sans passer par l'inscription, avec l'écolage présumé déjà payé", async () => {
     const actor = await createActor("SUPERADMIN");
     const buffer = await buildWorkbook(
       ["Nom", "Prénom", "Niveau", "Filière affectée"],
@@ -215,9 +215,17 @@ describe("importPreselectionFile — dossiers existants (catégorie EXISTING)", 
     expect(result.studentsMatched).toBe(0);
 
     const student = await prisma.student.findFirstOrThrow({ where: { fullName: "RABE Marie" } });
-    expect(student.status).toBe("ENREGISTRE");
+    // Écolage présumé déjà réglé (dossier déjà à l'université avant l'import) :
+    // le dossier saute directement à PAIEMENT_VERIFIE, sans reçu à vérifier.
+    expect(student.status).toBe("PAIEMENT_VERIFIE");
     expect(student.level).toBe("L3");
     expect(student.mention).toBe("Management");
+
+    const payment = await prisma.ecolagePayment.findFirstOrThrow({
+      where: { studentId: student.id, academicYear: "2026-2027" },
+    });
+    expect(payment.type).toBe("TOTALITE");
+    expect(payment.receiptNumber).toBe(IMPORTED_PAYMENT_RECEIPT_LABEL);
 
     const candidate = await prisma.preselectionCandidate.findFirstOrThrow({
       where: { fullName: "RABE Marie" },

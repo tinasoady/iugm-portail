@@ -19,7 +19,7 @@ const CATEGORY_HELP: Record<Category, string> = {
   PRESELECTION:
     "Fichier reçu de l'Université de Mahajanga (résultats de présélection des nouveaux L1), sans modification préalable. Reste en attente : c'est l'agent qui crée le dossier via « Inscrire un étudiant » en recherchant le nom.",
   EXISTING:
-    "Fichier interne recensant des étudiants déjà sur place à l'université (tout niveau : L1 à M2) mais pas encore saisis dans ce portail. Chaque ligne crée directement un dossier « Enregistré », visible tout de suite dans « Dossiers étudiants » (l'agent complète ensuite les infos manquantes, vérifie l'écolage, valide et crée le compte, comme d'habitude).",
+    "Fichier interne recensant des étudiants déjà sur place à l'université (tout niveau : L1 à M2) mais pas encore saisis dans ce portail. Chaque ligne crée directement un dossier « Enregistré », visible tout de suite dans « Dossiers étudiants », avec l'écolage de l'année présumé déjà réglé (pas de reçu bancaire à vérifier) : l'agent complète les infos manquantes, valide et crée le compte, et peut corriger l'écolage au cas par cas si besoin.",
 };
 
 export function ImportPreselectionForm({
