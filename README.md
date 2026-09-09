@@ -52,6 +52,7 @@ ENREGISTRE → PAIEMENT_VERIFIE → ADMIN_VALIDEE → INSCRIT
 - **Base de données** : import/export Excel des dossiers, export CSV filtré, paramètres de l'établissement (nom, logo).
 - **Thème clair / sombre**, persistant, sans flash au chargement.
 - **Inscription hors ligne** : sur le formulaire d'inscription, une saisie faite sans réseau est mise en file localement et synchronisée automatiquement dès la reconnexion (matricule attribué à ce moment-là) — voir [`iugm/docs/OFFLINE_SYNC.md`](iugm/docs/OFFLINE_SYNC.md).
+- **Notes par matière** : catalogue de matières par filière et niveau (superadmin), caractère obligatoire/facultatif laissé au secrétaire de formation ou à l'agent pédagogique, saisie des notes par étudiant/semestre/matière — distinct de la moyenne générale déjà utilisée pour la mention.
 
 ## Rôles et accès
 
@@ -182,7 +183,7 @@ Ouvrir [http://localhost:3000](http://localhost:3000).
 
 ## Base de données (Prisma)
 
-Modèles principaux (`prisma/schema.prisma`) : `User`, `Student`, `EnrollmentHistory`, `PreselectionCandidate`, `AcademicResult`, `Announcement` / `AnnouncementRead`, `Setting`, `LevelFinancialInfo`, `EcolagePayment`, `AuditLog`, `LoginAttempt`, `SyncedMutation`.
+Modèles principaux (`prisma/schema.prisma`) : `User`, `Student`, `EnrollmentHistory`, `PreselectionCandidate`, `AcademicResult`, `Subject`, `Grade`, `Announcement` / `AnnouncementRead`, `Setting`, `LevelFinancialInfo`, `EcolagePayment`, `AuditLog`, `LoginAttempt`, `SyncedMutation`.
 
 Commandes utiles :
 
@@ -260,6 +261,7 @@ npm run test:coverage # rapport de couverture (iugm/coverage/index.html)
 - **Database tools**: Excel import/export, filtered CSV export, institution settings.
 - Persistent **light/dark theme**, no flash on load.
 - **Offline registration**: a submission made without network on the registration form is queued locally and synced automatically once the connection returns (matricule assigned at that point) — see [`iugm/docs/OFFLINE_SYNC.md`](iugm/docs/OFFLINE_SYNC.md).
+- **Per-subject grades**: a subject catalog by program and level (superadmin), with the mandatory/optional flag left to the program secretary or academic staff, and grade entry per student/semester/subject — separate from the general average already used for the mention.
 
 ### Roles
 
