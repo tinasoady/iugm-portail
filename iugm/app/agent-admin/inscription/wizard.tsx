@@ -770,7 +770,7 @@ export function InscriptionWizard({
                       <td
                         className={
                           raw
-                            ? "px-4 py-2 font-semibold text-zinc-900 dark:text-zinc-50"
+                            ? "px-4 py-2 font-semibold text-zinc-900 wrap-break-word dark:text-zinc-50"
                             : "px-4 py-2 text-zinc-400 dark:text-zinc-600"
                         }
                       >

@@ -96,32 +96,40 @@ export default async function ReceiptPage({
             </p>
           </header>
 
-          <table className="w-full text-sm">
-            <tbody>
-              {rows.map(([label, value]) => (
-                <tr key={label} className="border-b border-black/5 last:border-0">
-                  <td className="py-2.5 pr-6 font-medium text-zinc-500 print:py-1.5">{label}</td>
-                  <td className="py-2.5 font-semibold text-zinc-900 print:py-1.5">{value}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <tbody>
+                {rows.map(([label, value]) => (
+                  <tr key={label} className="border-b border-black/5 last:border-0">
+                    <td className="py-2.5 pr-6 font-medium text-zinc-500 print:py-1.5">{label}</td>
+                    <td className="py-2.5 font-semibold text-zinc-900 wrap-break-word print:py-1.5">
+                      {value}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
           {/* Identifiants du compte étudiant, remis avec le reçu */}
           <div className="mt-8 rounded-xl border border-zinc-300 p-4 print:mt-4 print:rounded-none print:p-3">
             <p className="mb-2 text-sm font-semibold text-zinc-900 uppercase print:mb-1">
               Compte étudiant — portail en ligne
             </p>
-            <table className="w-full text-sm">
-              <tbody>
-                {credentials.map(([label, value]) => (
-                  <tr key={label}>
-                    <td className="py-1 pr-6 font-medium text-zinc-500">{label}</td>
-                    <td className="py-1 font-mono font-semibold text-zinc-900">{value}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <tbody>
+                  {credentials.map(([label, value]) => (
+                    <tr key={label}>
+                      <td className="py-1 pr-6 font-medium text-zinc-500">{label}</td>
+                      <td className="py-1 font-mono font-semibold text-zinc-900 break-all">
+                        {value}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
             <p className="mt-2 text-xs text-zinc-500 print:mt-1">
               Identifiants strictement personnels. Changez ce mot de passe dès votre première
               connexion.
