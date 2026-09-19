@@ -1,5 +1,5 @@
 ﻿import Link from "next/link";
-import { Fragment, type ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import { prisma } from "@/lib/prisma";
 import { getSettings } from "@/lib/settings";
@@ -11,6 +11,7 @@ import { getSelectedLevel } from "@/lib/level";
 import { AcademicYearSelector } from "./academic-year-selector";
 import { LevelSelector } from "./level-selector";
 import { AccountMenu } from "./account-menu";
+import { MobileNav } from "./mobile-nav";
 import { IdleLogout } from "./idle-logout";
 import { OfflineSyncStatus } from "./offline-sync-status";
 import type { TaskKey } from "@/lib/permissions";
@@ -302,16 +303,24 @@ export async function AppShell({
         <OfflineSyncStatus />
         {/* Barre supérieure */}
         <header className="sticky top-0 z-30 border-b border-black/5 bg-white/80 backdrop-blur dark:border-white/10 dark:bg-zinc-950/80">
-          <div className="flex items-center justify-between gap-4 px-4 py-3">
-            <div className="min-w-0">
-              <h1 className="truncate text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-                {title}
-              </h1>
-              {account?.formation && (
-                <p className="mt-0.5 truncate text-xs font-medium text-indigo-600 dark:text-indigo-400">
-                  Filière assignée : {account.formation}
-                </p>
-              )}
+          <div className="flex items-center justify-between gap-3 px-4 py-3">
+            <div className="flex min-w-0 items-center gap-2">
+              <MobileNav
+                items={nav}
+                active={active}
+                institutionAcronym={settings.institutionAcronym}
+                logo={settings.logo}
+              />
+              <div className="min-w-0">
+                <h1 className="truncate text-base font-semibold text-zinc-900 sm:text-lg dark:text-zinc-50">
+                  {title}
+                </h1>
+                {account?.formation && (
+                  <p className="mt-0.5 truncate text-xs font-medium text-indigo-600 dark:text-indigo-400">
+                    Filière assignée : {account.formation}
+                  </p>
+                )}
+              </div>
             </div>
             <div className="flex items-center gap-2 sm:gap-3">
               {/* Masqués sous sm : sur un petit écran, ces deux sélecteurs
@@ -335,40 +344,11 @@ export async function AppShell({
               />
             </div>
           </div>
-
-          {/* Navigation mobile (sidebar masquée sous md) */}
-          <nav className="flex gap-1 overflow-x-auto px-4 pb-2 md:hidden">
-            {nav.map((item) => (
-              <Fragment key={item.href}>
-                <Link
-                  href={item.href}
-                  className={
-                    item.href === active
-                      ? "flex shrink-0 items-center gap-2 rounded-full bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white"
-                      : "flex shrink-0 items-center gap-2 rounded-full bg-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
-                  }
-                >
-                  {item.label}
-                </Link>
-                {item.children?.map((child) => (
-                  <Link
-                    key={child.href}
-                    href={child.href}
-                    className={
-                      child.href === active
-                        ? "flex shrink-0 items-center gap-2 rounded-full bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white"
-                        : "flex shrink-0 items-center gap-2 rounded-full bg-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
-                    }
-                  >
-                    {child.label}
-                  </Link>
-                ))}
-              </Fragment>
-            ))}
-          </nav>
         </header>
 
-        <main className="mx-auto w-full max-w-6xl flex-1 space-y-8 px-4 py-8">{children}</main>
+        <main className="mx-auto w-full max-w-6xl flex-1 space-y-6 px-4 py-6 sm:space-y-8 sm:py-8">
+          {children}
+        </main>
         <Footer institutionName={settings.institutionAcronym} />
       </div>
     </div>
