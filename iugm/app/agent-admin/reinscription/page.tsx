@@ -80,13 +80,13 @@ export default async function ReinscriptionPage({
           <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
             Étudiants éligibles ({students.length})
           </h2>
-          <form method="get" className="flex items-center gap-2">
+          <form method="get" className="flex w-full items-center gap-2 sm:w-auto">
             <input
               name="q"
               type="search"
               defaultValue={q ?? ""}
               placeholder="Nom ou matricule..."
-              className="w-56 rounded-xl border border-black/10 bg-white px-3 py-1.5 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-indigo-500/40 dark:border-white/10 dark:bg-zinc-950 dark:text-zinc-50"
+              className="w-full min-w-0 rounded-xl border border-black/10 bg-white px-3 py-1.5 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-indigo-500/40 sm:w-56 dark:border-white/10 dark:bg-zinc-950 dark:text-zinc-50"
             />
             <button
               type="submit"

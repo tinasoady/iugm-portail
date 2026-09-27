@@ -131,6 +131,7 @@ export function Donut({
       viewBox={`0 0 ${size} ${size}`}
       role="img"
       aria-label={`${centerValue} ${centerLabel ?? ""}`.trim()}
+      className="h-auto max-w-full"
     >
       {total === 0 ? (
         <circle

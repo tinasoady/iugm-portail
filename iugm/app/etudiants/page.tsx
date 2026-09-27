@@ -155,7 +155,7 @@ export default async function EtudiantsPage({
             type="search"
             defaultValue={params.q ?? ""}
             placeholder="Nom, matricule, CIN, mention, parcours..."
-            className="w-64 rounded-xl border border-black/10 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-indigo-500/40 dark:border-white/10 dark:bg-zinc-950 dark:text-zinc-50"
+            className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-indigo-500/40 sm:w-64 dark:border-white/10 dark:bg-zinc-950 dark:text-zinc-50"
           />
           {userFormation ? (
             <span
@@ -259,7 +259,72 @@ export default async function EtudiantsPage({
             </span>
           </div>
 
-          <div className="overflow-x-auto">
+          {/* Vue mobile : le tableau ci-dessous a trop de colonnes (21) pour
+              rester lisible sous md, même avec défilement horizontal — on
+              affiche à la place une carte par étudiant avec l'essentiel
+              (identité, filière/niveau, statut, compte), le détail complet
+              restant accessible via la fiche (lien sur le nom). */}
+          <div className="space-y-3 md:hidden">
+            {list.map((s) => (
+              <div
+                key={s.id}
+                className="rounded-xl border border-black/10 p-4 dark:border-white/10"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <a
+                      href={`/etudiants/${s.id}`}
+                      className="font-semibold text-zinc-900 underline-offset-2 hover:text-indigo-600 hover:underline dark:text-zinc-50 dark:hover:text-indigo-400"
+                      title="Voir le profil complet"
+                    >
+                      {s.fullName}
+                    </a>
+                    <p className="mt-0.5 font-mono text-xs text-zinc-500 dark:text-zinc-400">
+                      {s.matricule}
+                    </p>
+                  </div>
+                  <span className={`${STATUS_BADGE_CLASSES[s.status]} shrink-0`}>
+                    {STATUS_LABELS[s.status] ?? s.status}
+                  </span>
+                </div>
+                <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
+                  <div className="col-span-2">
+                    <dt className="text-zinc-400 dark:text-zinc-500">Filière / Niveau</dt>
+                    <dd className="text-zinc-700 dark:text-zinc-300">
+                      {[s.mention ?? s.program, s.level ?? s.track].filter(Boolean).join(" / ") ||
+                        "—"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-zinc-400 dark:text-zinc-500">Inscrit le</dt>
+                    <dd className="text-zinc-700 dark:text-zinc-300">
+                      {dateFormatter.format(s.createdAt)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-zinc-400 dark:text-zinc-500">Compte</dt>
+                    <dd className="truncate text-zinc-700 dark:text-zinc-300">
+                      {s.account?.email ?? "—"}
+                    </dd>
+                  </div>
+                </dl>
+                {canManageActions && (
+                  <div className="mt-3 flex items-center gap-2 border-t border-black/5 pt-3 dark:border-white/5">
+                    {canEdit && <EditStudentLink studentId={s.id} />}
+                    {canDelete && (
+                      <DeleteStudentButton
+                        studentId={s.id}
+                        matricule={s.matricule}
+                        fullName={s.fullName}
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-black/10 text-xs uppercase tracking-wider dark:border-white/10">

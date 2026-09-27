@@ -344,6 +344,19 @@ export async function AppShell({
               />
             </div>
           </div>
+          {/* Sur mobile, les sélecteurs passent sur une seconde ligne pleine
+              largeur (pas assez de place à côté de l'avatar sur la ligne du
+              haut) plutôt que de disparaître complètement. */}
+          {showAcademicYearSelector && (
+            <div className="flex items-center gap-2 border-t border-black/5 px-4 py-2 sm:hidden dark:border-white/10">
+              <div className="min-w-0 flex-1 [&>select]:w-full">
+                <AcademicYearSelector years={academicYearYears} selected={selectedAcademicYear} />
+              </div>
+              <div className="min-w-0 flex-1 [&>select]:w-full">
+                <LevelSelector selected={selectedLevel} />
+              </div>
+            </div>
+          )}
         </header>
 
         <main className="mx-auto w-full max-w-6xl flex-1 space-y-6 px-4 py-6 sm:space-y-8 sm:py-8">

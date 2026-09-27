@@ -56,7 +56,7 @@ export default async function ReceiptPage({
   ];
 
   return (
-    <div className="min-h-screen bg-zinc-50 p-8 print:bg-white print:p-0 dark:bg-black">
+    <div className="min-h-screen bg-zinc-50 p-4 sm:p-8 print:bg-white print:p-0 dark:bg-black">
       <div className="mx-auto max-w-2xl space-y-6">
         <div className="flex items-center justify-between print:hidden">
           <a
@@ -71,7 +71,7 @@ export default async function ReceiptPage({
         {/* Le reçu lui-même : fond blanc forcé pour l'impression. Espacements
             resserrés en print (print:*) pour tenir sur une seule page — voir
             aussi @page dans globals.css, l'aperçu écran garde ses marges. */}
-        <div className="rounded-2xl border border-black/10 bg-white p-10 shadow-sm print:rounded-none print:border-0 print:p-0 print:shadow-none">
+        <div className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm sm:p-10 print:rounded-none print:border-0 print:p-0 print:shadow-none">
           <header className="mb-8 border-b border-black/10 pb-6 text-center print:mb-4 print:pb-3">
             {settings.logo && (
               // eslint-disable-next-line @next/next/no-img-element -- data URL, next/image inutile ici

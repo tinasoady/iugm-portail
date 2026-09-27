@@ -106,7 +106,7 @@ export default async function JournalPage({
             type="search"
             defaultValue={q ?? ""}
             placeholder="Email de l'auteur, détails..."
-            className="w-64 rounded-xl border border-black/10 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-indigo-500/40 dark:border-white/10 dark:bg-zinc-950 dark:text-zinc-50"
+            className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-indigo-500/40 sm:w-64 dark:border-white/10 dark:bg-zinc-950 dark:text-zinc-50"
           />
           <select
             name="action"

@@ -187,7 +187,7 @@ export default async function AgentPedagogiquePage({
               type="search"
               defaultValue={qi ?? ""}
               placeholder="Nom ou matricule..."
-              className={`w-44 ${selectClass}`}
+              className={`w-full sm:w-44 ${selectClass}`}
             />
             <select name="program" defaultValue={program ?? ""} className={selectClass}>
               <option value="">Toutes filières</option>

@@ -17,6 +17,17 @@ export const metadata: Metadata = {
   title: "IUGM - Gestion de Scolarité",
   description: "Système Cloud de Gestion des Inscriptions et de la Scolarité Universitaire",
   manifest: "/manifest.json",
+  // iOS Safari n'utilise pas le manifest pour "Ajouter à l'écran d'accueil" :
+  // sans ces balises, l'app s'ouvrait dans un onglet Safari normal (barre
+  // d'adresse visible) au lieu du mode standalone déjà obtenu sur Android.
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "IUGM Portail",
+  },
+  icons: {
+    apple: "/icon-192.png",
+  },
 };
 
 export const viewport: Viewport = {

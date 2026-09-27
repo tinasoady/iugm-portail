@@ -103,7 +103,7 @@ export function MobileNav({
             type="button"
             onClick={close}
             aria-label="Fermer le menu"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-zinc-400 transition hover:bg-white/10 hover:text-white"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-zinc-400 transition hover:bg-white/10 hover:text-white"
           >
             <IconClose />
           </button>
@@ -162,7 +162,7 @@ export function MobileNav({
         aria-label="Ouvrir le menu"
         aria-expanded={open}
         onClick={() => setOpen(true)}
-        className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg text-zinc-600 transition hover:bg-zinc-100 md:hidden dark:text-zinc-300 dark:hover:bg-zinc-800"
+        className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-lg text-zinc-600 transition hover:bg-zinc-100 md:hidden dark:text-zinc-300 dark:hover:bg-zinc-800"
       >
         <IconMenu />
       </button>
