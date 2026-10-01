@@ -51,6 +51,20 @@ test.describe("accès et connexion", () => {
     await expect(page).not.toHaveURL(/\/admin\/permissions/);
   });
 
+  test("icône d'onglet, manifeste et service worker sont servis SANS session", async ({ request }) => {
+    for (const path of ["/icon.png", "/icon-192.png", "/manifest.json", "/sw.js"]) {
+      const response = await request.get(path, { maxRedirects: 0 });
+      expect(response.status(), path).toBe(200);
+    }
+    const icon = await request.get("/icon.png");
+    expect(icon.headers()["content-type"]).toContain("image/png");
+  });
+
+  test("la page de connexion déclare l'icône d'onglet", async ({ request }) => {
+    const html = await (await request.get("/login")).text();
+    expect(html).toMatch(/<link[^>]*rel="icon"[^>]*href="\/icon\.png/);
+  });
+
   test("la sonde de santé répond 200 sans détail interne", async ({ request }) => {
     const response = await request.get("/api/health");
     expect(response.status()).toBe(200);

@@ -15,9 +15,24 @@ const PUBLIC_PREFIXES = [
   "/api/health",
 ];
 
+// Fichiers statiques de public/ que le NAVIGATEUR réclame sans session : icône
+// d'onglet, manifeste d'installation et service worker. Sans cette liste, le
+// proxy les redirigeait vers /login pour tout visiteur déconnecté : pas
+// d'icône sur la page de connexion, manifeste inutilisable, service worker non
+// enregistrable. Aucune donnée : ce sont des fichiers identiques pour tous.
+const PUBLIC_ASSETS = new Set([
+  "/icon.png",
+  "/icon-192.png",
+  "/icon-512.png",
+  "/icon-512-maskable.png",
+  "/manifest.json",
+  "/sw.js",
+]);
+
 const PASSWORD_CHANGE_PATH = "/changer-mot-de-passe";
 
 function isPublic(pathname: string): boolean {
+  if (PUBLIC_ASSETS.has(pathname)) return true;
   return PUBLIC_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
 

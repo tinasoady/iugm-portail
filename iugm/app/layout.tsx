@@ -25,7 +25,11 @@ export const metadata: Metadata = {
     statusBarStyle: "default",
     title: "IUGM Portail",
   },
+  // Déclaration EXPLICITE de l'icône d'onglet : dès que `metadata.icons` est
+  // défini (ici pour l'icône iOS), Next.js n'ajoute plus tout seul le <link
+  // rel="icon"> du fichier app/icon.png — l'onglet restait sans logo.
   icons: {
+    icon: [{ url: "/icon.png", type: "image/png", sizes: "512x512" }],
     apple: "/icon.png",
   },
 };
