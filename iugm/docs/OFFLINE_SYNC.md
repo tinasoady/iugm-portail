@@ -229,3 +229,11 @@ rien à changer.
 | `public/sw.js` | Service worker : cache statique + cache de pages scopé (`PAGE_SCOPE`) |
 | `public/manifest.json` | Manifeste PWA (nom, icônes, installabilité) |
 | `app/ui/service-worker-registration.tsx` | Enregistrement du service worker, monté dans `app/layout.tsx` |
+
+## Déconnexion et poste partagé
+
+À la déconnexion (manuelle ou après 20 minutes d'inactivité), le portail efface ce que le navigateur garde de **lisible** sur le poste : le cache des fiches de présélection (`candidates`, utilisé pour la recherche hors ligne) et le cache de pages du service worker (`iugm-pages-v1`) — voir `lib/offline/clear.ts`.
+
+Les saisies **en attente de synchronisation** (`mutations`) ne sont volontairement **pas** effacées : ce sont des dossiers saisis et pas encore enregistrés, les perdre en se déconnectant serait pire. Elles repartent à la synchronisation de la prochaine session valide. Sur un poste partagé, laissez donc la synchronisation se terminer (indicateur en haut de page) avant de quitter.
+
+La synchronisation est **idempotente même en cas de rejeu simultané** : l'identifiant de la saisie est réservé de façon atomique avant son application (`lib/sync-mutations.ts`), donc deux envois du même dossier ne créent jamais deux dossiers. Un refus métier (doublon, permission) libère l'identifiant pour permettre une correction.

@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { logAction } from "@/lib/audit";
 import { saveUploadedFile, deleteUploadedFile } from "@/lib/storage";
+import { resolveImageType } from "@/lib/image-sniff";
 
 export type ProfileState = { success?: string; error?: string };
 
@@ -54,7 +55,12 @@ export async function uploadPhotoAction(
     select: { photo: true },
   });
   const buffer = Buffer.from(await file.arrayBuffer());
-  const { url } = await saveUploadedFile(buffer, file.type, "avatars");
+  // Le type déclaré par le navigateur ne prouve rien : on vérifie le contenu réel
+  const realType = resolveImageType(buffer);
+  if (!realType) {
+    return { error: "Ce fichier n'est pas une image PNG, JPEG ou WebP valide." };
+  }
+  const { url } = await saveUploadedFile(buffer, realType, "avatars");
   await prisma.user.update({ where: { id: session.sub }, data: { photo: url } });
   await deleteUploadedFile(previous?.photo); // évite d'accumuler les anciennes photos remplacées
   await logAction("PROFILE_UPDATED", `Photo de profil mise à jour par ${session.email}`, session.sub);
