@@ -26,7 +26,7 @@ export const metadata: Metadata = {
     title: "IUGM Portail",
   },
   icons: {
-    apple: "/icon-192.png",
+    apple: "/icon.png",
   },
 };
 
