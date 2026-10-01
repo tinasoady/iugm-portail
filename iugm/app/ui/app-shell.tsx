@@ -32,7 +32,7 @@ import {
 import { ThemeToggle } from "./theme-toggle";
 import { LiveClock } from "./live-clock";
 import { BsClipboardData, BsDatabase } from "react-icons/bs";
-import { FaBook, FaClipboardList, FaTasks } from "react-icons/fa";
+import { FaBook, FaPencilAlt, FaTasks } from "react-icons/fa";
 
 const ROLE_LABELS: Record<string, string> = {
   SUPERADMIN: "Super administrateur",
@@ -107,7 +107,7 @@ const NAV_ITEMS: NavItem[] = [
   {
     href: "/agent-pedagogique/notes",
     label: "Notes par matière",
-    icon: <FaClipboardList />,
+    icon: <FaPencilAlt />,
     roles: ["SUPERADMIN", "AGENT_PEDAGOGIQUE"],
     task: "notes",
   },
