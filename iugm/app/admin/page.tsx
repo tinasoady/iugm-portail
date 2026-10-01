@@ -1,4 +1,5 @@
-﻿import { redirect } from "next/navigation";
+﻿import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
@@ -67,10 +68,15 @@ function roleFilterHref(role: RoleValue, monthsBack: number): string {
   return `/admin?${q.toString()}#users`;
 }
 
+// Nombre d'utilisateurs affichés par "page" : le bouton "Voir plus" en ajoute
+// autant (paramètre ?limit=, géré côté serveur pour ne pas charger toute la table).
+const USERS_PAGE_SIZE = 20;
+const USERS_MAX_LIMIT = 1000;
+
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ months?: string; role?: string }>;
+  searchParams: Promise<{ months?: string; role?: string; limit?: string }>;
 }) {
   const session = await getSession();
   if (!session) redirect("/login");
@@ -80,6 +86,11 @@ export default async function AdminPage({
   const monthsBack = Math.min(12, Math.max(3, Number(params.months) || 6));
   const roleFilter: RoleValue | null =
     params.role && VALID_ROLES.has(params.role) ? (params.role as RoleValue) : null;
+  // Arrondi au multiple de 20 supérieur, borné entre 20 et USERS_MAX_LIMIT
+  const usersLimit = Math.min(
+    USERS_MAX_LIMIT,
+    Math.max(USERS_PAGE_SIZE, Math.ceil((Number(params.limit) || USERS_PAGE_SIZE) / USERS_PAGE_SIZE) * USERS_PAGE_SIZE),
+  );
   const [selectedYear, selectedLevel] = await Promise.all([
     getSelectedAcademicYear(),
     getSelectedLevel(),
@@ -89,6 +100,7 @@ export default async function AdminPage({
     prisma.user.findMany({
       where: roleFilter ? { role: roleFilter } : undefined,
       orderBy: { createdAt: "desc" },
+      take: usersLimit,
       select: { id: true, email: true, fullName: true, role: true, createdAt: true },
     }),
     prisma.user.groupBy({ by: ["role"], _count: { _all: true } }),
@@ -97,6 +109,15 @@ export default async function AdminPage({
 
   const countOf = (role: string) =>
     roleCounts.find((r) => r.role === role)?._count._all ?? 0;
+  const totalUsers = roleFilter
+    ? countOf(roleFilter)
+    : roleCounts.reduce((sum, r) => sum + r._count._all, 0);
+  const hasMoreUsers = users.length < totalUsers && usersLimit < USERS_MAX_LIMIT;
+  const moreUsersHref = `/admin?${new URLSearchParams({
+    ...(roleFilter ? { role: roleFilter } : {}),
+    months: String(monthsBack),
+    limit: String(usersLimit + USERS_PAGE_SIZE),
+  }).toString()}`;
 
   return (
     <AppShell
@@ -214,7 +235,7 @@ export default async function AdminPage({
         >
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-              {roleFilter ? `${ROLE_LABELS[roleFilter]} (${users.length})` : `Utilisateurs (${users.length})`}
+              {roleFilter ? `${ROLE_LABELS[roleFilter]} (${totalUsers})` : `Utilisateurs (${totalUsers})`}
             </h2>
             {roleFilter && (
               <a
@@ -269,6 +290,22 @@ export default async function AdminPage({
               </tbody>
             </table>
           </div>
+          {totalUsers > USERS_PAGE_SIZE && (
+            <div className="mt-4 flex flex-col items-center gap-2">
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                {users.length} sur {totalUsers} affichés
+              </p>
+              {hasMoreUsers && (
+                <Link
+                  href={moreUsersHref}
+                  scroll={false}
+                  className="rounded-lg border border-black/10 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-white/10 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                >
+                  Voir plus
+                </Link>
+              )}
+            </div>
+          )}
         </section>
       </div>
 

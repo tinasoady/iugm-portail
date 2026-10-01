@@ -30,6 +30,7 @@ import {
   IconChart,
 } from "./icons";
 import { ThemeToggle } from "./theme-toggle";
+import { LiveClock } from "./live-clock";
 import { BsClipboardData, BsDatabase } from "react-icons/bs";
 import { FaBook, FaTasks } from "react-icons/fa";
 
@@ -334,6 +335,7 @@ export async function AppShell({
                   <LevelSelector selected={selectedLevel} />
                 </div>
               )}
+              <LiveClock />
               <ThemeToggle />
               <AccountMenu
                 email={email}
