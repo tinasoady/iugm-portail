@@ -8,6 +8,8 @@ import { currentAcademicYear, getSelectedAcademicYear } from "@/lib/academic-yea
 import { getSelectedLevel } from "@/lib/level";
 import { AppShell } from "@/app/ui/app-shell";
 import { NotesForm } from "./notes-form";
+import { ShowMore } from "@/app/ui/show-more";
+import { LIST_PAGE_SIZE, hasMore, moreHref, parseListLimit } from "@/lib/pagination";
 
 const selectClass =
   "rounded-xl border border-black/10 bg-white px-3 py-1.5 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-black/20 dark:border-white/10 dark:bg-black dark:text-zinc-50";
@@ -20,6 +22,7 @@ export default async function AgentPedagogiqueNotesPage({
     studentId?: string;
     academicYear?: string;
     semester?: string;
+    limit?: string;
   }>;
 }) {
   const session = await getSession();
@@ -27,7 +30,8 @@ export default async function AgentPedagogiqueNotesPage({
   if (!["AGENT_PEDAGOGIQUE", "SUPERADMIN"].includes(session.role)) redirect("/");
   if (!(await hasTaskPermission(session.sub, session.role, "notes"))) redirect("/");
 
-  const { qi, studentId, academicYear, semester } = await searchParams;
+  const { qi, studentId, academicYear, semester, limit: limitParam } = await searchParams;
+  const limit = parseListLimit(limitParam);
 
   const userFormation = await getUserFormation(session.sub, session.role);
   const [selectedYear, selectedLevel] = await Promise.all([
@@ -42,6 +46,8 @@ export default async function AgentPedagogiqueNotesPage({
     { q: qi, year: selectedYear, level: selectedLevel },
     userFormation,
   );
+
+  const visibleInscrits = inscrits.slice(0, limit);
 
   let selectedStudent: Awaited<ReturnType<typeof getStudentProfile>> | null = null;
   let subjects: Awaited<ReturnType<typeof listSubjectsForStudent>> = [];
@@ -76,7 +82,7 @@ export default async function AgentPedagogiqueNotesPage({
         </p>
 
         <form method="get" className="mb-4 flex flex-wrap items-center gap-2">
-          <input
+          <input aria-label="Rechercher un étudiant inscrit"
             name="qi"
             type="search"
             defaultValue={qi ?? ""}
@@ -100,14 +106,14 @@ export default async function AgentPedagogiqueNotesPage({
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-black/10 text-zinc-500 dark:border-white/10 dark:text-zinc-400">
-                  <th className="py-2 pr-4 font-medium">Matricule</th>
-                  <th className="py-2 pr-4 font-medium">Nom</th>
-                  <th className="py-2 pr-4 font-medium">Filière / Niveau</th>
-                  <th className="py-2 font-medium">Action</th>
+                  <th scope="col" className="py-2 pr-4 font-medium">Matricule</th>
+                  <th scope="col" className="py-2 pr-4 font-medium">Nom</th>
+                  <th scope="col" className="py-2 pr-4 font-medium">Filière / Niveau</th>
+                  <th scope="col" className="py-2 font-medium">Action</th>
                 </tr>
               </thead>
               <tbody>
-                {inscrits.map((s) => (
+                {visibleInscrits.map((s) => (
                   <tr
                     key={s.id}
                     className={
@@ -137,6 +143,18 @@ export default async function AgentPedagogiqueNotesPage({
             </table>
           </div>
         )}
+        <ShowMore
+          shown={visibleInscrits.length}
+          total={inscrits.length}
+          href={moreHref(
+            "/agent-pedagogique/notes",
+            { qi, studentId, academicYear, semester },
+            "limit",
+            limit,
+          )}
+          canLoadMore={hasMore(visibleInscrits.length, inscrits.length, limit)}
+          pageSize={LIST_PAGE_SIZE}
+        />
       </section>
 
       {studentId && (
@@ -165,7 +183,7 @@ export default async function AgentPedagogiqueNotesPage({
               <form method="get" className="mb-4 flex flex-wrap items-center gap-2">
                 <input type="hidden" name="studentId" value={studentId} />
                 {qi && <input type="hidden" name="qi" value={qi} />}
-                <input
+                <input aria-label="Année universitaire"
                   name="academicYear"
                   type="text"
                   required
@@ -174,7 +192,7 @@ export default async function AgentPedagogiqueNotesPage({
                   title="Format : 2025-2026"
                   className={`w-28 ${selectClass}`}
                 />
-                <select name="semester" defaultValue={gradingSemester} className={selectClass}>
+                <select aria-label="Semestre" name="semester" defaultValue={gradingSemester} className={selectClass}>
                   <option value="S1">S1</option>
                   <option value="S2">S2</option>
                 </select>

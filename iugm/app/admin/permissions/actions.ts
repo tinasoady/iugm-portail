@@ -10,6 +10,7 @@ import { generatePassword, generateInitialPassword } from "@/lib/students";
 import { TASKS, tasksForRole, type TaskKey } from "@/lib/permissions";
 import { encryptSecret } from "@/lib/secret-crypto";
 import { FORMATIONS } from "@/lib/formations";
+import { disableTwoFactor } from "@/lib/two-factor";
 
 export type PermissionState = {
   success?: string;
@@ -124,7 +125,8 @@ export async function resetPasswordAction(
   await prisma.$transaction(async (tx) => {
     await tx.user.update({
       where: { id: userId },
-      data: { passwordHash, mustChangePassword: true },
+      // sessionsValidAfter : les sessions ouvertes avec l'ancien mot de passe sont fermées
+      data: { passwordHash, mustChangePassword: true, sessionsValidAfter: new Date() },
     });
     if (user.studentFile) {
       await tx.student.update({
@@ -141,6 +143,37 @@ export async function resetPasswordAction(
     success: `Mot de passe de ${user.email} réinitialisé (changement obligatoire à la prochaine connexion).`,
     tempPassword,
   };
+}
+
+// Désactive le second facteur d'un compte (téléphone perdu, application
+// supprimée). L'intéressé se reconnecte avec son seul mot de passe et peut en
+// reconfigurer un depuis Mon compte. Toute session ouverte est fermée : la
+// réinitialisation est souvent la conséquence d'un appareil perdu ou volé.
+export async function resetTwoFactorAction(
+  _prev: PermissionState,
+  formData: FormData,
+): Promise<PermissionState> {
+  const session = await requireSuperadmin();
+  if (!session) return { error: "Accès refusé." };
+
+  const userId = String(formData.get("userId") ?? "");
+  if (!userId) return { error: "Utilisateur manquant." };
+  if (userId === session.sub) {
+    return { error: "Désactivez votre propre double authentification depuis Mon compte." };
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { email: true, totpEnabled: true },
+  });
+  if (!user) return { error: "Utilisateur introuvable." };
+  if (!user.totpEnabled) return { error: "La double authentification n'est pas activée pour ce compte." };
+
+  await disableTwoFactor(userId);
+  await prisma.user.update({ where: { id: userId }, data: { sessionsValidAfter: new Date() } });
+  await logAction("TWO_FACTOR_RESET", `Double authentification réinitialisée pour ${user.email}`, session.sub);
+  revalidatePath("/admin/permissions");
+  return { success: `Double authentification de ${user.email} désactivée.` };
 }
 
 // Enregistre la fonction (poste) et les tâches autorisées d'un agent

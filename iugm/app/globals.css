@@ -84,3 +84,25 @@ body {
   size: A4;
   margin: 12mm;
 }
+
+/* Accessibilité --------------------------------------------------------- */
+
+/* Contour de focus visible pour tout élément interactif atteint au clavier
+   (liens, boutons, résumés de menu). Les champs de formulaire gardent leur
+   anneau focus:ring propre ; ce contour couvre ce qui n'en avait pas. */
+:where(a, button, summary, [role="button"], [tabindex]:not([tabindex="-1"])):focus-visible {
+  outline: 2px solid var(--color-indigo-500);
+  outline-offset: 2px;
+}
+
+/* Respecte la préférence système « réduire les animations » */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

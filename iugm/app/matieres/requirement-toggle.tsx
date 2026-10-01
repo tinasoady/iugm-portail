@@ -21,7 +21,7 @@ export function RequirementToggle({ id, mandatory }: { id: string; mandatory: bo
         className="flex items-center gap-2"
       >
         <input type="hidden" name="id" value={id} />
-        <select name="mandatory" defaultValue={String(mandatory)} disabled={pending} className={selectClass}>
+        <select aria-label="Obligatoire ou facultative" name="mandatory" defaultValue={String(mandatory)} disabled={pending} className={selectClass}>
           <option value="true">Obligatoire</option>
           <option value="false">Facultative</option>
         </select>

@@ -104,7 +104,7 @@ export function FinancialInfoForm({ info }: { info: LevelFinancialInfoView }) {
         </button>
         {state.error && <p className="text-xs text-red-600 dark:text-red-400">{state.error}</p>}
         {state.success && (
-          <p className="text-xs text-green-600 dark:text-green-400">{state.success}</p>
+          <p role="status" className="text-xs text-green-600 dark:text-green-400">{state.success}</p>
         )}
       </div>
     </form>

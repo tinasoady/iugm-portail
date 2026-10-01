@@ -73,7 +73,7 @@ export function ReenrollForm({
       >
         <input type="hidden" name="studentId" value={studentId} />
         <div className="flex flex-wrap items-center gap-2">
-          <select name="academicYear" required defaultValue={defaultYear} className={fieldClass}>
+          <select aria-label="Année universitaire" name="academicYear" required defaultValue={defaultYear} className={fieldClass}>
             {years.map((y) => (
               <option key={y} value={y}>
                 {y}
@@ -81,7 +81,7 @@ export function ReenrollForm({
             ))}
           </select>
 
-          <select
+          <select aria-label="Changement de filière (reconversion)"
             name="mention"
             defaultValue={currentMention ?? ""}
             title="Changement de filière (reconversion) : cas particulier"
@@ -149,7 +149,7 @@ export function ReenrollForm({
         </div>
 
         {showForceReason && (
-          <textarea
+          <textarea aria-label="Motif de la dérogation"
             name="forceReason"
             placeholder="Motif de la dérogation (obligatoire pour forcer le passage)"
             rows={2}

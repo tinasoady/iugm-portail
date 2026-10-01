@@ -1,4 +1,5 @@
-﻿import { redirect } from "next/navigation";
+﻿import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
@@ -7,6 +8,8 @@ import { getSelectedAcademicYear } from "@/lib/academic-year";
 import { getSelectedLevel } from "@/lib/level";
 import { AppShell } from "@/app/ui/app-shell";
 import { StatCard } from "@/app/ui/stat-card";
+import { ShowMore } from "@/app/ui/show-more";
+import { LIST_PAGE_SIZE, hasMore, moreHref, parseListLimit } from "@/lib/pagination";
 import { LineChart } from "@/app/ui/line-chart";
 import { IconShield, IconFolder, IconCap, IconUsers } from "@/app/ui/icons";
 import { CreateUserForm } from "./create-user-form";
@@ -41,12 +44,13 @@ function initialsOf(name: string): string {
   return ((parts[0]?.[0] ?? "?") + (parts[1]?.[0] ?? "")).toUpperCase();
 }
 
+// Nuances 700 : texte blanc des initiales à plus de 4,5:1 de contraste (WCAG AA)
 const AVATAR_COLORS = [
   "bg-indigo-600",
-  "bg-sky-600",
-  "bg-emerald-600",
-  "bg-amber-500",
-  "bg-rose-600",
+  "bg-sky-700",
+  "bg-emerald-700",
+  "bg-amber-700",
+  "bg-rose-700",
 ];
 
 function avatarColor(key: string): string {
@@ -70,7 +74,7 @@ function roleFilterHref(role: RoleValue, monthsBack: number): string {
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ months?: string; role?: string }>;
+  searchParams: Promise<{ months?: string; role?: string; limit?: string }>;
 }) {
   const session = await getSession();
   if (!session) redirect("/login");
@@ -80,15 +84,20 @@ export default async function AdminPage({
   const monthsBack = Math.min(12, Math.max(3, Number(params.months) || 6));
   const roleFilter: RoleValue | null =
     params.role && VALID_ROLES.has(params.role) ? (params.role as RoleValue) : null;
+  // « Voir plus » : le bouton ajoute 20 utilisateurs (?limit=, géré côté serveur
+  // pour ne pas charger toute la table)
+  const usersLimit = parseListLimit(params.limit);
   const [selectedYear, selectedLevel] = await Promise.all([
     getSelectedAcademicYear(),
     getSelectedLevel(),
   ]);
 
-  const [users, roleCounts, trend] = await Promise.all([
+  const [me, users, roleCounts, trend] = await Promise.all([
+    prisma.user.findUnique({ where: { id: session.sub }, select: { totpEnabled: true } }),
     prisma.user.findMany({
       where: roleFilter ? { role: roleFilter } : undefined,
       orderBy: { createdAt: "desc" },
+      take: usersLimit,
       select: { id: true, email: true, fullName: true, role: true, createdAt: true },
     }),
     prisma.user.groupBy({ by: ["role"], _count: { _all: true } }),
@@ -97,6 +106,10 @@ export default async function AdminPage({
 
   const countOf = (role: string) =>
     roleCounts.find((r) => r.role === role)?._count._all ?? 0;
+  const totalUsers = roleFilter
+    ? countOf(roleFilter)
+    : roleCounts.reduce((sum, r) => sum + r._count._all, 0);
+  const moreUsersHref = moreHref("/admin", { role: roleFilter ?? undefined, months: String(monthsBack) }, "limit", usersLimit);
 
   return (
     <AppShell
@@ -105,6 +118,25 @@ export default async function AdminPage({
       title="Tableau de bord — Administration"
       active="/admin"
     >
+      {/* Rappel : un compte superadmin ouvre tous les accès, il mérite un second facteur */}
+      {me && !me.totpEnabled && (
+        <div
+          role="note"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300"
+        >
+          <p>
+            <strong>Protégez votre compte :</strong> activez la double authentification pour que
+            votre mot de passe seul ne suffise plus à accéder à l&apos;administration.
+          </p>
+          <Link
+            href="/profil"
+            className="rounded-lg bg-amber-700 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-amber-600"
+          >
+            Activer maintenant
+          </Link>
+        </div>
+      )}
+
       {/* Cartes statistiques — cliquables : accès rapide à la liste filtrée
           par rôle, juste en-dessous (section "Utilisateurs") */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -214,7 +246,7 @@ export default async function AdminPage({
         >
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-              {roleFilter ? `${ROLE_LABELS[roleFilter]} (${users.length})` : `Utilisateurs (${users.length})`}
+              {roleFilter ? `${ROLE_LABELS[roleFilter]} (${totalUsers})` : `Utilisateurs (${totalUsers})`}
             </h2>
             {roleFilter && (
               <a
@@ -228,10 +260,10 @@ export default async function AdminPage({
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-black/10 text-xs uppercase tracking-wider text-zinc-400 dark:border-white/10 dark:text-zinc-500">
-                  <th className="py-2.5 pr-4 font-semibold">Utilisateur</th>
-                  <th className="py-2.5 pr-4 font-semibold">Type</th>
-                  <th className="py-2.5 font-semibold">Identifiant</th>
+                <tr className="border-b border-black/10 text-xs uppercase tracking-wider text-zinc-500 dark:border-white/10 dark:text-zinc-400">
+                  <th scope="col" className="py-2.5 pr-4 font-semibold">Utilisateur</th>
+                  <th scope="col" className="py-2.5 pr-4 font-semibold">Type</th>
+                  <th scope="col" className="py-2.5 font-semibold">Identifiant</th>
                 </tr>
               </thead>
               <tbody>
@@ -269,6 +301,13 @@ export default async function AdminPage({
               </tbody>
             </table>
           </div>
+          <ShowMore
+            shown={users.length}
+            total={totalUsers}
+            href={moreUsersHref}
+            canLoadMore={hasMore(users.length, totalUsers, usersLimit)}
+            pageSize={LIST_PAGE_SIZE}
+          />
         </section>
       </div>
 

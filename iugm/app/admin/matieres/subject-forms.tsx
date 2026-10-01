@@ -25,7 +25,7 @@ export function CreateSubjectForm({ levels }: { levels: readonly string[] }) {
     <form action={formAction} className="flex flex-wrap items-end gap-2">
       <div className="flex flex-col gap-1">
         <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Matière</label>
-        <input
+        <input aria-label="Nom de la matière"
           name="name"
           type="text"
           required
@@ -35,7 +35,7 @@ export function CreateSubjectForm({ levels }: { levels: readonly string[] }) {
       </div>
       <div className="flex flex-col gap-1">
         <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Niveau</label>
-        <select
+        <select aria-label="Niveau"
           name="level"
           required
           value={level}
@@ -54,7 +54,7 @@ export function CreateSubjectForm({ levels }: { levels: readonly string[] }) {
       </div>
       <div className="flex flex-col gap-1">
         <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Filière</label>
-        <select name="formation" required defaultValue="" className={fieldClass}>
+        <select aria-label="Filière" name="formation" required defaultValue="" className={fieldClass}>
           <option value="" disabled>
             Choisir...
           </option>
@@ -73,10 +73,10 @@ export function CreateSubjectForm({ levels }: { levels: readonly string[] }) {
         {pending ? "..." : "Ajouter"}
       </button>
       {state.error && (
-        <p className="w-full text-xs text-red-600 dark:text-red-400">{state.error}</p>
+        <p role="alert" className="w-full text-xs text-red-600 dark:text-red-400">{state.error}</p>
       )}
       {state.success && (
-        <p className="w-full text-xs text-green-600 dark:text-green-400">{state.success}</p>
+        <p role="status" className="w-full text-xs text-green-600 dark:text-green-400">{state.success}</p>
       )}
     </form>
   );

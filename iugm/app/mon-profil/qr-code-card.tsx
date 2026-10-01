@@ -51,10 +51,10 @@ export function QrCodeCard({ initialDataUrl }: { initialDataUrl: string }) {
             </button>
           </form>
           {state.error && (
-            <p className="text-xs text-red-600 dark:text-red-400">{state.error}</p>
+            <p role="alert" className="text-xs text-red-600 dark:text-red-400">{state.error}</p>
           )}
           {state.dataUrl && !state.error && (
-            <p className="text-xs text-green-600 dark:text-green-400">
+            <p role="alert" className="text-xs text-green-600 dark:text-green-400">
               Nouveau code généré — l&apos;ancien QR ne fonctionne plus.
             </p>
           )}

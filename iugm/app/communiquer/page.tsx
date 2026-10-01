@@ -3,7 +3,9 @@ import { FaEye } from "react-icons/fa";
 
 import { getSession } from "@/lib/auth";
 import { hasTaskPermission, getUserFormation } from "@/lib/permissions";
-import { listAnnouncementsForAgent } from "@/lib/announcements";
+import { listAnnouncementsForAgent, countAnnouncementsForAgent } from "@/lib/announcements";
+import { ShowMore } from "@/app/ui/show-more";
+import { LIST_PAGE_SIZE, hasMore, moreHref, parseListLimit } from "@/lib/pagination";
 import { FORMATIONS } from "@/lib/formations";
 import { AppShell } from "@/app/ui/app-shell";
 import { ComposeForm, DeleteAnnouncementButton } from "./announcement-forms";
@@ -13,7 +15,11 @@ const dateFormatter = new Intl.DateTimeFormat("fr-FR", {
   timeStyle: "short",
 });
 
-export default async function CommuniquerPage() {
+export default async function CommuniquerPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ limit?: string }>;
+}) {
   const session = await getSession();
   if (!session) redirect("/login");
   if (!["AGENT_ADMINISTRATION", "AGENT_PEDAGOGIQUE", "SUPERADMIN"].includes(session.role)) {
@@ -23,8 +29,10 @@ export default async function CommuniquerPage() {
     redirect("/");
   }
 
-  const [announcements, userFormation] = await Promise.all([
-    listAnnouncementsForAgent(),
+  const limit = parseListLimit((await searchParams).limit);
+  const [announcements, totalAnnouncements, userFormation] = await Promise.all([
+    listAnnouncementsForAgent(limit),
+    countAnnouncementsForAgent(),
     getUserFormation(session.sub, session.role),
   ]);
 
@@ -54,7 +62,7 @@ export default async function CommuniquerPage() {
         {/* Historique */}
         <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-zinc-900">
           <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-            Communiqués envoyés ({announcements.length})
+            Communiqués envoyés ({totalAnnouncements})
           </h2>
           {announcements.length === 0 ? (
             <p className="text-sm text-zinc-500 dark:text-zinc-400">
@@ -99,6 +107,13 @@ export default async function CommuniquerPage() {
               ))}
             </div>
           )}
+          <ShowMore
+            shown={announcements.length}
+            total={totalAnnouncements}
+            href={moreHref("/communiquer", {}, "limit", limit)}
+            canLoadMore={hasMore(announcements.length, totalAnnouncements, limit)}
+            pageSize={LIST_PAGE_SIZE}
+          />
         </section>
       </div>
     </AppShell>

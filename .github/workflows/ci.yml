@@ -67,6 +67,75 @@ jobs:
       - name: 9. Vérifier la compilation Next.js (Build)
         run: npm run build
 
+  # Tests de bout en bout : un vrai navigateur (Chromium) parcourt l'application
+  # construite — connexion, double authentification, parcours d'inscription,
+  # mot de passe oublié, pagination — et un contrôle d'accessibilité automatique
+  # (axe, WCAG A/AA) sur les pages principales. Base PostgreSQL éphémère dédiée.
+  e2e:
+    name: Tests de bout en bout (Playwright)
+    runs-on: ubuntu-latest
+    needs: build-and-check
+    timeout-minutes: 25
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: iugm_test
+          POSTGRES_PASSWORD: iugm_test
+          POSTGRES_DB: iugm_scolarite_test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U iugm_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: "postgresql://iugm_test:iugm_test@localhost:5432/iugm_scolarite_test_db?schema=public"
+      AUTH_SECRET: "ci-secret-not-for-production-0000000000000000000000000000000000"
+
+    defaults:
+      run:
+        working-directory: ./iugm
+
+    steps:
+      - name: 1. Récupérer le code source
+        uses: actions/checkout@v4
+
+      - name: 2. Configurer Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: 3. Installer les dépendances
+        run: npm install
+
+      - name: 4. Préparer la base (client Prisma + migrations)
+        run: |
+          npx prisma generate
+          npx prisma migrate deploy
+
+      - name: 5. Construire l'application
+        run: npm run build
+
+      - name: 6. Installer le navigateur Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: 7. Lancer les scénarios de bout en bout
+        run: npx playwright test
+
+      - name: 8. Conserver le rapport en cas d'échec
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rapport-playwright
+          path: |
+            iugm/playwright-report/
+            iugm/test-results/
+          retention-days: 7
+
 # ---------------------------------------------------------------------------
 # Déploiement automatique (CD) : mis de côté pour l'instant, pas supprimé.
 # Le blocage n'était pas le principe (build-and-check reste le vrai

@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useActionState } from "react";
+import { useRouter } from "next/navigation";
 import { FaCheckCircle, FaPrint } from "react-icons/fa";
 import { validatePedagoAction, type ValidateState } from "./actions";
 
@@ -10,6 +11,7 @@ const initialState: ValidateState = {};
 // (email pro + mot de passe) sont affichés une seule fois.
 export function ValidatePedagoButton({ studentId }: { studentId: string }) {
   const [state, formAction, pending] = useActionState(validatePedagoAction, initialState);
+  const router = useRouter();
 
   if (state.credentials) {
     return (
@@ -42,6 +44,13 @@ export function ValidatePedagoButton({ studentId }: { studentId: string }) {
         >
           <FaPrint size={13} /> Imprimer le reçu d&apos;inscription
         </a>
+        <button
+          type="button"
+          onClick={() => router.refresh()}
+          className="mt-2 ml-2 rounded-lg border border-green-300 px-3 py-1.5 font-semibold text-green-800 transition hover:bg-green-100 dark:border-green-800 dark:text-green-300 dark:hover:bg-green-900"
+        >
+          J&apos;ai noté les identifiants — actualiser la liste
+        </button>
       </div>
     );
   }

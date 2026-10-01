@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useActionState } from "react";
+import { usePreserveOnError } from "@/app/ui/use-preserve-on-error";
 import { createUser, type CreateUserState } from "./actions";
 
 const ROLE_OPTIONS = [
@@ -16,9 +17,10 @@ const initialState: CreateUserState = {};
 
 export function CreateUserForm() {
   const [state, formAction, pending] = useActionState(createUser, initialState);
+  const [formRef, handleSubmit] = usePreserveOnError(state.error, state);
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form ref={formRef} onSubmit={handleSubmit} action={formAction} className="space-y-4">
       <div>
         <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-200" htmlFor="fullName">
           Nom complet
@@ -60,17 +62,17 @@ export function CreateUserForm() {
           className={inputClass}
         />
         <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-          Au moins 8 caractères. À communiquer à l&apos;utilisateur.
+          Au moins 8 caractères, avec une lettre et un chiffre. À communiquer à l&apos;utilisateur, qui devra le changer dès sa première connexion.
         </p>
       </div>
 
       {state.error && (
-        <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
+        <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
           {state.error}
         </p>
       )}
       {state.success && (
-        <p className="rounded-xl bg-green-50 px-3 py-2 text-sm text-green-700 dark:bg-green-950 dark:text-green-300">
+        <p role="status" className="rounded-xl bg-green-50 px-3 py-2 text-sm text-green-700 dark:bg-green-950 dark:text-green-300">
           {state.success}
         </p>
       )}

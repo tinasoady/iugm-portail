@@ -48,7 +48,7 @@ function PasswordField({
           type="button"
           onClick={() => setVisible((v) => !v)}
           aria-label={visible ? "Masquer le mot de passe" : "Afficher le mot de passe"}
-          className="absolute inset-y-0 right-0 flex items-center px-3 text-zinc-400 transition hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300"
+          className="absolute inset-y-0 right-0 flex items-center px-3 text-zinc-500 transition hover:text-zinc-600 dark:text-zinc-400 dark:hover:text-zinc-300"
         >
           {visible ? <FaEyeSlash size={16} /> : <FaEye size={16} />}
         </button>
@@ -82,7 +82,7 @@ export function ChangePasswordForm() {
         label="Nouveau mot de passe *"
         autoComplete="new-password"
         minLength={8}
-        helper="Au moins 8 caractères, différent de votre matricule seul."
+        helper="Au moins 8 caractères, avec une lettre et un chiffre ; ni votre matricule, ni votre identifiant."
       />
 
       <PasswordField
@@ -94,7 +94,7 @@ export function ChangePasswordForm() {
       />
 
       {state.error && (
-        <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
+        <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
           {state.error}
         </p>
       )}

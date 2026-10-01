@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { logAction } from "@/lib/audit";
 import { tasksForRole } from "@/lib/permissions";
+import { validatePasswordStrength } from "@/lib/password-policy";
 
 const ROLES = ["SUPERADMIN", "AGENT_ADMINISTRATION", "AGENT_PEDAGOGIQUE", "ETUDIANT"] as const;
 type RoleValue = (typeof ROLES)[number];
@@ -38,9 +39,8 @@ export async function createUser(
   if (!ROLES.includes(role as RoleValue)) {
     return { error: "Rôle invalide." };
   }
-  if (password.length < 8) {
-    return { error: "Le mot de passe doit contenir au moins 8 caractères." };
-  }
+  const weakness = validatePasswordStrength(password, { email });
+  if (weakness) return { error: weakness };
 
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
@@ -55,6 +55,9 @@ export async function createUser(
       fullName,
       role: role as RoleValue,
       passwordHash,
+      // Le superadmin connaît ce mot de passe : l'intéressé doit en choisir un
+      // personnel dès sa première connexion.
+      mustChangePassword: true,
       // Un nouvel agent reçoit toutes les tâches de son rôle par défaut ;
       // le superadmin peut ensuite les restreindre depuis la page Permissions
       permissions: tasksForRole(role),

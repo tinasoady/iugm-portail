@@ -29,6 +29,20 @@ model User {
   // envoyé une seule fois à un étudiant, voir authenticateUser (lib/login.ts)
   // et sendWelcomeAnnouncementOnFirstLogin (lib/announcements.ts).
   firstLoginAt            DateTime?
+  // Toute session émise avant cette date est refusée (voir resolveSession dans
+  // lib/auth.ts) : posée à chaque changement/réinitialisation de mot de passe
+  // pour déconnecter les autres appareils (cookie volé, mot de passe compromis).
+  sessionsValidAfter      DateTime?
+  // Authentification à deux facteurs (TOTP, RFC 6238) — voir lib/two-factor.ts.
+  // totpSecret est chiffré (AES-256-GCM, lib/secret-crypto.ts) ; il reste
+  // renseigné pendant la configuration, avant que totpEnabled ne passe à true.
+  totpSecret              String?
+  totpEnabled             Boolean                 @default(false)
+  // Dernier pas de 30 s accepté : un même code ne peut servir qu'une fois (rejeu)
+  totpLastStep            Int?
+  // Codes de secours à usage unique (empreintes SHA-256, jamais en clair)
+  recoveryCodes           String[]                @default([])
+  passwordResetTokens     PasswordResetToken[]
   // Fonction / poste (ex : Secrétaire, Chef de scolarité, Responsable finance...)
   jobTitle                String?
   // Photo de profil (data URL, gérée par l'utilisateur sur sa page Mon compte)
@@ -499,6 +513,23 @@ model AuditLog {
   createdAt DateTime @default(now())
 
   @@index([createdAt])
+  @@index([action, createdAt])
+  @@index([actorId, createdAt])
+}
+
+// Jeton de réinitialisation de mot de passe envoyé par e-mail. Seule l'empreinte
+// SHA-256 est stockée : une fuite de la base ne donne pas de lien exploitable.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 // Tentatives de connexion (succès et échecs), utilisées uniquement pour le

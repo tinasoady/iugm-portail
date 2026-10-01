@@ -30,7 +30,14 @@ export const FORMATIONS_MASTER = [
 // Liste complète (licence + master réunis) : pour les usages qui ne dépendent
 // pas du niveau — assignation d'une formation à un secrétaire/agent (page
 // Permissions), ciblage libre des communiqués, recherche/filtre des dossiers.
-export const FORMATIONS = [...FORMATIONS_LICENCE, ...FORMATIONS_MASTER];
+//
+// Dédoublonnée par libellé : « Commerce International » et « Marketing et
+// Communication » existent en licence ET en master. Sans cela, les listes
+// déroulantes avaient deux options identiques (et React signalait des clés
+// dupliquées, car le libellé sert de clé).
+export const FORMATIONS = [...FORMATIONS_LICENCE, ...FORMATIONS_MASTER].filter(
+  (formation, index, all) => all.findIndex((f) => f.label === formation.label) === index,
+);
 
 // Filières disponibles pour un niveau donné : mentions de licence en
 // L1/L2/L3, spécialisations de master en M1/M2. Niveau inconnu ou vide =

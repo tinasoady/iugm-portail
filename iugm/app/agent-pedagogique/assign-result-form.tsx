@@ -22,7 +22,7 @@ export function AssignResultForm({
     <div className="space-y-1">
       <form action={formAction} className="flex flex-wrap items-center gap-2">
         <input type="hidden" name="studentId" value={studentId} />
-        <input
+        <input aria-label="Année universitaire"
           name="academicYear"
           type="text"
           required
@@ -31,11 +31,11 @@ export function AssignResultForm({
           title="Format : 2025-2026"
           className={`w-24 ${fieldClass}`}
         />
-        <select name="semester" required defaultValue="S1" className={fieldClass}>
+        <select aria-label="Semestre" name="semester" required defaultValue="S1" className={fieldClass}>
           <option value="S1">S1</option>
           <option value="S2">S2</option>
         </select>
-        <input
+        <input aria-label="Moyenne sur 20"
           name="average"
           type="number"
           required

@@ -75,15 +75,15 @@ export function BatchesTable({
         <div className="overflow-x-auto rounded-xl border border-black/5 dark:border-white/10">
           <table className="w-full min-w-180 text-left text-sm">
             <thead>
-              <tr className="border-b border-black/10 text-xs uppercase tracking-wider text-zinc-400 dark:border-white/10 dark:text-zinc-500">
-                <th className="px-4 py-2.5 font-semibold">Type de données</th>
-                <th className="px-4 py-2.5 font-semibold">Année universitaire</th>
-                <th className="px-4 py-2.5 font-semibold">Filière</th>
-                <th className="px-4 py-2.5 font-semibold">Niveau</th>
-                <th className="px-4 py-2.5 font-semibold">Fiches en base</th>
-                <th className="px-4 py-2.5 font-semibold">Non utilisées</th>
-                <th className="px-4 py-2.5 font-semibold">Dossiers créés</th>
-                <th className="px-4 py-2.5 font-semibold">Action</th>
+              <tr className="border-b border-black/10 text-xs uppercase tracking-wider text-zinc-500 dark:border-white/10 dark:text-zinc-400">
+                <th scope="col" className="px-4 py-2.5 font-semibold">Type de données</th>
+                <th scope="col" className="px-4 py-2.5 font-semibold">Année universitaire</th>
+                <th scope="col" className="px-4 py-2.5 font-semibold">Filière</th>
+                <th scope="col" className="px-4 py-2.5 font-semibold">Niveau</th>
+                <th scope="col" className="px-4 py-2.5 font-semibold">Fiches en base</th>
+                <th scope="col" className="px-4 py-2.5 font-semibold">Non utilisées</th>
+                <th scope="col" className="px-4 py-2.5 font-semibold">Dossiers créés</th>
+                <th scope="col" className="px-4 py-2.5 font-semibold">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -102,12 +102,12 @@ export function BatchesTable({
                     </td>
                     <td className="px-4 py-2.5 text-zinc-600 dark:text-zinc-400">
                       {b.formation ?? (
-                        <span className="italic text-zinc-400 dark:text-zinc-500">Sans filière</span>
+                        <span className="italic text-zinc-500 dark:text-zinc-400">Sans filière</span>
                       )}
                     </td>
                     <td className="px-4 py-2.5 text-zinc-600 dark:text-zinc-400">
                       {b.level ?? (
-                        <span className="italic text-zinc-400 dark:text-zinc-500">Sans niveau</span>
+                        <span className="italic text-zinc-500 dark:text-zinc-400">Sans niveau</span>
                       )}
                     </td>
                     <td className="px-4 py-2.5 text-zinc-600 dark:text-zinc-400">{b.count}</td>

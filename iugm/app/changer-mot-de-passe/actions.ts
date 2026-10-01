@@ -1,11 +1,13 @@
 "use server";
 
 import bcrypt from "bcryptjs";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
-import { getSession } from "@/lib/auth";
+import { getSession, createSessionToken, SESSION_COOKIE, sessionCookieOptions } from "@/lib/auth";
 import { logAction } from "@/lib/audit";
+import { validatePasswordStrength } from "@/lib/password-policy";
 
 export type ChangePasswordState = { error?: string };
 
@@ -20,7 +22,8 @@ export async function changePasswordAction(
   _prev: ChangePasswordState,
   formData: FormData,
 ): Promise<ChangePasswordState> {
-  const session = await getSession();
+  // Ce compte peut être soumis au changement obligatoire : c'est ici qu'il s'en acquitte
+  const session = await getSession({ allowPasswordChange: true });
   if (!session) return { error: "Session expirée : reconnectez-vous." };
 
   const currentPassword = String(formData.get("currentPassword") ?? "");
@@ -29,9 +32,6 @@ export async function changePasswordAction(
 
   if (!currentPassword || !newPassword || !confirm) {
     return { error: "Tous les champs sont obligatoires." };
-  }
-  if (newPassword.length < 8) {
-    return { error: "Le nouveau mot de passe doit contenir au moins 8 caractères." };
   }
   if (newPassword !== confirm) {
     return { error: "La confirmation ne correspond pas au nouveau mot de passe." };
@@ -48,16 +48,21 @@ export async function changePasswordAction(
 
   // Un étudiant ne doit pas choisir son matricule seul (public, donc prévisible)
   const studentFile = await prisma.student.findFirst({ where: { accountId: user.id } });
-  if (studentFile && newPassword === studentFile.matricule) {
-    return { error: "Le nouveau mot de passe ne doit pas être votre numéro matricule." };
-  }
+  const weakness = validatePasswordStrength(newPassword, {
+    email: user.email,
+    matricule: studentFile?.matricule,
+  });
+  if (weakness) return { error: weakness };
 
   const passwordHash = await bcrypt.hash(newPassword, 10);
   // Les deux écritures (compte + dossier étudiant) doivent réussir ensemble
   await prisma.$transaction(async (tx) => {
     await tx.user.update({
       where: { id: user.id },
-      data: { passwordHash, mustChangePassword: false },
+      // sessionsValidAfter : toute autre session ouverte avec l'ancien mot de
+      // passe (appareil volé, cookie copié) est fermée. La session courante est
+      // réémise juste après.
+      data: { passwordHash, mustChangePassword: false, sessionsValidAfter: new Date() },
     });
     // Le mot de passe initial imprimé n'est plus valable : on l'efface du dossier
     if (studentFile) {
@@ -69,6 +74,15 @@ export async function changePasswordAction(
   });
 
   await logAction("PASSWORD_CHANGED", `Mot de passe changé par ${user.email}`, user.id);
+
+  // Réémission de la session courante (sans la contrainte de changement
+  // obligatoire), puisque sessionsValidAfter vient de fermer l'ancienne.
+  const cookieStore = await cookies();
+  cookieStore.set(
+    SESSION_COOKIE,
+    createSessionToken({ sub: user.id, email: user.email, role: user.role }),
+    sessionCookieOptions(),
+  );
 
   redirect(HOME_BY_ROLE[user.role] ?? "/");
 }

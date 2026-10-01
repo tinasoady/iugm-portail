@@ -7,6 +7,7 @@ import { getSession } from "@/lib/auth";
 import { logAction } from "@/lib/audit";
 import { saveSettings, getSettings, INSTITUTION_KEYS } from "@/lib/settings";
 import { saveUploadedFile, deleteUploadedFile } from "@/lib/storage";
+import { resolveImageType } from "@/lib/image-sniff";
 import { FINANCIAL_INFO_DEFAULTS, type FinancialInfoFields } from "@/lib/finance";
 import { LEVELS } from "@/lib/level-shared";
 
@@ -68,7 +69,13 @@ export async function uploadLogoAction(
 
   const previousLogo = (await getSettings()).logo;
   const buffer = Buffer.from(await file.arrayBuffer());
-  const { url } = await saveUploadedFile(buffer, file.type, "settings");
+  // Le type déclaré par le navigateur ne prouve rien : on vérifie le contenu réel
+  // (et on refuse tout SVG contenant du code actif)
+  const realType = resolveImageType(buffer, { allowSvg: true });
+  if (!realType) {
+    return { error: "Ce fichier n'est pas une image valide (PNG, JPEG, WebP ou SVG sans script)." };
+  }
+  const { url } = await saveUploadedFile(buffer, realType, "settings");
   await saveSettings({ logo: url });
   await deleteUploadedFile(previousLogo); // évite d'accumuler les anciens logos remplacés
   await logAction("SETTINGS_UPDATED", "Logo de l'établissement mis à jour", session.sub);

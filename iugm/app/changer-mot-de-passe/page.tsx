@@ -7,7 +7,7 @@ import { AppShell } from "@/app/ui/app-shell";
 import { ChangePasswordForm } from "./change-password-form";
 
 export default async function ChangePasswordPage() {
-  const session = await getSession();
+  const session = await getSession({ allowPasswordChange: true });
   if (!session) redirect("/login");
 
   const user = await prisma.user.findUnique({

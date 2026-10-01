@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import type { Prisma } from "@prisma/client";
 
 import { FaLock } from "react-icons/fa";
 
@@ -8,6 +9,8 @@ import { getSession } from "@/lib/auth";
 import { tasksForRole, TASKS } from "@/lib/permissions";
 import { FORMATIONS } from "@/lib/formations";
 import { AppShell } from "@/app/ui/app-shell";
+import { ShowMore } from "@/app/ui/show-more";
+import { LIST_PAGE_SIZE, hasMore, moreHref, parseListLimit } from "@/lib/pagination";
 import { PermissionActions } from "./permission-row";
 import { TaskPermissionsForm, DeleteUserButton } from "./task-permissions-form";
 
@@ -27,7 +30,11 @@ const ROLE_BADGE_CLASSES: Record<string, string> = {
     "rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
 };
 
-export default async function PermissionsPage() {
+export default async function PermissionsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ qs?: string; limit?: string }>;
+}) {
   const session = await getSession();
   if (!session) redirect("/login");
   if (session.role !== "SUPERADMIN") redirect("/");
@@ -36,7 +43,22 @@ export default async function PermissionsPage() {
   // tâches à cocher) et les étudiants (aucune de ces notions ne s'applique —
   // juste un compte de connexion). On les affiche donc dans deux sections
   // séparées plutôt que dans une même liste indifférenciée.
-  const [agents, students] = await Promise.all([
+  const { qs, limit: limitParam } = await searchParams;
+  const studentQuery = qs?.trim() || undefined;
+  const limit = parseListLimit(limitParam);
+  const studentWhere: Prisma.UserWhereInput = {
+    role: "ETUDIANT",
+    ...(studentQuery
+      ? {
+          OR: [
+            { fullName: { contains: studentQuery, mode: "insensitive" } },
+            { email: { contains: studentQuery, mode: "insensitive" } },
+            { studentFile: { is: { matricule: { contains: studentQuery, mode: "insensitive" } } } },
+          ],
+        }
+      : {}),
+  };
+  const [agents, students, totalStudents] = await Promise.all([
     prisma.user.findMany({
       where: { role: { in: ["SUPERADMIN", "AGENT_ADMINISTRATION", "AGENT_PEDAGOGIQUE"] } },
       orderBy: [{ role: "asc" }, { createdAt: "desc" }],
@@ -47,14 +69,16 @@ export default async function PermissionsPage() {
         role: true,
         active: true,
         mustChangePassword: true,
+        totpEnabled: true,
         jobTitle: true,
         permissions: true,
         formation: true,
       },
     }),
     prisma.user.findMany({
-      where: { role: "ETUDIANT" },
+      where: studentWhere,
       orderBy: { fullName: "asc" },
+      take: limit,
       select: {
         id: true,
         email: true,
@@ -65,6 +89,7 @@ export default async function PermissionsPage() {
         studentFile: { select: { matricule: true } },
       },
     }),
+    prisma.user.count({ where: studentWhere }),
   ]);
 
   return (
@@ -129,6 +154,11 @@ export default async function PermissionsPage() {
                       ● Désactivé
                     </span>
                   )}
+                  {user.totpEnabled && (
+                    <span className="rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-medium text-sky-700 dark:bg-sky-950 dark:text-sky-300">
+                      🔒 2FA
+                    </span>
+                  )}
                   {user.mustChangePassword && (
                     <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-300">
                       Doit changer son mdp
@@ -145,6 +175,7 @@ export default async function PermissionsPage() {
                   active={user.active}
                   isSelf={user.id === session.sub}
                   email={user.email}
+                  totpEnabled={user.totpEnabled}
                 />
                 {user.id !== session.sub && (
                   <DeleteUserButton userId={user.id} email={user.email} />
@@ -155,7 +186,7 @@ export default async function PermissionsPage() {
             {/* Tâches autorisées */}
             {roleTasks.length > 0 && (
               <div className="mt-4 border-t border-black/5 pt-4 dark:border-white/10">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                   Tâches autorisées ({user.permissions.length} / {roleTasks.length})
                 </p>
                 <TaskPermissionsForm
@@ -177,7 +208,7 @@ export default async function PermissionsPage() {
       {/* ------------------------------------------------------------- */}
       <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-zinc-900">
         <h2 className="mb-1 text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-          Comptes étudiants ({students.length})
+          Comptes étudiants ({totalStudents})
         </h2>
         <p className="mb-4 text-xs text-zinc-500 dark:text-zinc-400">
           Un étudiant n&apos;a ni fonction, ni formation, ni tâche à cocher : juste un compte de
@@ -189,17 +220,39 @@ export default async function PermissionsPage() {
           .
         </p>
 
+        <form method="get" className="mb-4 flex items-center gap-2">
+          <label htmlFor="qs" className="sr-only">
+            Rechercher un compte étudiant
+          </label>
+          <input
+            id="qs"
+            name="qs"
+            type="search"
+            defaultValue={studentQuery ?? ""}
+            placeholder="Nom, identifiant ou matricule..."
+            className="w-full min-w-0 rounded-xl border border-black/10 bg-white px-3 py-1.5 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-indigo-500/40 sm:w-72 dark:border-white/10 dark:bg-zinc-950 dark:text-zinc-50"
+          />
+          <button
+            type="submit"
+            className="rounded-xl border border-black/10 px-3 py-1.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-white/10 dark:text-zinc-200 dark:hover:bg-zinc-800"
+          >
+            Rechercher
+          </button>
+        </form>
+
         {students.length === 0 ? (
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">Aucun compte étudiant.</p>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+            {studentQuery ? `Aucun compte ne correspond à « ${studentQuery} ».` : "Aucun compte étudiant."}
+          </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-black/10 text-xs uppercase tracking-wider text-zinc-400 dark:border-white/10 dark:text-zinc-500">
-                  <th className="py-2.5 pr-4 font-semibold">Nom</th>
-                  <th className="py-2.5 pr-4 font-semibold">Matricule</th>
-                  <th className="py-2.5 pr-4 font-semibold">Statut</th>
-                  <th className="py-2.5 font-semibold">Gestion du compte</th>
+                <tr className="border-b border-black/10 text-xs uppercase tracking-wider text-zinc-500 dark:border-white/10 dark:text-zinc-400">
+                  <th scope="col" className="py-2.5 pr-4 font-semibold">Nom</th>
+                  <th scope="col" className="py-2.5 pr-4 font-semibold">Matricule</th>
+                  <th scope="col" className="py-2.5 pr-4 font-semibold">Statut</th>
+                  <th scope="col" className="py-2.5 font-semibold">Gestion du compte</th>
                 </tr>
               </thead>
               <tbody>
@@ -255,6 +308,13 @@ export default async function PermissionsPage() {
             </table>
           </div>
         )}
+        <ShowMore
+          shown={students.length}
+          total={totalStudents}
+          href={moreHref("/admin/permissions", { qs: studentQuery }, "limit", limit)}
+          canLoadMore={hasMore(students.length, totalStudents, limit)}
+          pageSize={LIST_PAGE_SIZE}
+        />
       </section>
     </AppShell>
   );

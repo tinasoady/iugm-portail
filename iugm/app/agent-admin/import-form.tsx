@@ -10,7 +10,7 @@ export function ImportCsvForm() {
 
   return (
     <form action={formAction} className="space-y-3">
-      <input
+      <input aria-label="Fichier CSV à importer"
         name="file"
         type="file"
         accept=".csv,text/csv"
@@ -18,12 +18,12 @@ export function ImportCsvForm() {
         className="block w-full text-sm text-zinc-600 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-100 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-zinc-700 dark:text-zinc-400 dark:file:bg-zinc-900 dark:file:text-zinc-300"
       />
       {state.error && (
-        <p className="rounded-xl bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950 dark:text-red-300">
+        <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950 dark:text-red-300">
           {state.error}
         </p>
       )}
       {state.success && (
-        <p className="rounded-xl bg-green-50 px-3 py-2 text-xs text-green-700 dark:bg-green-950 dark:text-green-300">
+        <p role="status" className="rounded-xl bg-green-50 px-3 py-2 text-xs text-green-700 dark:bg-green-950 dark:text-green-300">
           {state.success}
         </p>
       )}

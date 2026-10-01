@@ -55,9 +55,9 @@ export function NotesForm({
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-black/10 text-zinc-500 dark:border-white/10 dark:text-zinc-400">
-              <th className="py-2 pr-4 font-medium">Matière</th>
-              <th className="py-2 pr-4 font-medium">Caractère</th>
-              <th className="py-2 font-medium">Note /20</th>
+              <th scope="col" className="py-2 pr-4 font-medium">Matière</th>
+              <th scope="col" className="py-2 pr-4 font-medium">Caractère</th>
+              <th scope="col" className="py-2 font-medium">Note /20</th>
             </tr>
           </thead>
           <tbody>
@@ -71,6 +71,7 @@ export function NotesForm({
                 </td>
                 <td className="py-2">
                   <input
+                    aria-label={`Note de ${s.name} (sur 20)`}
                     name={`note_${s.id}`}
                     type="number"
                     min={0}

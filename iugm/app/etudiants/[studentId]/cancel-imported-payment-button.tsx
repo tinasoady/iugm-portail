@@ -39,7 +39,7 @@ export function CancelImportedPaymentButton({ studentId }: { studentId: string }
       </form>
       {state.error && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{state.error}</p>}
       {state.success && (
-        <p className="mt-1 text-xs text-green-600 dark:text-green-400">{state.success}</p>
+        <p role="status" className="mt-1 text-xs text-green-600 dark:text-green-400">{state.success}</p>
       )}
     </div>
   );

@@ -6,7 +6,16 @@ import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth";
 // Routes accessibles sans session : la connexion elle-même, la route API qui
 // la crée, et la carte étudiante publique consultée via QR code (voir le
 // commentaire dans app/carte-etudiant/[token]/page.tsx).
-const PUBLIC_PREFIXES = ["/login", "/api/auth/login", "/carte-etudiant"];
+const PUBLIC_PREFIXES = [
+  "/login",
+  "/api/auth/login",
+  "/carte-etudiant",
+  "/mot-de-passe-oublie",
+  "/reinitialiser-mot-de-passe",
+  "/api/health",
+];
+
+const PASSWORD_CHANGE_PATH = "/changer-mot-de-passe";
 
 function isPublic(pathname: string): boolean {
   return PUBLIC_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
@@ -27,6 +36,14 @@ export function proxy(request: NextRequest) {
   const session = token ? verifySessionToken(token) : null;
   if (!session) {
     return NextResponse.redirect(new URL("/login", request.url));
+  }
+
+  // Changement de mot de passe obligatoire (mot de passe temporaire ou initial) :
+  // la session ne sert qu'à atteindre la page de changement, nulle part ailleurs.
+  // Les Server Actions sont des POST vers l'URL de la page courante : elles
+  // sont donc bloquées de la même façon hors de cette page.
+  if (session.mcp && pathname !== PASSWORD_CHANGE_PATH) {
+    return NextResponse.redirect(new URL(PASSWORD_CHANGE_PATH, request.url));
   }
 
   return NextResponse.next();

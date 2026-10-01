@@ -14,6 +14,8 @@ import { LineChart } from "@/app/ui/line-chart";
 import { IconUsers, IconCash, IconClipboard, IconFolder } from "@/app/ui/icons";
 import { FaCheck, FaTimes, FaHourglassHalf } from "react-icons/fa";
 import { Tranche2Form } from "./tranche2-form";
+import { ShowMore } from "@/app/ui/show-more";
+import { LIST_PAGE_SIZE, hasMore, moreHref, parseListLimit } from "@/lib/pagination";
 
 const amountFormatter = new Intl.NumberFormat("fr-FR");
 
@@ -70,12 +72,17 @@ const DUE_STATUS_LABEL: Record<"UNPAID" | "PARTIAL", string> = {
   PARTIAL: "2e tranche due",
 };
 
-export default async function EcolagePage() {
+export default async function EcolagePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ limit?: string }>;
+}) {
   const session = await getSession();
   if (!session) redirect("/login");
   if (!["AGENT_ADMINISTRATION", "SUPERADMIN"].includes(session.role)) redirect("/");
   if (!(await hasTaskPermission(session.sub, session.role, "ecolage"))) redirect("/agent-admin");
 
+  const limit = parseListLimit((await searchParams).limit);
   // Année universitaire et niveau pilotés par les sélecteurs globaux de l'en-tête
   const [year, level] = await Promise.all([getSelectedAcademicYear(), getSelectedLevel()]);
   const [stats, due, revenueTrend] = await Promise.all([
@@ -83,6 +90,7 @@ export default async function EcolagePage() {
     listStudentsWithBalanceDue(year ?? undefined, level ?? undefined),
     getEcolageRevenueTrend({ academicYear: year, level }),
   ]);
+  const visibleDue = due.slice(0, limit);
   const fullPct = pct(stats.full, stats.total);
   const partialPct = pct(stats.partial, stats.total);
   const unpaidPct = pct(stats.unpaid, stats.total);
@@ -248,11 +256,11 @@ export default async function EcolagePage() {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-black/10 text-xs uppercase tracking-wider text-zinc-400 dark:border-white/10 dark:text-zinc-500">
-                  <th className="py-2.5 pr-4 font-semibold">Formation</th>
-                  <th className="py-2.5 pr-4 font-semibold">Intégral / Partiel / Non payé</th>
-                  <th className="py-2.5 pr-4 font-semibold">Taux</th>
-                  <th className="w-1/3 py-2.5 font-semibold">Progression</th>
+                <tr className="border-b border-black/10 text-xs uppercase tracking-wider text-zinc-500 dark:border-white/10 dark:text-zinc-400">
+                  <th scope="col" className="py-2.5 pr-4 font-semibold">Formation</th>
+                  <th scope="col" className="py-2.5 pr-4 font-semibold">Intégral / Partiel / Non payé</th>
+                  <th scope="col" className="py-2.5 pr-4 font-semibold">Taux</th>
+                  <th scope="col" className="w-1/3 py-2.5 font-semibold">Progression</th>
                 </tr>
               </thead>
               <tbody>
@@ -266,7 +274,7 @@ export default async function EcolagePage() {
                     </td>
                     <td className="py-2.5 pr-4 text-zinc-600 dark:text-zinc-400">
                       {f.full} / {f.partial} / {f.unpaid}{" "}
-                      <span className="text-zinc-400 dark:text-zinc-500">(sur {f.total})</span>
+                      <span className="text-zinc-500 dark:text-zinc-400">(sur {f.total})</span>
                     </td>
                     <td className="py-2.5 pr-4 font-semibold text-zinc-900 dark:text-zinc-50">
                       {pct(f.full, f.total)}%
@@ -299,23 +307,23 @@ export default async function EcolagePage() {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-black/10 text-xs uppercase tracking-wider text-zinc-400 dark:border-white/10 dark:text-zinc-500">
-                  <th className="py-2.5 pr-4 font-semibold">Matricule</th>
-                  <th className="py-2.5 pr-4 font-semibold">Nom</th>
-                  <th className="py-2.5 pr-4 font-semibold">Formation</th>
-                  <th className="py-2.5 pr-4 font-semibold">Statut</th>
-                  <th className="py-2.5 pr-4 font-semibold">Montant dû</th>
-                  <th className="py-2.5 pr-4 font-semibold">Téléphone</th>
-                  <th className="py-2.5 font-semibold">Action</th>
+                <tr className="border-b border-black/10 text-xs uppercase tracking-wider text-zinc-500 dark:border-white/10 dark:text-zinc-400">
+                  <th scope="col" className="py-2.5 pr-4 font-semibold">Matricule</th>
+                  <th scope="col" className="py-2.5 pr-4 font-semibold">Nom</th>
+                  <th scope="col" className="py-2.5 pr-4 font-semibold">Formation</th>
+                  <th scope="col" className="py-2.5 pr-4 font-semibold">Statut</th>
+                  <th scope="col" className="py-2.5 pr-4 font-semibold">Montant dû</th>
+                  <th scope="col" className="py-2.5 pr-4 font-semibold">Téléphone</th>
+                  <th scope="col" className="py-2.5 font-semibold">Action</th>
                 </tr>
               </thead>
               <tbody>
-                {due.map((s) => (
+                {visibleDue.map((s) => (
                   <tr key={s.id} className="border-b border-black/5 last:border-0 dark:border-white/5">
                     <td className="py-2.5 pr-4 whitespace-nowrap font-mono text-xs text-zinc-600 dark:text-zinc-400">
                       {s.matricule}
                       {s.academicYear && (
-                        <span className="block text-[10px] text-zinc-400 dark:text-zinc-500">
+                        <span className="block text-[10px] text-zinc-500 dark:text-zinc-400">
                           {s.academicYear}
                         </span>
                       )}
@@ -364,6 +372,13 @@ export default async function EcolagePage() {
             </table>
           </div>
         )}
+        <ShowMore
+          shown={visibleDue.length}
+          total={due.length}
+          href={moreHref("/agent-admin/ecolage", {}, "limit", limit)}
+          canLoadMore={hasMore(visibleDue.length, due.length, limit)}
+          pageSize={LIST_PAGE_SIZE}
+        />
       </section>
     </AppShell>
   );

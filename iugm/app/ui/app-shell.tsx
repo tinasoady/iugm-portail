@@ -30,6 +30,7 @@ import {
   IconChart,
 } from "./icons";
 import { ThemeToggle } from "./theme-toggle";
+import { LiveClock } from "./live-clock";
 import { BsClipboardData, BsDatabase } from "react-icons/bs";
 import { FaBook, FaTasks } from "react-icons/fa";
 
@@ -87,6 +88,13 @@ const NAV_ITEMS: NavItem[] = [
     href: "/agent-admin/ecolage",
     label: "Gestion d'écolage",
     icon: <IconCash />,
+    roles: ["SUPERADMIN", "AGENT_ADMINISTRATION"],
+    task: "ecolage",
+  },
+  {
+    href: "/rapports",
+    label: "États récapitulatifs",
+    icon: <IconChart />,
     roles: ["SUPERADMIN", "AGENT_ADMINISTRATION"],
     task: "ecolage",
   },
@@ -229,6 +237,13 @@ export async function AppShell({
 
   return (
     <div className="min-h-screen bg-zinc-100 dark:bg-zinc-950">
+      {/* Lien d'évitement : premier élément atteint au clavier, il saute la navigation */}
+      <a
+        href="#contenu"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:rounded-lg focus:bg-indigo-600 focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white focus:shadow-lg"
+      >
+        Aller au contenu principal
+      </a>
       <IdleLogout />
       {/* Sidebar */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col bg-zinc-950 md:flex">
@@ -253,16 +268,17 @@ export async function AppShell({
           </div>
         </div>
 
-        <p className="px-6 pt-2 pb-2 text-[11px] font-semibold tracking-[0.2em] text-zinc-500">
+        <p className="px-6 pt-2 pb-2 text-[11px] font-semibold tracking-[0.2em] text-zinc-400">
           MENUS
         </p>
-        <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 pb-4">
+        <nav aria-label="Navigation principale" className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 pb-4">
           {nav.map((item) => {
             const isActive = item.href === active;
             return (
               <div key={item.href}>
                 <Link
                   href={item.href}
+                  aria-current={isActive ? "page" : undefined}
                   className={
                     isActive
                       ? "flex items-center gap-3 rounded-xl bg-indigo-600 px-3 py-2.5 text-sm font-semibold text-white shadow-md"
@@ -280,10 +296,11 @@ export async function AppShell({
                         <Link
                           key={child.href}
                           href={child.href}
+                          aria-current={isChildActive ? "page" : undefined}
                           className={
                             isChildActive
                               ? "block rounded-lg px-3 py-1.5 text-xs font-semibold text-white"
-                              : "block rounded-lg px-3 py-1.5 text-xs font-medium text-zinc-500 transition hover:bg-white/5 hover:text-white"
+                              : "block rounded-lg px-3 py-1.5 text-xs font-medium text-zinc-400 transition hover:bg-white/5 hover:text-white"
                           }
                         >
                           {child.label}
@@ -334,6 +351,7 @@ export async function AppShell({
                   <LevelSelector selected={selectedLevel} />
                 </div>
               )}
+              <LiveClock />
               <ThemeToggle />
               <AccountMenu
                 email={email}
@@ -359,7 +377,10 @@ export async function AppShell({
           )}
         </header>
 
-        <main className="mx-auto w-full max-w-6xl flex-1 space-y-6 px-4 py-6 sm:space-y-8 sm:py-8">
+        <main
+          id="contenu"
+          tabIndex={-1}
+          className="mx-auto w-full max-w-6xl flex-1 outline-none space-y-6 px-4 py-6 sm:space-y-8 sm:py-8">
           {children}
         </main>
         <Footer institutionName={settings.institutionAcronym} />

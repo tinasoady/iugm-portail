@@ -26,6 +26,7 @@ Application web **Next.js + Prisma + PostgreSQL** pour la gestion des inscriptio
 - [Intégration continue](#intégration-continue)
 - [Scripts npm](#scripts-npm)
 - [Sécurité](#sécurité)
+- [Documentation](#documentation)
 
 ---
 
@@ -48,7 +49,12 @@ ENREGISTRE → PAIEMENT_VERIFIE → ADMIN_VALIDEE → INSCRIT
 - **Carte étudiante numérique** : QR code à jeton opaque (non devinable, régénérable par l'étudiant), consultable sans connexion sur une page publique dédiée.
 - **Communiqués ciblés** : envoi par filière et/ou niveau, avec suivi de lecture par étudiant.
 - **Permissions granulaires par tâche** : au sein d'un même rôle, chaque agent ne voit que les tâches et — si affecté à une filière — que les dossiers qui lui sont attribués.
-- **Journal d'audit** et **anti-bruteforce** sur les connexions (par e-mail et par IP).
+- **Journal d'audit** (filtres par texte, action et période) et **anti-bruteforce** sur les connexions (par e-mail et par IP).
+- **Double authentification (TOTP)** pour le personnel, codes de secours, **mot de passe oublié** par lien e-mail à usage unique, sessions révoquées dès qu'un compte est désactivé ou son mot de passe changé.
+- **Notifications e-mail** aux étudiants (paiement enregistré, inscription validée, résultats, communiqués) — optionnelles, jamais bloquantes.
+- **États récapitulatifs** : effectifs, encaissements et reste dû par filière et niveau, version imprimable et export Excel.
+- **Listes paginées** (« Voir plus » par 20) sur tous les écrans à longues listes.
+- **Exploitation** : sonde de santé `/api/health`, journaux d'erreurs structurés, sauvegarde quotidienne chiffrée avec preuve de restauration.
 - **Base de données** : import/export Excel des dossiers, export CSV filtré, paramètres de l'établissement (nom, logo).
 - **Thème clair / sombre**, persistant, sans flash au chargement.
 - **Inscription hors ligne** : sur le formulaire d'inscription, une saisie faite sans réseau est mise en file localement et synchronisée automatiquement dès la reconnexion (matricule attribué à ce moment-là) — voir [`iugm/docs/OFFLINE_SYNC.md`](iugm/docs/OFFLINE_SYNC.md).
@@ -162,7 +168,7 @@ npx prisma migrate dev
 npm run seed
 ```
 
-Crée le compte `admin@iugm.edu` / `admin123` — **à changer immédiatement en production**.
+Crée le compte `admin@iugm.edu` avec un **mot de passe aléatoire affiché une seule fois** dans le terminal ; le changement est imposé à la première connexion.
 
 ### 5. Lancer le serveur de développement
 
@@ -179,11 +185,14 @@ Ouvrir [http://localhost:3000](http://localhost:3000).
 | `DATABASE_URL` | ✅ | Chaîne de connexion PostgreSQL, lue par Prisma via `prisma/load-env.ts` |
 | `AUTH_SECRET` | ✅ | Clé de signature des cookies de session (JWT) — longue et aléatoire, différente en production |
 | `BLOB_READ_WRITE_TOKEN` | ✅ | Jeton d'accès au store Vercel Blob (`lib/storage.ts`, import de fiches) — lu implicitement par le SDK `@vercel/blob` |
+| `APP_URL` | recommandé | Adresse publique (`https://portail.iugm.mg`), utilisée pour les liens des e-mails (jamais l'en-tête `Host`, falsifiable) |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | pour les e-mails | Serveur d'envoi ; sans eux, aucune notification ni lien « mot de passe oublié » (le portail fonctionne normalement) |
+| `MAIL_DRIVER=log` | non | Écrit les e-mails dans la console au lieu de les envoyer (développement) |
 | `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | Docker uniquement | Initialisation du conteneur `docker-compose.yml` |
 
 ## Base de données (Prisma)
 
-Modèles principaux (`prisma/schema.prisma`) : `User`, `Student`, `EnrollmentHistory`, `PreselectionCandidate`, `AcademicResult`, `Subject`, `Grade`, `Announcement` / `AnnouncementRead`, `Setting`, `LevelFinancialInfo`, `EcolagePayment`, `AuditLog`, `LoginAttempt`, `SyncedMutation`.
+Modèles principaux (`prisma/schema.prisma`) : `User`, `Student`, `EnrollmentHistory`, `PreselectionCandidate`, `AcademicResult`, `Subject`, `Grade`, `Announcement` / `AnnouncementRead`, `Setting`, `LevelFinancialInfo`, `EcolagePayment`, `AuditLog`, `LoginAttempt`, `PasswordResetToken`, `SyncedMutation`.
 
 Commandes utiles :
 
@@ -195,7 +204,7 @@ npx prisma migrate deploy  # Appliquer les migrations existantes (CI / prod)
 
 ## Tests
 
-La suite [Vitest](https://vitest.dev) couvre deux niveaux :
+La qualité repose sur trois niveaux. Les deux premiers sont la suite [Vitest](https://vitest.dev) (**300+ tests**) :
 
 - **Unitaires** (`tests/unit/`) : logique pure sans base de données (barème des mentions, requêtes de liste, regroupement, catalogue des permissions, présélection).
 - **Intégration** (`tests/integration/`) : contre une **vraie base Postgres de test**, distincte de la base de développement — workflow d'inscription complet, réinscription (archivage), anti-bruteforce, périmètre par filière, écolage, carte QR, tendance du tableau de bord.
@@ -208,17 +217,21 @@ cp .env.test.example .env.test   # ajuster le mot de passe si besoin
 DATABASE_URL="<url de .env.test>" npx prisma migrate deploy
 ```
 
+- **Bout en bout** (`tests/e2e/`, [Playwright](https://playwright.dev) + [axe](https://github.com/dequelabs/axe-core)) : un vrai navigateur parcourt l'application construite — connexion, double authentification, mot de passe temporaire et oublié, parcours complet d'inscription (administration → pédagogie → première connexion de l'étudiant), pagination, accessibilité WCAG A/AA sur 12 pages.
+
 Lancer les tests :
 
 ```bash
 npm test              # une passe, sortie CI
 npm run test:watch    # mode interactif
 npm run test:coverage # rapport de couverture (iugm/coverage/index.html)
+npx playwright install chromium   # une seule fois
+npm run test:e2e      # construit l'application puis lance les scénarios navigateur (base de TEST)
 ```
 
 ## Intégration continue
 
-`.github/workflows/ci.yml` s'exécute à chaque push/PR sur `main` : démarre un service PostgreSQL éphémère, puis vérifie les types (`tsc --noEmit`), le lint (ESLint), applique les migrations, lance la suite de tests complète et vérifie la compilation (`next build`).
+`.github/workflows/ci.yml` s'exécute à chaque push/PR sur `main` : démarre un service PostgreSQL éphémère, puis vérifie les types (`tsc --noEmit`), le lint (ESLint), applique les migrations, lance la suite de tests complète et vérifie la compilation (`next build`). Un second job exécute les **tests de bout en bout** (Chromium). Le workflow `backup.yml` sauvegarde la base chaque nuit ([détails](iugm/docs/SAUVEGARDE.md)).
 
 ## Scripts npm
 
@@ -231,16 +244,33 @@ npm run test:coverage # rapport de couverture (iugm/coverage/index.html)
 | `npm test` | Suite Vitest complète (une passe) |
 | `npm run test:watch` | Vitest en mode interactif |
 | `npm run test:coverage` | Rapport de couverture |
-| `npm run seed` | Peuple la base (compte superadmin) |
+| `npm run seed` | Peuple la base (compte superadmin, mot de passe aléatoire affiché une fois) |
+| `npm run test:e2e` | Build + tests de bout en bout Playwright |
+| `bash scripts/db-backup.sh` / `db-restore.sh` | Sauvegarde / restauration d'essai de la base Docker locale |
 
 ## Sécurité
 
-- Sessions stockées dans un **cookie HTTP-only signé** (`lib/auth.ts`), marqué `secure` en production.
-- Mots de passe hachés avec `bcryptjs`.
-- Anti-bruteforce sur les tentatives de connexion, par e-mail et par IP (`lib/rate-limit.ts`, `LoginAttempt`).
-- Journal d'audit des actions sensibles (`AuditLog`).
-- Fichiers uploadés par les utilisateurs (logo, photos) exclus de git (`public/uploads/`) — à sauvegarder séparément en production.
-- Carte étudiante accessible via un **jeton QR opaque**, jamais le matricule ni l'identifiant interne.
+- Sessions dans un **cookie HTTP-only signé**, `secure` en production, **revérifiées en base à chaque requête** : un compte désactivé ou supprimé perd l'accès immédiatement ; changer un mot de passe ferme les autres sessions.
+- **Double authentification TOTP** (superadmin et agents), codes à usage unique, secrets chiffrés ; politique de mot de passe (8 à 72 octets, lettre + chiffre) ; changement obligatoire pour tout mot de passe temporaire, appliqué sur toutes les pages et actions.
+- Pas d'énumération de comptes (connexion et « mot de passe oublié »), anti-bruteforce par e-mail et par IP (`lib/rate-limit.ts`).
+- Autorisation revérifiée côté serveur à chaque action : rôle, tâche, périmètre de formation.
+- Journal d'audit des actions sensibles ; journaux d'erreurs structurés sans données personnelles.
+- Images envoyées vérifiées sur leur **contenu réel** (signature), SVG actifs refusés.
+- Carte étudiante via un **jeton QR opaque**, jamais le matricule.
+- Next.js à jour des correctifs de sécurité publiés (16.3.8) ; sauvegardes chiffrées avec preuve de restauration.
+
+Limites connues et procédures d'incident : [`iugm/docs/SECURITE.md`](iugm/docs/SECURITE.md).
+
+## Documentation
+
+| Document | Pour qui |
+|---|---|
+| [Déploiement et exploitation](iugm/docs/DEPLOIEMENT.md) | administrateur système |
+| [Sauvegarde et restauration](iugm/docs/SAUVEGARDE.md) | administrateur système |
+| [Supervision](iugm/docs/SUPERVISION.md) | administrateur système |
+| [Sécurité](iugm/docs/SECURITE.md) | administrateur, développeurs |
+| [Mode hors ligne](iugm/docs/OFFLINE_SYNC.md) | développeurs, agents de terrain |
+| Guides utilisateurs : [superadmin](iugm/docs/guides/GUIDE-SUPERADMIN.md), [agent d'administration](iugm/docs/guides/GUIDE-AGENT-ADMINISTRATION.md), [agent pédagogique](iugm/docs/guides/GUIDE-AGENT-PEDAGOGIQUE.md), [étudiant](iugm/docs/guides/GUIDE-ETUDIANT.md) | utilisateurs |
 
 ---
 
@@ -257,7 +287,10 @@ npm run test:coverage # rapport de couverture (iugm/coverage/index.html)
 - **Digital student ID**: opaque, regenerable QR token, verifiable on a public page without login.
 - **Targeted announcements** by program and/or level, with per-student read tracking.
 - **Fine-grained, per-task permissions** and per-program scoping for staff accounts.
-- **Audit log** and **login rate limiting** (by email and IP).
+- **Audit log** (filters by text, action and period) and **login rate limiting** (by email and IP).
+- **Two-factor authentication (TOTP)** for staff, recovery codes, **forgot-password** by one-time e-mail link, sessions revoked as soon as an account is disabled or its password changes.
+- Optional **e-mail notifications** to students; **summary reports** (headcount, collected, outstanding) with print and Excel export; "Show more" pagination on long lists.
+- **Operations**: `/api/health` probe, structured error logs, encrypted nightly backup with restore verification.
 - **Database tools**: Excel import/export, filtered CSV export, institution settings.
 - Persistent **light/dark theme**, no flash on load.
 - **Offline registration**: a submission made without network on the registration form is queued locally and synced automatically once the connection returns (matricule assigned at that point) — see [`iugm/docs/OFFLINE_SYNC.md`](iugm/docs/OFFLINE_SYNC.md).
@@ -297,7 +330,7 @@ BLOB_READ_WRITE_TOKEN="<vercel blob token>"
 docker compose up -d          # start PostgreSQL
 npx prisma generate
 npx prisma migrate dev
-npm run seed                  # creates admin@iugm.edu / admin123
+npm run seed                  # creates admin@iugm.edu with a random one-time password
 npm run dev                   # http://localhost:3000
 ```
 
@@ -313,10 +346,10 @@ npm run test:watch    # interactive
 npm run test:coverage # coverage report (iugm/coverage/index.html)
 ```
 
-Unit tests (`tests/unit/`) run without a database; integration tests (`tests/integration/`) run against a real, separate Postgres test database. CI (`.github/workflows/ci.yml`) spins up its own ephemeral Postgres and runs the full suite (types, lint, migrations, tests, build) on every push/PR.
+End-to-end tests (`tests/e2e/`, Playwright + axe accessibility checks) drive a real browser against the built app: `npm run test:e2e`. Unit tests (`tests/unit/`) run without a database; integration tests (`tests/integration/`) run against a real, separate Postgres test database. CI (`.github/workflows/ci.yml`) spins up its own ephemeral Postgres and runs the full suite (types, lint, migrations, tests, build) on every push/PR.
 
 ### Security
-- Sessions stored in a signed **HTTP-only cookie**, `secure` in production.
-- Passwords hashed with `bcryptjs`; login attempts rate-limited by email and IP.
+- Sessions stored in a signed **HTTP-only cookie**, `secure` in production, re-validated against the database on every request.
+- Passwords hashed with `bcryptjs`; TOTP two-factor for staff; login attempts rate-limited by email and IP.
 - Sensitive actions recorded in an audit log.
 - Student ID cards resolved through an opaque QR token — never the student ID or matricule.

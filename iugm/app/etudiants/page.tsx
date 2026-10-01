@@ -138,7 +138,7 @@ export default async function EtudiantsPage({
   const exportQuery = filterQueryString(params, selectedYear);
 
   const headerLinkClass =
-    "font-semibold text-zinc-400 hover:text-indigo-600 dark:text-zinc-500 dark:hover:text-indigo-400";
+    "font-semibold text-zinc-500 hover:text-indigo-600 dark:text-zinc-400 dark:hover:text-indigo-400";
 
   return (
     <AppShell
@@ -150,7 +150,7 @@ export default async function EtudiantsPage({
       {/* Barre de recherche et de filtres */}
       <section className="rounded-2xl border border-black/5 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-zinc-900">
         <form method="get" className="flex flex-wrap items-center gap-2">
-          <input
+          <input aria-label="Rechercher"
             name="q"
             type="search"
             defaultValue={params.q ?? ""}
@@ -165,7 +165,7 @@ export default async function EtudiantsPage({
               <FaLock size={12} /> Formation : {userFormation}
             </span>
           ) : (
-            <select
+            <select aria-label="Filière"
               name="filiere"
               defaultValue={params.filiere ?? ""}
               className="rounded-xl border border-black/10 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-indigo-500/40 dark:border-white/10 dark:bg-zinc-950 dark:text-zinc-50"
@@ -230,7 +230,7 @@ export default async function EtudiantsPage({
             </a>
           </div>
         </div>
-        <p className="mt-1 text-[11px] text-zinc-400 dark:text-zinc-500">
+        <p className="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400">
           Impression et export portent sur l&apos;ensemble des étudiants correspondant aux
           critères ci-dessus (pas seulement la page affichée).
         </p>
@@ -289,20 +289,20 @@ export default async function EtudiantsPage({
                 </div>
                 <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
                   <div className="col-span-2">
-                    <dt className="text-zinc-400 dark:text-zinc-500">Filière / Niveau</dt>
+                    <dt className="text-zinc-500 dark:text-zinc-400">Filière / Niveau</dt>
                     <dd className="text-zinc-700 dark:text-zinc-300">
                       {[s.mention ?? s.program, s.level ?? s.track].filter(Boolean).join(" / ") ||
                         "—"}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-zinc-400 dark:text-zinc-500">Inscrit le</dt>
+                    <dt className="text-zinc-500 dark:text-zinc-400">Inscrit le</dt>
                     <dd className="text-zinc-700 dark:text-zinc-300">
                       {dateFormatter.format(s.createdAt)}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-zinc-400 dark:text-zinc-500">Compte</dt>
+                    <dt className="text-zinc-500 dark:text-zinc-400">Compte</dt>
                     <dd className="truncate text-zinc-700 dark:text-zinc-300">
                       {s.account?.email ?? "—"}
                     </dd>
@@ -328,75 +328,75 @@ export default async function EtudiantsPage({
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-black/10 text-xs uppercase tracking-wider dark:border-white/10">
-                  <th className="py-2.5 pr-4">
+                  <th scope="col" className="py-2.5 pr-4">
                     <a href={sortHref(params, selectedYear, "matricule")} className={headerLinkClass}>
                       Matricule{sortArrow(params, "matricule")}
                     </a>
                   </th>
-                  <th className="py-2.5 pr-4">
+                  <th scope="col" className="py-2.5 pr-4">
                     <a href={sortHref(params, selectedYear, "nom")} className={headerLinkClass}>
                       Nom complet{sortArrow(params, "nom")}
                     </a>
                   </th>
-                  <th className="py-2.5 pr-4 font-semibold text-zinc-400 dark:text-zinc-500">Nom</th>
-                  <th className="py-2.5 pr-4 font-semibold text-zinc-400 dark:text-zinc-500">
+                  <th scope="col" className="py-2.5 pr-4 font-semibold text-zinc-500 dark:text-zinc-400">Nom</th>
+                  <th scope="col" className="py-2.5 pr-4 font-semibold text-zinc-500 dark:text-zinc-400">
                     Prénom
                   </th>
-                  <th className="py-2.5 pr-4 font-semibold text-zinc-400 dark:text-zinc-500">Sexe</th>
-                  <th className="py-2.5 pr-4 font-semibold text-zinc-400 dark:text-zinc-500">
+                  <th scope="col" className="py-2.5 pr-4 font-semibold text-zinc-500 dark:text-zinc-400">Sexe</th>
+                  <th scope="col" className="py-2.5 pr-4 font-semibold text-zinc-500 dark:text-zinc-400">
                     Date de naissance
                   </th>
-                  <th className="py-2.5 pr-4 font-semibold text-zinc-400 dark:text-zinc-500">
+                  <th scope="col" className="py-2.5 pr-4 font-semibold text-zinc-500 dark:text-zinc-400">
                     Nom de la mère
                   </th>
-                  <th className="py-2.5 pr-4 font-semibold text-zinc-400 dark:text-zinc-500">
+                  <th scope="col" className="py-2.5 pr-4 font-semibold text-zinc-500 dark:text-zinc-400">
                     N° CIN
                   </th>
-                  <th className="py-2.5 pr-4 font-semibold text-zinc-400 dark:text-zinc-500">
+                  <th scope="col" className="py-2.5 pr-4 font-semibold text-zinc-500 dark:text-zinc-400">
                     CIN délivrée le
                   </th>
-                  <th className="py-2.5 pr-4 font-semibold text-zinc-400 dark:text-zinc-500">
+                  <th scope="col" className="py-2.5 pr-4 font-semibold text-zinc-500 dark:text-zinc-400">
                     CIN délivrée à
                   </th>
-                  <th className="py-2.5 pr-4 font-semibold text-zinc-400 dark:text-zinc-500">
+                  <th scope="col" className="py-2.5 pr-4 font-semibold text-zinc-500 dark:text-zinc-400">
                     Nationalité
                   </th>
-                  <th className="py-2.5 pr-4 font-semibold text-zinc-400 dark:text-zinc-500">
+                  <th scope="col" className="py-2.5 pr-4 font-semibold text-zinc-500 dark:text-zinc-400">
                     Année bacc
                   </th>
-                  <th className="py-2.5 pr-4 font-semibold text-zinc-400 dark:text-zinc-500">
+                  <th scope="col" className="py-2.5 pr-4 font-semibold text-zinc-500 dark:text-zinc-400">
                     Série bacc
                   </th>
-                  <th className="py-2.5 pr-4 font-semibold text-zinc-400 dark:text-zinc-500">
+                  <th scope="col" className="py-2.5 pr-4 font-semibold text-zinc-500 dark:text-zinc-400">
                     Redoublement
                   </th>
-                  <th className="py-2.5 pr-4 font-semibold text-zinc-400 dark:text-zinc-500">
+                  <th scope="col" className="py-2.5 pr-4 font-semibold text-zinc-500 dark:text-zinc-400">
                     Adresse
                   </th>
-                  <th className="py-2.5 pr-4 font-semibold text-zinc-400 dark:text-zinc-500">
+                  <th scope="col" className="py-2.5 pr-4 font-semibold text-zinc-500 dark:text-zinc-400">
                     Téléphone
                   </th>
-                  <th className="py-2.5 pr-4 font-semibold text-zinc-400 dark:text-zinc-500">
+                  <th scope="col" className="py-2.5 pr-4 font-semibold text-zinc-500 dark:text-zinc-400">
                     Email personnel
                   </th>
-                  <th className="py-2.5 pr-4 font-semibold text-zinc-400 dark:text-zinc-500">
+                  <th scope="col" className="py-2.5 pr-4 font-semibold text-zinc-500 dark:text-zinc-400">
                     Filière / Niveau
                   </th>
-                  <th className="py-2.5 pr-4">
+                  <th scope="col" className="py-2.5 pr-4">
                     <a href={sortHref(params, selectedYear, "statut")} className={headerLinkClass}>
                       Statut{sortArrow(params, "statut")}
                     </a>
                   </th>
-                  <th className="py-2.5 pr-4">
+                  <th scope="col" className="py-2.5 pr-4">
                     <a href={sortHref(params, selectedYear, "date")} className={headerLinkClass}>
                       Inscrit le{sortArrow(params, "date")}
                     </a>
                   </th>
-                  <th className="py-2.5 pr-4 font-semibold text-zinc-400 dark:text-zinc-500">
+                  <th scope="col" className="py-2.5 pr-4 font-semibold text-zinc-500 dark:text-zinc-400">
                     Compte
                   </th>
                   {canManageActions && (
-                    <th className="py-2.5 font-semibold text-zinc-400 dark:text-zinc-500">
+                    <th scope="col" className="py-2.5 font-semibold text-zinc-500 dark:text-zinc-400">
                       Actions
                     </th>
                   )}

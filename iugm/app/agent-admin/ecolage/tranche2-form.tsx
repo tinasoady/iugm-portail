@@ -49,7 +49,7 @@ export function Tranche2Form({ studentId, amountDue }: { studentId: string; amou
       <form onSubmit={handleSubmit} action={formAction} className="flex flex-wrap items-center gap-1.5">
         <input type="hidden" name="studentId" value={studentId} />
         <input type="hidden" name="type" value="TRANCHE_S2" />
-        <input
+        <input aria-label="Numéro du reçu"
           name="receiptNumber"
           type="text"
           required
@@ -58,7 +58,7 @@ export function Tranche2Form({ studentId, amountDue }: { studentId: string; amou
           onChange={(e) => setReceiptNumber(e.target.value)}
           className="w-24 rounded-lg border border-black/10 bg-white px-2 py-1 text-xs text-zinc-900 outline-none focus:ring-2 focus:ring-black/20 dark:border-white/10 dark:bg-zinc-950 dark:text-zinc-50"
         />
-        <input
+        <input aria-label="Montant versé (Ar)"
           name="amount"
           type="number"
           required
@@ -79,7 +79,7 @@ export function Tranche2Form({ studentId, amountDue }: { studentId: string; amou
       </form>
       {state.error && <p className="text-[11px] text-red-600 dark:text-red-400">{state.error}</p>}
       {state.success && (
-        <p className="text-[11px] text-green-600 dark:text-green-400">{state.success}</p>
+        <p role="status" className="text-[11px] text-green-600 dark:text-green-400">{state.success}</p>
       )}
     </div>
   );

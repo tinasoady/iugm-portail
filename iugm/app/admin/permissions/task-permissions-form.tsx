@@ -29,14 +29,14 @@ export function TaskPermissionsForm({
     <form action={formAction} className="space-y-2">
       <input type="hidden" name="userId" value={userId} />
       <div className="grid gap-2 sm:grid-cols-2">
-        <input
+        <input aria-label="Fonction"
           name="jobTitle"
           type="text"
           defaultValue={jobTitle ?? ""}
           placeholder="Fonction (ex : Secrétaire, Chef de scolarité...)"
           className="w-full rounded-lg border border-black/10 bg-white px-2.5 py-1.5 text-xs text-zinc-900 outline-none focus:ring-2 focus:ring-indigo-500/40 dark:border-white/10 dark:bg-zinc-950 dark:text-zinc-50"
         />
-        <select
+        <select aria-label="Filière"
           name="formation"
           defaultValue={formation ?? ""}
           title="Formation affectée : l'agent ne voit et ne manipule que les dossiers de cette formation"
