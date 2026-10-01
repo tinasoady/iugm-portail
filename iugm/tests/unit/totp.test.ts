@@ -4,11 +4,13 @@ import {
   base32Decode,
   base32Encode,
   buildOtpAuthUri,
+  findTotpOffsetSeconds,
   generateTotpSecret,
   hotp,
   totpAt,
   verifyTotp,
 } from "@/lib/totp";
+import { explainRejectedSetupCode } from "@/lib/two-factor";
 
 // Secret de test des RFC 4226 / 6238 : l'ASCII "12345678901234567890"
 const RFC_SECRET_ASCII = Buffer.from("12345678901234567890");
@@ -133,5 +135,45 @@ describe("generateTotpSecret / buildOtpAuthUri", () => {
     expect(params.get("digits")).toBe("6");
     expect(params.get("period")).toBe("30");
     expect(params.get("algorithm")).toBe("SHA1");
+  });
+});
+
+describe("findTotpOffsetSeconds (diagnostic de configuration)", () => {
+  const NOW = 1234567890 * 1000;
+
+  it("retrouve le décalage d'un téléphone en retard ou en avance", () => {
+    const late = totpAt(RFC_SECRET_B32, NOW - 5 * 60_000); // 10 pas de retard
+    const early = totpAt(RFC_SECRET_B32, NOW + 90_000); // 3 pas d'avance
+    expect(findTotpOffsetSeconds(RFC_SECRET_B32, late, { nowMs: NOW })).toBe(-300);
+    expect(findTotpOffsetSeconds(RFC_SECRET_B32, early, { nowMs: NOW })).toBe(90);
+  });
+
+  it("ne confond pas le pas courant avec un décalage, et ignore un code d'un autre secret", () => {
+    const now = totpAt(RFC_SECRET_B32, NOW);
+    // le pas courant n'est pas un « décalage » (déjà couvert par verifyTotp)
+    expect([null, ...[-30, 30]]).toContain(findTotpOffsetSeconds(RFC_SECRET_B32, now, { nowMs: NOW }));
+    const other = totpAt("GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJR", NOW - 120_000);
+    expect(findTotpOffsetSeconds(RFC_SECRET_B32, other, { nowMs: NOW })).toBeNull();
+  });
+
+  it("refuse les formats invalides et les décalages au-delà de la limite", () => {
+    expect(findTotpOffsetSeconds(RFC_SECRET_B32, "abc", { nowMs: NOW })).toBeNull();
+    expect(findTotpOffsetSeconds("???", "123456", { nowMs: NOW })).toBeNull();
+    const farAway = totpAt(RFC_SECRET_B32, NOW - 3 * 3600_000);
+    expect(findTotpOffsetSeconds(RFC_SECRET_B32, farAway, { nowMs: NOW, maxSteps: 20 })).toBeNull();
+  });
+});
+
+describe("explainRejectedSetupCode", () => {
+  it("signale une horloge décalée quand le code est exact mais d'un autre moment", () => {
+    const code = totpAt(RFC_SECRET_B32, Date.now() - 4 * 60_000);
+    const message = explainRejectedSetupCode(RFC_SECRET_B32, code);
+    expect(message).toMatch(/retarde/);
+    expect(message).toMatch(/minute/);
+  });
+
+  it("oriente vers l'entrée de l'application quand le code ne correspond à rien de proche", () => {
+    const message = explainRejectedSetupCode(RFC_SECRET_B32, "000000");
+    expect(message).toMatch(/CE QR code/);
   });
 });
