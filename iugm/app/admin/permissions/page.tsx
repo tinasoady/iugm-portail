@@ -47,6 +47,7 @@ export default async function PermissionsPage() {
         role: true,
         active: true,
         mustChangePassword: true,
+        totpEnabled: true,
         jobTitle: true,
         permissions: true,
         formation: true,
@@ -129,6 +130,11 @@ export default async function PermissionsPage() {
                       ● Désactivé
                     </span>
                   )}
+                  {user.totpEnabled && (
+                    <span className="rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-medium text-sky-700 dark:bg-sky-950 dark:text-sky-300">
+                      🔒 2FA
+                    </span>
+                  )}
                   {user.mustChangePassword && (
                     <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-300">
                       Doit changer son mdp
@@ -145,6 +151,7 @@ export default async function PermissionsPage() {
                   active={user.active}
                   isSelf={user.id === session.sub}
                   email={user.email}
+                  totpEnabled={user.totpEnabled}
                 />
                 {user.id !== session.sub && (
                   <DeleteUserButton userId={user.id} email={user.email} />

@@ -82,7 +82,7 @@ export function ChangePasswordForm() {
         label="Nouveau mot de passe *"
         autoComplete="new-password"
         minLength={8}
-        helper="Au moins 8 caractères, différent de votre matricule seul."
+        helper="Au moins 8 caractères, avec une lettre et un chiffre ; ni votre matricule, ni votre identifiant."
       />
 
       <PasswordField

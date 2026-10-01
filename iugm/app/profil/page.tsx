@@ -4,7 +4,9 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { AppShell } from "@/app/ui/app-shell";
 import { ChangePasswordForm } from "@/app/changer-mot-de-passe/change-password-form";
+import { canUseTwoFactor } from "@/lib/two-factor";
 import { PhotoForm, InfoForm } from "./profile-forms";
+import { TwoFactorCard } from "./two-factor-card";
 
 const ROLE_LABELS: Record<string, string> = {
   SUPERADMIN: "Super administrateur",
@@ -48,6 +50,8 @@ export default async function ProfilPage() {
       jobTitle: true,
       photo: true,
       mustChangePassword: true,
+      totpEnabled: true,
+      recoveryCodes: true,
       createdAt: true,
     },
   });
@@ -97,6 +101,19 @@ export default async function ProfilPage() {
         </h2>
         <ChangePasswordForm />
       </section>
+
+      {/* Double authentification : réservée au personnel (pas aux étudiants) */}
+      {canUseTwoFactor(user.role) && (
+        <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm lg:max-w-xl dark:border-white/10 dark:bg-zinc-900">
+          <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+            Double authentification
+          </h2>
+          <TwoFactorCard
+            enabled={user.totpEnabled}
+            recoveryCodesLeft={user.recoveryCodes.length}
+          />
+        </section>
+      )}
     </AppShell>
   );
 }

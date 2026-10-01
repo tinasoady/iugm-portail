@@ -5,6 +5,7 @@ import {
   updateRoleAction,
   toggleActiveAction,
   resetPasswordAction,
+  resetTwoFactorAction,
   type PermissionState,
 } from "./actions";
 
@@ -23,12 +24,14 @@ export function PermissionActions({
   active,
   isSelf,
   email,
+  totpEnabled = false,
 }: {
   userId: string;
   role: string;
   active: boolean;
   isSelf: boolean;
   email: string;
+  totpEnabled?: boolean;
 }) {
   const [roleState, roleFormAction, rolePending] = useActionState(updateRoleAction, initialState);
   const [activeState, activeFormAction, activePending] = useActionState(
@@ -39,7 +42,11 @@ export function PermissionActions({
     resetPasswordAction,
     initialState,
   );
-  const state = [resetState, roleState, activeState].find((s) => s.error || s.success) ?? {};
+  const [twoFactorState, twoFactorFormAction, twoFactorPending] = useActionState(
+    resetTwoFactorAction,
+    initialState,
+  );
+  const state = [resetState, roleState, activeState, twoFactorState].find((s) => s.error || s.success) ?? {};
 
   if (isSelf) {
     return (
@@ -117,6 +124,31 @@ export function PermissionActions({
             {resetPending ? "..." : "Réinit. mdp"}
           </button>
         </form>
+
+        {/* Réinitialisation de la double authentification (appareil perdu) */}
+        {totpEnabled && (
+          <form
+            action={twoFactorFormAction}
+            onSubmit={(e) => {
+              if (
+                !window.confirm(
+                  `Désactiver la double authentification de ${email} ? Ses sessions ouvertes seront fermées.`,
+                )
+              ) {
+                e.preventDefault();
+              }
+            }}
+          >
+            <input type="hidden" name="userId" value={userId} />
+            <button
+              type="submit"
+              disabled={twoFactorPending}
+              className="rounded-lg border border-black/10 px-2.5 py-1.5 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100 disabled:opacity-50 dark:border-white/10 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            >
+              {twoFactorPending ? "..." : "Réinit. 2FA"}
+            </button>
+          </form>
+        )}
       </div>
 
       {state.error && <p className="text-xs text-red-600 dark:text-red-400">{state.error}</p>}
