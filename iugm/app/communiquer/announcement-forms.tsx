@@ -10,6 +10,7 @@ import {
 
 import { FaTrash, FaLock, FaCheckCircle } from "react-icons/fa";
 import { IconMegaphone } from "@/app/ui/icons";
+import { usePreserveOnError } from "@/app/ui/use-preserve-on-error";
 
 const inputClass =
   "mt-1 w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-indigo-500/40 dark:border-white/10 dark:bg-zinc-950 dark:text-zinc-50";
@@ -26,9 +27,10 @@ export function ComposeForm({
   lockedFormation?: string | null;
 }) {
   const [state, formAction, pending] = useActionState(sendAnnouncementAction, initialState);
+  const [formRef, handleSubmit] = usePreserveOnError(state.error, state);
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form ref={formRef} onSubmit={handleSubmit} action={formAction} className="space-y-4">
       <div>
         <label className={labelClass} htmlFor="title">Titre *</label>
         <input

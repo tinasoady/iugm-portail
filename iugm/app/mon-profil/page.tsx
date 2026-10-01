@@ -208,7 +208,7 @@ export default async function MonProfilPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
                   <thead>
-                    <tr className="border-b border-black/10 text-xs uppercase tracking-wider text-zinc-400 dark:border-white/10 dark:text-zinc-500">
+                    <tr className="border-b border-black/10 text-xs uppercase tracking-wider text-zinc-500 dark:border-white/10 dark:text-zinc-400">
                       <th scope="col" className="py-2 pr-4 font-semibold">Année universitaire</th>
                       <th scope="col" className="py-2 pr-4 font-semibold">Semestre</th>
                       <th scope="col" className="py-2 pr-4 font-semibold">Moyenne</th>

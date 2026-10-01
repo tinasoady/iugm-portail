@@ -49,7 +49,10 @@ export async function validatePedagoAction(
 
   try {
     const { student, email, password } = await validatePedagoInscription(studentId, session.sub);
-    revalidatePath("/agent-pedagogique");
+    // Pas de revalidatePath ici, volontairement : le dossier quitte la liste « à
+    // valider » dès qu'il est inscrit, et avec lui le panneau qui affiche UNE
+    // SEULE FOIS le mot de passe initial. La liste est rafraîchie par l'agent,
+    // une fois les identifiants notés (bouton du panneau, voir validate-button).
     scheduleStudentNotification(studentId, { kind: "ENROLLED", matricule: student.matricule });
     return {
       success:

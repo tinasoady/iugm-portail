@@ -75,7 +75,7 @@ export function BatchesTable({
         <div className="overflow-x-auto rounded-xl border border-black/5 dark:border-white/10">
           <table className="w-full min-w-180 text-left text-sm">
             <thead>
-              <tr className="border-b border-black/10 text-xs uppercase tracking-wider text-zinc-400 dark:border-white/10 dark:text-zinc-500">
+              <tr className="border-b border-black/10 text-xs uppercase tracking-wider text-zinc-500 dark:border-white/10 dark:text-zinc-400">
                 <th scope="col" className="px-4 py-2.5 font-semibold">Type de données</th>
                 <th scope="col" className="px-4 py-2.5 font-semibold">Année universitaire</th>
                 <th scope="col" className="px-4 py-2.5 font-semibold">Filière</th>

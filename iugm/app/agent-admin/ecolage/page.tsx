@@ -256,7 +256,7 @@ export default async function EcolagePage({
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-black/10 text-xs uppercase tracking-wider text-zinc-400 dark:border-white/10 dark:text-zinc-500">
+                <tr className="border-b border-black/10 text-xs uppercase tracking-wider text-zinc-500 dark:border-white/10 dark:text-zinc-400">
                   <th scope="col" className="py-2.5 pr-4 font-semibold">Formation</th>
                   <th scope="col" className="py-2.5 pr-4 font-semibold">Intégral / Partiel / Non payé</th>
                   <th scope="col" className="py-2.5 pr-4 font-semibold">Taux</th>
@@ -307,7 +307,7 @@ export default async function EcolagePage({
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-black/10 text-xs uppercase tracking-wider text-zinc-400 dark:border-white/10 dark:text-zinc-500">
+                <tr className="border-b border-black/10 text-xs uppercase tracking-wider text-zinc-500 dark:border-white/10 dark:text-zinc-400">
                   <th scope="col" className="py-2.5 pr-4 font-semibold">Matricule</th>
                   <th scope="col" className="py-2.5 pr-4 font-semibold">Nom</th>
                   <th scope="col" className="py-2.5 pr-4 font-semibold">Formation</th>

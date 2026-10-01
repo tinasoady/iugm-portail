@@ -77,8 +77,8 @@ export default async function ReportsPage({
     >
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">{scope}</p>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">
+          <p className="text-sm text-zinc-700 dark:text-zinc-300">{scope}</p>
+          <p className="text-xs text-zinc-600 dark:text-zinc-400">
             L&apos;année et le niveau suivent les sélecteurs de l&apos;en-tête.
           </p>
         </div>
@@ -172,7 +172,7 @@ export default async function ReportsPage({
             <table className="w-full text-left text-sm">
               <caption className="sr-only">Effectifs et écolage par filière et niveau</caption>
               <thead>
-                <tr className="border-b border-black/10 text-xs uppercase tracking-wider text-zinc-400 dark:border-white/10 dark:text-zinc-500">
+                <tr className="border-b border-black/10 text-xs uppercase tracking-wider text-zinc-500 dark:border-white/10 dark:text-zinc-400">
                   <th scope="col" className="py-2.5 pr-4 font-semibold">Filière</th>
                   <th scope="col" className="py-2.5 pr-4 font-semibold">Niveau</th>
                   <th scope="col" className="py-2.5 pr-4 text-right font-semibold">Effectif</th>
@@ -243,7 +243,7 @@ export default async function ReportsPage({
             <table className="w-full text-left text-sm">
               <caption className="sr-only">Dossiers dont l&apos;écolage n&apos;est pas soldé</caption>
               <thead>
-                <tr className="border-b border-black/10 text-xs uppercase tracking-wider text-zinc-400 dark:border-white/10 dark:text-zinc-500">
+                <tr className="border-b border-black/10 text-xs uppercase tracking-wider text-zinc-500 dark:border-white/10 dark:text-zinc-400">
                   <th scope="col" className="py-2.5 pr-4 font-semibold">Matricule</th>
                   <th scope="col" className="py-2.5 pr-4 font-semibold">Nom</th>
                   <th scope="col" className="py-2.5 pr-4 font-semibold">Filière / Niveau</th>

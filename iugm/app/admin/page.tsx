@@ -44,12 +44,13 @@ function initialsOf(name: string): string {
   return ((parts[0]?.[0] ?? "?") + (parts[1]?.[0] ?? "")).toUpperCase();
 }
 
+// Nuances 700 : texte blanc des initiales à plus de 4,5:1 de contraste (WCAG AA)
 const AVATAR_COLORS = [
   "bg-indigo-600",
-  "bg-sky-600",
-  "bg-emerald-600",
-  "bg-amber-500",
-  "bg-rose-600",
+  "bg-sky-700",
+  "bg-emerald-700",
+  "bg-amber-700",
+  "bg-rose-700",
 ];
 
 function avatarColor(key: string): string {
@@ -129,7 +130,7 @@ export default async function AdminPage({
           </p>
           <Link
             href="/profil"
-            className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-amber-500"
+            className="rounded-lg bg-amber-700 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-amber-600"
           >
             Activer maintenant
           </Link>
@@ -259,7 +260,7 @@ export default async function AdminPage({
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-black/10 text-xs uppercase tracking-wider text-zinc-400 dark:border-white/10 dark:text-zinc-500">
+                <tr className="border-b border-black/10 text-xs uppercase tracking-wider text-zinc-500 dark:border-white/10 dark:text-zinc-400">
                   <th scope="col" className="py-2.5 pr-4 font-semibold">Utilisateur</th>
                   <th scope="col" className="py-2.5 pr-4 font-semibold">Type</th>
                   <th scope="col" className="py-2.5 font-semibold">Identifiant</th>

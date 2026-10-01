@@ -138,7 +138,7 @@ export default async function EtudiantsPage({
   const exportQuery = filterQueryString(params, selectedYear);
 
   const headerLinkClass =
-    "font-semibold text-zinc-400 hover:text-indigo-600 dark:text-zinc-500 dark:hover:text-indigo-400";
+    "font-semibold text-zinc-500 hover:text-indigo-600 dark:text-zinc-400 dark:hover:text-indigo-400";
 
   return (
     <AppShell

@@ -48,3 +48,7 @@ next-env.d.ts
 
 # sauvegardes de la base (données personnelles : jamais dans git)
 /backups/
+
+# rapports Playwright
+/playwright-report/
+/test-results/

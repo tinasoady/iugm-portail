@@ -676,7 +676,7 @@ export function LineChart({
         <div className="mt-1 overflow-x-auto">
           <table className="w-full text-left text-[11px]">
             <thead>
-              <tr className="border-b border-black/10 text-zinc-400 dark:border-white/10 dark:text-zinc-500">
+              <tr className="border-b border-black/10 text-zinc-500 dark:border-white/10 dark:text-zinc-400">
                 <th scope="col" className="py-1 pr-3 font-semibold">Mois</th>
                 {visibleSeries.map((s) => (
                   <th key={s.key} className="py-1 pr-3 font-semibold">

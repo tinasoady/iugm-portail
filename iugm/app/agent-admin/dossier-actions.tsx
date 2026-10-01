@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import {
   verifyRegistrationPaymentAction,
   validateAdminAction,
@@ -35,6 +35,11 @@ export function DossierActions({
     validateAdminAction,
     initialState,
   );
+  // Champs contrôlés : React 19 vide les champs non contrôlés après CHAQUE
+  // soumission d'un formulaire, y compris refusée par le serveur. Sans cela, un
+  // « Montant insuffisant » effaçait aussi le numéro de reçu déjà saisi.
+  const [receiptNumber, setReceiptNumber] = useState("");
+  const [amount, setAmount] = useState("");
 
   if (status === "ENREGISTRE") {
     return (
@@ -45,6 +50,8 @@ export function DossierActions({
             name="receiptNumber"
             type="text"
             required
+            value={receiptNumber}
+            onChange={(e) => setReceiptNumber(e.target.value)}
             placeholder="N° du reçu"
             className="w-28 rounded-lg border border-black/10 bg-white px-2 py-1.5 text-xs text-zinc-900 outline-none focus:ring-2 focus:ring-black/20 dark:border-white/10 dark:bg-black dark:text-zinc-50"
           />
@@ -52,6 +59,8 @@ export function DossierActions({
             name="amount"
             type="number"
             required
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
             min={0}
             step={1}
             placeholder="Montant versé"

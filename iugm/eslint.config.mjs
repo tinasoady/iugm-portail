@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    "playwright-report/**",
+    "test-results/**",
   ]),
   {
     // Convention : un argument préfixé par "_" est volontairement inutilisé
