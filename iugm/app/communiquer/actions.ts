@@ -9,6 +9,7 @@ import {
   PERMISSION_DENIED_MESSAGE,
 } from "@/lib/permissions";
 import { createAnnouncement, deleteAnnouncement } from "@/lib/announcements";
+import { scheduleAnnouncementNotification } from "@/lib/notifications";
 
 export type AnnouncementState = { success?: string; error?: string };
  // Vérifie que l'utilisateur est autorisé à accéder à la page Communiquer.
@@ -46,6 +47,7 @@ export async function sendAnnouncementAction(
   try {
     const a = await createAnnouncement({ title, body, formation, level }, session.sub);
     revalidatePath("/communiquer");
+    scheduleAnnouncementNotification(a.id);
     const target = [a.formation ?? "toutes filières", a.level ?? "tous niveaux"].join(" / ");
     return { success: `Communiqué envoyé aux étudiants (${target}).` };
   } catch (e) {

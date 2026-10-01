@@ -17,6 +17,7 @@ import {
   FORMATION_DENIED_MESSAGE,
   type TaskKey,
 } from "@/lib/permissions";
+import { scheduleStudentNotification } from "@/lib/notifications";
 
 export type ActionState = { success?: string; error?: string };
 
@@ -94,6 +95,11 @@ export async function submitEcolagePayment(
     );
     revalidatePath("/agent-admin");
     revalidatePath("/agent-admin/ecolage");
+    scheduleStudentNotification(studentId, {
+      kind: "PAYMENT_RECORDED",
+      receiptNumber,
+      amountLabel: `${payment.amount.toLocaleString("fr-FR")} Ar`,
+    });
     return {
       success: `Reçu ${receiptNumber} enregistré (${payment.amount.toLocaleString("fr-FR")} Ar).`,
       studentId,
@@ -149,6 +155,11 @@ export async function verifyRegistrationPaymentAction(
     );
     revalidatePath("/agent-admin");
     revalidatePath("/agent-admin/ecolage");
+    scheduleStudentNotification(studentId, {
+      kind: "PAYMENT_RECORDED",
+      receiptNumber,
+      amountLabel: `${payment.amount.toLocaleString("fr-FR")} Ar`,
+    });
     const balanceNote =
       remainingBalance > 0
         ? ` Il reste ${remainingBalance.toLocaleString("fr-FR")} Ar à payer pour solder l'écolage de l'année (voir « Gestion d'écolage »).`
@@ -178,6 +189,7 @@ export async function validateAdminAction(
   try {
     const student = await validateAdminInscription(studentId, session.sub);
     revalidatePath("/agent-admin");
+    scheduleStudentNotification(studentId, { kind: "ADMIN_VALIDATED" });
     return { success: `Inscription administrative validée pour ${student.fullName}.` };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Erreur lors de la validation." };

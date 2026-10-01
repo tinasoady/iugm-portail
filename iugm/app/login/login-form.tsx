@@ -1,5 +1,6 @@
 ﻿"use client";
 
+import Link from "next/link";
 import { useActionState, useState } from "react";
 import { FaEye, FaEyeSlash, FaExclamationTriangle } from "react-icons/fa";
 import { loginAction, type LoginState } from "./actions";
@@ -82,6 +83,15 @@ export function LoginForm() {
       >
         {pending ? "Connexion..." : "Se connecter"}
       </button>
+
+      <p className="text-center text-sm">
+        <Link
+          href="/mot-de-passe-oublie"
+          className="font-medium text-indigo-600 hover:underline dark:text-indigo-400"
+        >
+          Mot de passe oublié ?
+        </Link>
+      </p>
 
       <p className="text-xs text-zinc-500 dark:text-zinc-400">
         Aucun compte d&apos;inscription ici : les logins sont attribués par l&apos;université.

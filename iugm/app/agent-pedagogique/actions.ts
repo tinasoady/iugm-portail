@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { getSession } from "@/lib/auth";
 import { logAction } from "@/lib/audit";
+import { scheduleStudentNotification } from "@/lib/notifications";
 import { validatePedagoInscription, assignAcademicResult } from "@/lib/students";
 import {
   hasTaskPermission,
@@ -49,6 +50,7 @@ export async function validatePedagoAction(
   try {
     const { student, email, password } = await validatePedagoInscription(studentId, session.sub);
     revalidatePath("/agent-pedagogique");
+    scheduleStudentNotification(studentId, { kind: "ENROLLED", matricule: student.matricule });
     return {
       success:
         password === null
@@ -89,6 +91,7 @@ export async function assignResultAction(
       session.sub,
     );
     revalidatePath("/agent-pedagogique");
+    scheduleStudentNotification(studentId, { kind: "RESULT_PUBLISHED" });
     return { success: `Résultat enregistré : ${result.average}/20 — mention calculée automatiquement.` };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Erreur lors de l'enregistrement." };

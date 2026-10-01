@@ -7,8 +7,12 @@ import { LoginForm } from "./login-form";
 // build (échec si la DB n'est pas joignable à ce moment-là, ex. en CI).
 export const dynamic = "force-dynamic";
 
-export default async function LoginPage() {
-  const settings = await getSettings();
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ reinitialise?: string }>;
+}) {
+  const [settings, params] = await Promise.all([getSettings(), searchParams]);
 
   return (
     <div className="relative flex min-h-screen items-center justify-center bg-zinc-950 px-4">
@@ -36,6 +40,15 @@ export default async function LoginPage() {
             {settings.institutionName}
           </p>
         </div>
+
+        {params.reinitialise === "1" && (
+          <p
+            role="status"
+            className="mb-4 rounded-xl bg-green-50 px-3 py-2 text-sm text-green-700 dark:bg-green-950 dark:text-green-300"
+          >
+            Mot de passe modifié. Vous pouvez vous connecter.
+          </p>
+        )}
 
         <LoginForm />
 

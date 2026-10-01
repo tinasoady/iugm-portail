@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { scheduleStudentNotification } from "@/lib/notifications";
 import { assignGrade, listSubjectsForStudent } from "@/lib/subjects";
 import {
   hasTaskPermission,
@@ -91,6 +92,7 @@ export async function assignGradesAction(
   }
 
   revalidatePath("/agent-pedagogique/notes");
+  scheduleStudentNotification(studentId, { kind: "RESULT_PUBLISHED" });
   return {
     success: `${saved} note${saved > 1 ? "s" : ""} enregistrée${saved > 1 ? "s" : ""} pour ${student.fullName}.`,
   };
