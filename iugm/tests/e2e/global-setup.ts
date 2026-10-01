@@ -52,6 +52,16 @@ export default async function globalSetup() {
     });
   }
 
+  await prisma.user.create({
+    data: {
+      email: ACCOUNTS.setupTwoFactor.email,
+      fullName: "Super Admin Config 2FA",
+      passwordHash,
+      role: "SUPERADMIN",
+      permissions: tasksForRole("SUPERADMIN"),
+    },
+  });
+
   // Compte avec double authentification déjà activée (secret et code de secours connus)
   await prisma.user.create({
     data: {

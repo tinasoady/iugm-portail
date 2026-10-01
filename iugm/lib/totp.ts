@@ -129,3 +129,28 @@ export function buildOtpAuthUri(params: {
   });
   return `otpauth://totp/${label}?${query.toString()}`;
 }
+
+// Diagnostic de configuration : le code saisi est-il celui d'un autre moment que
+// maintenant ? Renvoie le décalage en secondes (négatif : l'appareil retarde,
+// positif : il avance) si le code correspond à l'un des pas voisins, sinon null.
+// À n'utiliser que pour aider quelqu'un qui configure SON propre secret : sur la
+// connexion, indiquer qu'un code était « valide mais à un autre moment » serait
+// une information inutile à un attaquant.
+export function findTotpOffsetSeconds(
+  secretBase32: string,
+  code: string,
+  { nowMs = Date.now(), maxSteps = 20 }: { nowMs?: number; maxSteps?: number } = {},
+): number | null {
+  if (!new RegExp(`^\\d{${TOTP_DIGITS}}$`).test(code)) return null;
+  const secret = base32Decode(secretBase32);
+  if (!secret || secret.length === 0) return null;
+
+  const current = totpStep(nowMs);
+  for (let offset = 1; offset <= maxSteps; offset++) {
+    for (const sign of [-1, 1]) {
+      const step = current + sign * offset;
+      if (step >= 0 && hotp(secret, step) === code) return sign * offset * TOTP_STEP_SECONDS;
+    }
+  }
+  return null;
+}

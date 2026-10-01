@@ -8,6 +8,8 @@ export const ACCOUNTS = {
   agentAdmin: { email: "agent-admin@e2e.test", password: PASSWORD, home: "/agent-admin" },
   agentPedago: { email: "agent-pedago@e2e.test", password: PASSWORD, home: "/agent-pedagogique" },
   twoFactor: { email: "tfa@e2e.test", password: PASSWORD, home: "/admin" },
+  // Superadmin SANS 2FA, qui la configure pendant le scénario de configuration
+  setupTwoFactor: { email: "setup-tfa@e2e.test", password: PASSWORD, home: "/admin" },
   // Compte étudiant dont le mot de passe est temporaire (changement obligatoire)
   mustChange: { email: "etudiant-temp@e2e.test", password: PASSWORD, home: "/mon-profil" },
   // Compte pour le scénario « mot de passe oublié » (adresse e-mail réelle du compte)

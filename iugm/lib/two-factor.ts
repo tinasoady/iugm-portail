@@ -2,7 +2,7 @@ import crypto from "crypto";
 
 import { prisma } from "./prisma";
 import { encryptSecret, decryptSecret } from "./secret-crypto";
-import { generateTotpSecret, verifyTotp, buildOtpAuthUri } from "./totp";
+import { generateTotpSecret, verifyTotp, buildOtpAuthUri, findTotpOffsetSeconds } from "./totp";
 
 // ---------------------------------------------------------------------------
 // Authentification à deux facteurs : configuration, vérification à la
@@ -68,6 +68,20 @@ export async function beginTwoFactorSetup(userId: string): Promise<TwoFactorSetu
   };
 }
 
+// Message d'aide quand le code saisi à la configuration est refusé : distingue un
+// appareil mal réglé (le code est exact, mais d'un autre moment) d'une entrée
+// qui n'est pas celle de ce QR code (ancien essai du même nom, autre compte).
+export function explainRejectedSetupCode(secret: string, code: string): string {
+  const offset = findTotpOffsetSeconds(secret, code);
+  if (offset !== null) {
+    const minutes = Math.round(Math.abs(offset) / 60);
+    const gap = Math.abs(offset) >= 90 ? `environ ${minutes} minute(s)` : `${Math.abs(offset)} secondes`;
+    const who = offset < 0 ? "retarde" : "avance";
+    return `Ce code est exact, mais l'horloge de votre téléphone (ou du serveur) ${who} de ${gap}. Activez l'heure automatique sur le téléphone, puis réessayez avec le code affiché à cet instant.`;
+  }
+  return "Code incorrect ou expiré. Vérifiez que vous lisez l'entrée de l'application qui correspond à CE QR code (supprimez les anciennes entrées « Portail IUGM » d'essais précédents), et que l'heure du téléphone est automatique.";
+}
+
 // Étape 2 : l'utilisateur saisit le code affiché par son application. S'il est
 // bon, le 2FA est activé et les codes de secours sont générés (renvoyés une
 // seule fois, en clair — seules leurs empreintes sont conservées).
@@ -85,8 +99,16 @@ export async function confirmTwoFactorSetup(
   if (user.totpEnabled) return { ok: false, error: "Déjà activée." };
 
   const secret = decryptSecret(user.totpSecret);
-  const step = secret ? verifyTotp(secret, normalizeTwoFactorInput(code)) : null;
-  if (step === null) return { ok: false, error: "Code incorrect ou expiré. Réessayez." };
+  if (!secret) {
+    // La clé enregistrée est illisible (AUTH_SECRET modifiée depuis, ou valeur corrompue)
+    return {
+      ok: false,
+      error: "La clé de configuration est illisible. Cliquez de nouveau sur « Activer la double authentification » pour en générer une nouvelle, puis rescannez le QR code.",
+    };
+  }
+  const normalized = normalizeTwoFactorInput(code);
+  const step = verifyTotp(secret, normalized);
+  if (step === null) return { ok: false, error: explainRejectedSetupCode(secret, normalized) };
 
   const recoveryCodes = generateRecoveryCodes();
   // Compare-and-set sur totpEnabled=false : deux confirmations simultanées ne
