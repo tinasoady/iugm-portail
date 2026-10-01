@@ -1,0 +1,5 @@
+# Fins de ligne imposees : un script shell en CRLF ne s execute plus, et Prisma
+# calcule une empreinte de chaque migration SQL (un CRLF a la place d un LF fait
+# croire que la migration a ete modifiee apres application).
+*.sh text eol=lf
+*.sql text eol=lf
