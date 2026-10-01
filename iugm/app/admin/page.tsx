@@ -8,6 +8,8 @@ import { getSelectedAcademicYear } from "@/lib/academic-year";
 import { getSelectedLevel } from "@/lib/level";
 import { AppShell } from "@/app/ui/app-shell";
 import { StatCard } from "@/app/ui/stat-card";
+import { ShowMore } from "@/app/ui/show-more";
+import { LIST_PAGE_SIZE, hasMore, moreHref, parseListLimit } from "@/lib/pagination";
 import { LineChart } from "@/app/ui/line-chart";
 import { IconShield, IconFolder, IconCap, IconUsers } from "@/app/ui/icons";
 import { CreateUserForm } from "./create-user-form";
@@ -68,11 +70,6 @@ function roleFilterHref(role: RoleValue, monthsBack: number): string {
   return `/admin?${q.toString()}#users`;
 }
 
-// Nombre d'utilisateurs affichés par "page" : le bouton "Voir plus" en ajoute
-// autant (paramètre ?limit=, géré côté serveur pour ne pas charger toute la table).
-const USERS_PAGE_SIZE = 20;
-const USERS_MAX_LIMIT = 1000;
-
 export default async function AdminPage({
   searchParams,
 }: {
@@ -86,17 +83,16 @@ export default async function AdminPage({
   const monthsBack = Math.min(12, Math.max(3, Number(params.months) || 6));
   const roleFilter: RoleValue | null =
     params.role && VALID_ROLES.has(params.role) ? (params.role as RoleValue) : null;
-  // Arrondi au multiple de 20 supérieur, borné entre 20 et USERS_MAX_LIMIT
-  const usersLimit = Math.min(
-    USERS_MAX_LIMIT,
-    Math.max(USERS_PAGE_SIZE, Math.ceil((Number(params.limit) || USERS_PAGE_SIZE) / USERS_PAGE_SIZE) * USERS_PAGE_SIZE),
-  );
+  // « Voir plus » : le bouton ajoute 20 utilisateurs (?limit=, géré côté serveur
+  // pour ne pas charger toute la table)
+  const usersLimit = parseListLimit(params.limit);
   const [selectedYear, selectedLevel] = await Promise.all([
     getSelectedAcademicYear(),
     getSelectedLevel(),
   ]);
 
-  const [users, roleCounts, trend] = await Promise.all([
+  const [me, users, roleCounts, trend] = await Promise.all([
+    prisma.user.findUnique({ where: { id: session.sub }, select: { totpEnabled: true } }),
     prisma.user.findMany({
       where: roleFilter ? { role: roleFilter } : undefined,
       orderBy: { createdAt: "desc" },
@@ -112,12 +108,7 @@ export default async function AdminPage({
   const totalUsers = roleFilter
     ? countOf(roleFilter)
     : roleCounts.reduce((sum, r) => sum + r._count._all, 0);
-  const hasMoreUsers = users.length < totalUsers && usersLimit < USERS_MAX_LIMIT;
-  const moreUsersHref = `/admin?${new URLSearchParams({
-    ...(roleFilter ? { role: roleFilter } : {}),
-    months: String(monthsBack),
-    limit: String(usersLimit + USERS_PAGE_SIZE),
-  }).toString()}`;
+  const moreUsersHref = moreHref("/admin", { role: roleFilter ?? undefined, months: String(monthsBack) }, "limit", usersLimit);
 
   return (
     <AppShell
@@ -126,6 +117,25 @@ export default async function AdminPage({
       title="Tableau de bord — Administration"
       active="/admin"
     >
+      {/* Rappel : un compte superadmin ouvre tous les accès, il mérite un second facteur */}
+      {me && !me.totpEnabled && (
+        <div
+          role="note"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300"
+        >
+          <p>
+            <strong>Protégez votre compte :</strong> activez la double authentification pour que
+            votre mot de passe seul ne suffise plus à accéder à l&apos;administration.
+          </p>
+          <Link
+            href="/profil"
+            className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-amber-500"
+          >
+            Activer maintenant
+          </Link>
+        </div>
+      )}
+
       {/* Cartes statistiques — cliquables : accès rapide à la liste filtrée
           par rôle, juste en-dessous (section "Utilisateurs") */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -290,22 +300,13 @@ export default async function AdminPage({
               </tbody>
             </table>
           </div>
-          {totalUsers > USERS_PAGE_SIZE && (
-            <div className="mt-4 flex flex-col items-center gap-2">
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                {users.length} sur {totalUsers} affichés
-              </p>
-              {hasMoreUsers && (
-                <Link
-                  href={moreUsersHref}
-                  scroll={false}
-                  className="rounded-lg border border-black/10 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-white/10 dark:text-zinc-200 dark:hover:bg-zinc-800"
-                >
-                  Voir plus
-                </Link>
-              )}
-            </div>
-          )}
+          <ShowMore
+            shown={users.length}
+            total={totalUsers}
+            href={moreUsersHref}
+            canLoadMore={hasMore(users.length, totalUsers, usersLimit)}
+            pageSize={LIST_PAGE_SIZE}
+          />
         </section>
       </div>
 

@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import type { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
@@ -6,11 +7,13 @@ import { defaultEnrollmentYear, getStudentAverageForYear } from "@/lib/students"
 import { hasTaskPermission, getUserFormation } from "@/lib/permissions";
 import { AppShell } from "@/app/ui/app-shell";
 import { ReenrollForm } from "./reenroll-form";
+import { ShowMore } from "@/app/ui/show-more";
+import { LIST_PAGE_SIZE, hasMore, moreHref, parseListLimit } from "@/lib/pagination";
 
 export default async function ReinscriptionPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; limit?: string }>;
 }) {
   const session = await getSession();
   if (!session) redirect("/login");
@@ -19,14 +22,14 @@ export default async function ReinscriptionPage({
     redirect("/agent-admin");
   }
 
-  const { q } = await searchParams;
+  const { q, limit: limitParam } = await searchParams;
   const query = q?.trim();
+  const limit = parseListLimit(limitParam);
   // Secrétaire de formation : réinscriptions limitées à sa formation
   const userFormation = await getUserFormation(session.sub, session.role);
 
   // Anciens étudiants éligibles : inscription finalisée (compte + année terminée)
-  const students = await prisma.student.findMany({
-    where: {
+  const where: Prisma.StudentWhereInput = {
       AND: [
         { status: "INSCRIT" },
         ...(userFormation
@@ -43,13 +46,21 @@ export default async function ReinscriptionPage({
             ]
           : []),
       ],
-    },
-    orderBy: { fullName: "asc" },
-    include: {
-      account: { select: { email: true } },
-      enrollmentHistory: { orderBy: { archivedAt: "desc" }, select: { academicYear: true } },
-    },
-  });
+  };
+  // Paginé côté base : la moyenne de chaque étudiant affiché coûte une requête
+  // (voir plus bas), on ne la calcule donc que pour la tranche visible.
+  const [students, totalStudents] = await Promise.all([
+    prisma.student.findMany({
+      where,
+      orderBy: { fullName: "asc" },
+      take: limit,
+      include: {
+        account: { select: { email: true } },
+        enrollmentHistory: { orderBy: { archivedAt: "desc" }, select: { academicYear: true } },
+      },
+    }),
+    prisma.student.count({ where }),
+  ]);
 
   const defaultYear = defaultEnrollmentYear();
   const startYear = Number(defaultYear.split("-")[0]);
@@ -78,7 +89,7 @@ export default async function ReinscriptionPage({
       <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-zinc-900">
         <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-            Étudiants éligibles ({students.length})
+            Étudiants éligibles ({totalStudents})
           </h2>
           <form method="get" className="flex w-full items-center gap-2 sm:w-auto">
             <input
@@ -102,7 +113,7 @@ export default async function ReinscriptionPage({
           payer, reçu à vérifier, validations administrative et pédagogique.
         </p>
 
-        {students.length === 0 ? (
+        {totalStudents === 0 ? (
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
             {query
               ? `Aucun étudiant inscrit ne correspond à « ${query} ».`
@@ -186,6 +197,13 @@ export default async function ReinscriptionPage({
             </table>
           </div>
         )}
+        <ShowMore
+          shown={students.length}
+          total={totalStudents}
+          href={moreHref("/agent-admin/reinscription", { q: query }, "limit", limit)}
+          canLoadMore={hasMore(students.length, totalStudents, limit)}
+          pageSize={LIST_PAGE_SIZE}
+        />
       </section>
     </AppShell>
   );

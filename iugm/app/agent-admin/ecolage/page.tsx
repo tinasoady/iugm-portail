@@ -14,6 +14,8 @@ import { LineChart } from "@/app/ui/line-chart";
 import { IconUsers, IconCash, IconClipboard, IconFolder } from "@/app/ui/icons";
 import { FaCheck, FaTimes, FaHourglassHalf } from "react-icons/fa";
 import { Tranche2Form } from "./tranche2-form";
+import { ShowMore } from "@/app/ui/show-more";
+import { LIST_PAGE_SIZE, hasMore, moreHref, parseListLimit } from "@/lib/pagination";
 
 const amountFormatter = new Intl.NumberFormat("fr-FR");
 
@@ -70,12 +72,17 @@ const DUE_STATUS_LABEL: Record<"UNPAID" | "PARTIAL", string> = {
   PARTIAL: "2e tranche due",
 };
 
-export default async function EcolagePage() {
+export default async function EcolagePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ limit?: string }>;
+}) {
   const session = await getSession();
   if (!session) redirect("/login");
   if (!["AGENT_ADMINISTRATION", "SUPERADMIN"].includes(session.role)) redirect("/");
   if (!(await hasTaskPermission(session.sub, session.role, "ecolage"))) redirect("/agent-admin");
 
+  const limit = parseListLimit((await searchParams).limit);
   // Année universitaire et niveau pilotés par les sélecteurs globaux de l'en-tête
   const [year, level] = await Promise.all([getSelectedAcademicYear(), getSelectedLevel()]);
   const [stats, due, revenueTrend] = await Promise.all([
@@ -83,6 +90,7 @@ export default async function EcolagePage() {
     listStudentsWithBalanceDue(year ?? undefined, level ?? undefined),
     getEcolageRevenueTrend({ academicYear: year, level }),
   ]);
+  const visibleDue = due.slice(0, limit);
   const fullPct = pct(stats.full, stats.total);
   const partialPct = pct(stats.partial, stats.total);
   const unpaidPct = pct(stats.unpaid, stats.total);
@@ -310,7 +318,7 @@ export default async function EcolagePage() {
                 </tr>
               </thead>
               <tbody>
-                {due.map((s) => (
+                {visibleDue.map((s) => (
                   <tr key={s.id} className="border-b border-black/5 last:border-0 dark:border-white/5">
                     <td className="py-2.5 pr-4 whitespace-nowrap font-mono text-xs text-zinc-600 dark:text-zinc-400">
                       {s.matricule}
@@ -364,6 +372,13 @@ export default async function EcolagePage() {
             </table>
           </div>
         )}
+        <ShowMore
+          shown={visibleDue.length}
+          total={due.length}
+          href={moreHref("/agent-admin/ecolage", {}, "limit", limit)}
+          canLoadMore={hasMore(visibleDue.length, due.length, limit)}
+          pageSize={LIST_PAGE_SIZE}
+        />
       </section>
     </AppShell>
   );

@@ -89,15 +89,21 @@ export async function sendWelcomeAnnouncementOnFirstLogin(userId: string): Promi
 // Liste pour les agents (tous les communiqués, avec auteur et lectures) —
 // `student` n'est renseigné que pour un communiqué personnel (avis
 // d'admission automatique), pour afficher son destinataire.
-export async function listAnnouncementsForAgent() {
+// `take` : nombre maximal de communiqués renvoyés (pagination « Voir plus »)
+export async function listAnnouncementsForAgent(take?: number) {
   return prisma.announcement.findMany({
     orderBy: { createdAt: "desc" },
+    ...(take ? { take } : {}),
     include: {
       author: { select: { email: true, fullName: true, jobTitle: true } },
       student: { select: { fullName: true, matricule: true } },
       _count: { select: { reads: true } },
     },
   });
+}
+
+export async function countAnnouncementsForAgent(): Promise<number> {
+  return prisma.announcement.count();
 }
 
 // Critère de ciblage d'un étudiant : soit un communiqué personnel qui lui est
@@ -128,16 +134,23 @@ async function targetingWhere(userId: string) {
 }
 
 // Communiqués visibles par un étudiant, avec leur état lu / non lu
-export async function listAnnouncementsForStudent(userId: string) {
+export async function listAnnouncementsForStudent(userId: string, take?: number) {
   const where = await targetingWhere(userId);
   return prisma.announcement.findMany({
     where,
     orderBy: { createdAt: "desc" },
+    ...(take ? { take } : {}),
     include: {
       author: { select: { fullName: true, jobTitle: true } },
       reads: { where: { userId }, select: { id: true } },
     },
   });
+}
+
+// Nombre total de communiqués visibles par un étudiant (lus ou non)
+export async function countAnnouncementsForStudent(userId: string): Promise<number> {
+  const where = await targetingWhere(userId);
+  return prisma.announcement.count({ where });
 }
 
 // Nombre de communiqués non lus (badge de notification)
@@ -148,11 +161,18 @@ export async function unreadAnnouncementsCount(userId: string): Promise<number> 
   });
 }
 
-// Marque comme lus tous les communiqués visibles (à l'ouverture de la page)
-export async function markAnnouncementsRead(userId: string) {
+// Marque comme lus les communiqués visibles (à l'ouverture de la page).
+// `onlyIds` : restreint aux communiqués réellement affichés — avec la pagination
+// « Voir plus », ceux qui sont plus bas dans la liste ne doivent pas être
+// marqués lus sans avoir été vus.
+export async function markAnnouncementsRead(userId: string, onlyIds?: string[]) {
   const where = await targetingWhere(userId);
   const unread = await prisma.announcement.findMany({
-    where: { ...where, reads: { none: { userId } } },
+    where: {
+      ...where,
+      reads: { none: { userId } },
+      ...(onlyIds ? { id: { in: onlyIds } } : {}),
+    },
     select: { id: true },
   });
   if (unread.length === 0) return;

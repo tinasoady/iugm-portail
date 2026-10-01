@@ -12,6 +12,10 @@ export default defineConfig({
     // en parallèle ferait courir les cas les uns après les autres de toute
     // façon (mêmes tables), avec le risque en plus de se marcher dessus.
     fileParallelism: false,
+    // Marge pour les machines lentes ou chargées (CI partagée, antivirus) : le
+    // TRUNCATE de resetDb et le hachage bcrypt peuvent dépasser les 10 s par défaut.
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
     coverage: {
       provider: "v8",
       reporter: ["text", "html"], 

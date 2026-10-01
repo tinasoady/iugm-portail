@@ -8,6 +8,8 @@ import { currentAcademicYear, getSelectedAcademicYear } from "@/lib/academic-yea
 import { getSelectedLevel } from "@/lib/level";
 import { AppShell } from "@/app/ui/app-shell";
 import { StatCard } from "@/app/ui/stat-card";
+import { ShowMore } from "@/app/ui/show-more";
+import { LIST_PAGE_SIZE, hasMore, moreHref, parseListLimit } from "@/lib/pagination";
 import { IconClipboard, IconCap, IconChart, IconFolder } from "@/app/ui/icons";
 import { FaPrint } from "react-icons/fa";
 import {
@@ -31,13 +33,22 @@ export default async function AgentPedagogiquePage({
     program?: string;
     department?: string;
     mention?: string;
+    // Nombre de lignes affichées par liste (« Voir plus »)
+    lp?: string;
+    li?: string;
+    lu?: string;
   }>;
 }) {
   const session = await getSession();
   if (!session) redirect("/login");
   if (!["AGENT_PEDAGOGIQUE", "SUPERADMIN"].includes(session.role)) redirect("/");
 
-  const { q, qi, program, department, mention } = await searchParams;
+  const { q, qi, program, department, mention, lp, li, lu } = await searchParams;
+  const pendingLimit = parseListLimit(lp);
+  const inscritsLimit = parseListLimit(li);
+  const upstreamLimit = parseListLimit(lu);
+  // Paramètres conservés d'une liste à l'autre quand on clique « Voir plus »
+  const keep = { q, qi, program, department, mention, lp, li, lu };
 
   // Secrétaire de formation : tout est limité à sa formation, côté serveur
   const userFormation = await getUserFormation(session.sub, session.role);
@@ -78,6 +89,9 @@ export default async function AgentPedagogiquePage({
   const upstream = allStudents.filter((s) =>
     ["ENREGISTRE", "PAIEMENT_VERIFIE"].includes(s.status),
   );
+  const visiblePending = pending.slice(0, pendingLimit);
+  const visibleInscrits = inscrits.slice(0, inscritsLimit);
+  const visibleUpstream = upstream.slice(0, upstreamLimit);
   // Résultat par défaut proposé : l'année consultée (sélecteur global), sinon
   // l'année universitaire en cours
   const defaultYear = selectedYear ?? currentAcademicYear();
@@ -148,7 +162,7 @@ export default async function AgentPedagogiquePage({
                   </tr>
                 </thead>
                 <tbody>
-                  {pending.map((s) => (
+                  {visiblePending.map((s) => (
                     <tr key={s.id} className="border-b border-black/5 last:border-0 dark:border-white/5">
                       <td className="py-2.5 pr-4 whitespace-nowrap font-mono text-xs text-zinc-600 dark:text-zinc-400">
                         {s.matricule}
@@ -169,6 +183,13 @@ export default async function AgentPedagogiquePage({
               </table>
             </div>
           )}
+          <ShowMore
+            shown={visiblePending.length}
+            total={pending.length}
+            href={moreHref("/agent-pedagogique", keep, "lp", pendingLimit)}
+            canLoadMore={hasMore(visiblePending.length, pending.length, pendingLimit)}
+            pageSize={LIST_PAGE_SIZE}
+          />
         </section>
 
         {/* 2. Étudiants inscrits : reçus, résultats, listes filtrées */}
@@ -240,7 +261,7 @@ export default async function AgentPedagogiquePage({
                   </tr>
                 </thead>
                 <tbody>
-                  {inscrits.map((s) => (
+                  {visibleInscrits.map((s) => (
                     <tr key={s.id} className="border-b border-black/5 last:border-0 align-top dark:border-white/5">
                       <td className="py-2.5 pr-4 whitespace-nowrap font-mono text-xs text-zinc-600 dark:text-zinc-400">
                         {s.matricule}
@@ -291,6 +312,13 @@ export default async function AgentPedagogiquePage({
               </table>
             </div>
           )}
+          <ShowMore
+            shown={visibleInscrits.length}
+            total={inscrits.length}
+            href={moreHref("/agent-pedagogique", keep, "li", inscritsLimit)}
+            canLoadMore={hasMore(visibleInscrits.length, inscrits.length, inscritsLimit)}
+            pageSize={LIST_PAGE_SIZE}
+          />
         </section>
 
         {/* 3. Dossiers en cours (consultation) */}
@@ -332,7 +360,7 @@ export default async function AgentPedagogiquePage({
                   </tr>
                 </thead>
                 <tbody>
-                  {upstream.map((s) => (
+                  {visibleUpstream.map((s) => (
                     <tr key={s.id} className="border-b border-black/5 last:border-0 dark:border-white/5">
                       <td className="py-2.5 pr-4 whitespace-nowrap font-mono text-xs text-zinc-600 dark:text-zinc-400">
                         {s.matricule}
@@ -352,6 +380,13 @@ export default async function AgentPedagogiquePage({
               </table>
             </div>
           )}
+          <ShowMore
+            shown={visibleUpstream.length}
+            total={upstream.length}
+            href={moreHref("/agent-pedagogique", keep, "lu", upstreamLimit)}
+            canLoadMore={hasMore(visibleUpstream.length, upstream.length, upstreamLimit)}
+            pageSize={LIST_PAGE_SIZE}
+          />
         </section>
     </AppShell>
   );

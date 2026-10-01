@@ -9,6 +9,8 @@ import { getSelectedLevel } from "@/lib/level";
 import { getLevelFinancialInfos, registrationMinimum, FOREIGN_NATIONALITY } from "@/lib/finance";
 import { AppShell } from "@/app/ui/app-shell";
 import { StatCard } from "@/app/ui/stat-card";
+import { ShowMore } from "@/app/ui/show-more";
+import { LIST_PAGE_SIZE, hasMore, moreHref, parseListLimit } from "@/lib/pagination";
 import { IconFolder, IconClipboard, IconShield, IconCap } from "@/app/ui/icons";
 import { FaDownload } from "react-icons/fa";
 import { STATUS_LABELS, STATUS_BADGE_CLASSES } from "@/app/ui/student-status";
@@ -20,13 +22,14 @@ const dateFormatter = new Intl.DateTimeFormat("fr-FR", { dateStyle: "short" });
 export default async function AgentAdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; limit?: string }>;
 }) {
   const session = await getSession();
   if (!session) redirect("/login");
   if (!["AGENT_ADMINISTRATION", "SUPERADMIN"].includes(session.role)) redirect("/");
 
-  const { q } = await searchParams;
+  const { q, limit: limitParam } = await searchParams;
+  const limit = parseListLimit(limitParam);
   // Secrétaire de formation : dossiers limités à sa formation
   const userFormation = await getUserFormation(session.sub, session.role);
   // Sélecteur global d'année universitaire et de niveau (en-tête)
@@ -49,6 +52,8 @@ export default async function AgentAdminPage({
   ]);
   const countOf = (status: string) =>
     statusCounts.find((s) => s.status === status)?._count._all ?? 0;
+
+  const visibleStudents = students.slice(0, limit);
 
   // Montant minimum requis à l'inscription par niveau (droit d'inscription +
   // assurance + polo + premier versement), affiché en aide sur chaque
@@ -178,7 +183,7 @@ export default async function AgentAdminPage({
                     </tr>
                   </thead>
                   <tbody>
-                    {students.map((s) => (
+                    {visibleStudents.map((s) => (
                       <tr key={s.id} className="border-b border-black/5 last:border-0 dark:border-white/5">
                         <td className="py-2.5 pr-4 whitespace-nowrap font-mono text-xs text-zinc-600 dark:text-zinc-400">
                           {s.matricule}
@@ -214,6 +219,13 @@ export default async function AgentAdminPage({
                 </table>
               </div>
             )}
+            <ShowMore
+              shown={visibleStudents.length}
+              total={students.length}
+              href={moreHref("/agent-admin", { q }, "limit", limit)}
+              canLoadMore={hasMore(visibleStudents.length, students.length, limit)}
+              pageSize={LIST_PAGE_SIZE}
+            />
           </section>
         </div>
     </AppShell>

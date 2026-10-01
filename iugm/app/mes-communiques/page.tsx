@@ -4,8 +4,11 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import {
   listAnnouncementsForStudent,
+  countAnnouncementsForStudent,
   markAnnouncementsRead,
 } from "@/lib/announcements";
+import { ShowMore } from "@/app/ui/show-more";
+import { LIST_PAGE_SIZE, hasMore, moreHref, parseListLimit } from "@/lib/pagination";
 import { AppShell } from "@/app/ui/app-shell";
 
 const dateFormatter = new Intl.DateTimeFormat("fr-FR", {
@@ -13,7 +16,11 @@ const dateFormatter = new Intl.DateTimeFormat("fr-FR", {
   timeStyle: "short",
 });
 
-export default async function MesCommuniquesPage() {
+export default async function MesCommuniquesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ limit?: string }>;
+}) {
   const session = await getSession();
   if (!session) redirect("/login");
   if (session.role !== "ETUDIANT") redirect("/");
@@ -25,8 +32,15 @@ export default async function MesCommuniquesPage() {
   if (user?.mustChangePassword) redirect("/changer-mot-de-passe");
 
   // Liste AVANT marquage : conserve les badges « Nouveau » pour cet affichage
-  const announcements = await listAnnouncementsForStudent(session.sub);
-  await markAnnouncementsRead(session.sub);
+  const limit = parseListLimit((await searchParams).limit);
+  const [announcements, totalAnnouncements] = await Promise.all([
+    listAnnouncementsForStudent(session.sub, limit),
+    countAnnouncementsForStudent(session.sub),
+  ]);
+  await markAnnouncementsRead(
+    session.sub,
+    announcements.map((a) => a.id),
+  );
 
   return (
     <AppShell
@@ -85,6 +99,13 @@ export default async function MesCommuniquesPage() {
           })}
         </div>
       )}
+      <ShowMore
+        shown={announcements.length}
+        total={totalAnnouncements}
+        href={moreHref("/mes-communiques", {}, "limit", limit)}
+        canLoadMore={hasMore(announcements.length, totalAnnouncements, limit)}
+        pageSize={LIST_PAGE_SIZE}
+      />
     </AppShell>
   );
 }
