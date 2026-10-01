@@ -1,0 +1,171 @@
+name: Sauvegarde quotidienne de la base
+
+# Sauvegarde la base de PRODUCTION chaque nuit, PROUVE qu'elle se restaure, la
+# chiffre, puis l'envoie dans un stockage externe compatible S3 (Cloudflare R2,
+# Backblaze B2, AWS S3, Wasabi...).
+#
+# ⚠ Le dépôt est PUBLIC : le dump n'est donc JAMAIS publié comme artefact
+# GitHub (téléchargeable par n'importe quel compte GitHub). Il n'existe que
+# dans le runner, le temps du job, puis chiffré dans votre bucket privé.
+#
+# Si un secret manque ou si l'étape de restauration échoue, le job échoue et
+# GitHub envoie un e-mail : une sauvegarde silencieusement cassée est pire
+# qu'une sauvegarde absente. Procédure complète : iugm/docs/SAUVEGARDE.md.
+
+on:
+  schedule:
+    - cron: "17 2 * * *" # tous les jours à 02h17 UTC (05h17 à Mahajanga)
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    # Base jetable dans laquelle la sauvegarde est restaurée pour vérification
+    services:
+      verify-db:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: verify
+          POSTGRES_PASSWORD: verify
+          POSTGRES_DB: verify
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U verify"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # Version majeure de PostgreSQL du serveur de production (pg_dump doit
+      # être de la même version ou plus récente que le serveur). À régler via
+      # Settings → Secrets and variables → Actions → Variables → PG_MAJOR.
+      PG_MAJOR: ${{ vars.PG_MAJOR || '16' }}
+
+    steps:
+      - name: 1. Vérifier que la configuration est complète
+        env:
+          BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+          S3_BUCKET: ${{ secrets.BACKUP_S3_BUCKET }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_S3_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_S3_SECRET_ACCESS_KEY }}
+        run: |
+          missing=0
+          for name in BACKUP_DATABASE_URL BACKUP_PASSPHRASE S3_BUCKET AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Secret manquant : $name (voir iugm/docs/SAUVEGARDE.md)"
+              missing=1
+            fi
+          done
+          if [ "${#BACKUP_PASSPHRASE}" -lt 20 ]; then
+            echo "::error::BACKUP_PASSPHRASE trop courte (20 caractères minimum)"
+            missing=1
+          fi
+          exit $missing
+
+      - name: 2. Compter les lignes avant la sauvegarde
+        env:
+          BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          for t in User Student EcolagePayment AuditLog Announcement; do
+            n=$(docker run --rm "postgres:${PG_MAJOR}-alpine" psql "$BACKUP_DATABASE_URL" -tAc "SELECT count(*) FROM \"$t\"")
+            echo "$t=$n" >> counts-before.txt
+          done
+          cat counts-before.txt
+
+      - name: 3. Sauvegarder (pg_dump, format custom)
+        env:
+          BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          docker run --rm "postgres:${PG_MAJOR}-alpine" \
+            pg_dump "$BACKUP_DATABASE_URL" --format=custom --no-owner --no-privileges > backup.dump
+          test -s backup.dump
+          docker run --rm -i "postgres:${PG_MAJOR}-alpine" pg_restore --list < backup.dump > /dev/null
+          ls -l backup.dump
+
+      - name: 4. Compter les lignes après la sauvegarde
+        env:
+          BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          for t in User Student EcolagePayment AuditLog Announcement; do
+            n=$(docker run --rm "postgres:${PG_MAJOR}-alpine" psql "$BACKUP_DATABASE_URL" -tAc "SELECT count(*) FROM \"$t\"")
+            echo "$t=$n" >> counts-after.txt
+          done
+
+      - name: 5. Prouver que la sauvegarde se restaure (base jetable)
+        run: |
+          set -euo pipefail
+          verify() {
+            docker run --rm --network host -e PGPASSWORD=verify "postgres:${PG_MAJOR}-alpine" \
+              psql -h 127.0.0.1 -p 5433 -U verify -d verify -tAc "$1"
+          }
+          docker run --rm -i --network host -e PGPASSWORD=verify "postgres:${PG_MAJOR}-alpine" \
+            pg_restore -h 127.0.0.1 -p 5433 -U verify -d verify --no-owner --no-privileges --exit-on-error < backup.dump
+
+          status=0
+          while IFS='=' read -r table before; do
+            after=$(grep "^$table=" counts-after.txt | cut -d= -f2)
+            restored=$(verify "SELECT count(*) FROM \"$table\"")
+            low=$(( before < after ? before : after ))
+            high=$(( before > after ? before : after ))
+            # La base de production continue d'être écrite pendant la sauvegarde :
+            # le nombre restauré doit se situer entre les deux comptages (ou à
+            # moins de 2 % du premier — soit aucune tolérance sous 50 lignes).
+            tolerance=$(( before / 50 ))
+            diff=$(( restored > before ? restored - before : before - restored ))
+            if { [ "$restored" -ge "$low" ] && [ "$restored" -le "$high" ]; } || [ "$diff" -le "$tolerance" ]; then
+              echo "OK   $table : $restored ligne(s) restaurée(s) (avant=$before, après=$after)"
+            else
+              echo "::error::$table : $restored ligne(s) restaurée(s), attendu entre $low et $high"
+              status=1
+            fi
+          done < counts-before.txt
+
+          migrations=$(verify 'SELECT count(*) FROM "_prisma_migrations"')
+          if [ "$migrations" -lt 1 ]; then
+            echo "::error::Historique des migrations vide après restauration"
+            status=1
+          fi
+          exit $status
+
+      - name: 6. Chiffrer (AES-256) puis envoyer dans le stockage externe
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+          S3_BUCKET: ${{ secrets.BACKUP_S3_BUCKET }}
+          S3_ENDPOINT: ${{ secrets.BACKUP_S3_ENDPOINT }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_S3_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_S3_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.BACKUP_S3_REGION || 'auto' }}
+        run: |
+          set -euo pipefail
+          stamp=$(date -u +%Y%m%dT%H%M%SZ)
+          openssl enc -aes-256-cbc -pbkdf2 -iter 600000 -salt \
+            -in backup.dump -out backup.dump.enc -pass env:BACKUP_PASSPHRASE
+          shred -u backup.dump 2>/dev/null || rm -f backup.dump
+
+          endpoint=()
+          if [ -n "${S3_ENDPOINT:-}" ]; then endpoint=(--endpoint-url "$S3_ENDPOINT"); fi
+          key="iugm/$(date -u +%Y/%m)/iugm-$stamp.dump.enc"
+          aws s3 cp backup.dump.enc "s3://$S3_BUCKET/$key" "${endpoint[@]}" --no-progress
+
+          # Relecture : l'objet doit exister et avoir la même taille
+          local_size=$(stat -c %s backup.dump.enc)
+          remote_size=$(aws s3api head-object --bucket "$S3_BUCKET" --key "$key" "${endpoint[@]}" --query ContentLength --output text)
+          if [ "$local_size" != "$remote_size" ]; then
+            echo "::error::Taille distante ($remote_size) différente de la taille locale ($local_size)"
+            exit 1
+          fi
+          echo "Sauvegarde envoyée : s3://$S3_BUCKET/$key ($local_size octets)"

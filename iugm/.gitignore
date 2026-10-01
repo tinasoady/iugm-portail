@@ -45,3 +45,6 @@ next-env.d.ts
 # d'exécution, pas du code — à sauvegarder séparément en production, jamais
 # via git
 /public/uploads/
+
+# sauvegardes de la base (données personnelles : jamais dans git)
+/backups/
