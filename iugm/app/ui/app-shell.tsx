@@ -92,6 +92,13 @@ const NAV_ITEMS: NavItem[] = [
     task: "ecolage",
   },
   {
+    href: "/rapports",
+    label: "États récapitulatifs",
+    icon: <IconChart />,
+    roles: ["SUPERADMIN", "AGENT_ADMINISTRATION"],
+    task: "ecolage",
+  },
+  {
     href: "/agent-pedagogique",
     label: "Pédagogie",
     icon: <IconCap />,

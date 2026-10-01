@@ -1407,7 +1407,7 @@ export async function updateStudent(
 // comptent pas : seule l'année de rattachement ACTUELLE du dossier importe.
 export type EcolagePaymentStatus = "UNPAID" | "PARTIAL" | "FULL";
 
-function paymentStatusOf(types: Set<EcolagePaymentTypeValue>): EcolagePaymentStatus {
+export function paymentStatusOf(types: Set<EcolagePaymentTypeValue>): EcolagePaymentStatus {
   if (types.has("TOTALITE") || (types.has("TRANCHE_S1") && types.has("TRANCHE_S2"))) return "FULL";
   if (types.size > 0) return "PARTIAL";
   return "UNPAID";
