@@ -16,11 +16,16 @@ const DB_TIMEOUT_MS = 3000;
 
 // La base est jugée en panne si elle ne répond pas sous 3 s : une sonde ne doit
 // jamais rester pendue plus longtemps que la fréquence à laquelle elle interroge.
-export async function checkDatabase(timeoutMs = DB_TIMEOUT_MS): Promise<boolean> {
+// `probe` : la requête de contrôle (remplaçable pour tester le délai sans dépendre
+// de la vitesse réelle de la base).
+export async function checkDatabase(
+  timeoutMs = DB_TIMEOUT_MS,
+  probe: () => Promise<unknown> = () => prisma.$queryRaw`SELECT 1`,
+): Promise<boolean> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     await Promise.race([
-      prisma.$queryRaw`SELECT 1`,
+      probe(),
       new Promise((_, reject) => {
         timer = setTimeout(() => reject(new Error("délai dépassé")), timeoutMs);
       }),

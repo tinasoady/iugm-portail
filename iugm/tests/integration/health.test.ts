@@ -20,7 +20,12 @@ describe("contrôle de santé", () => {
   });
 
   it("juge la base en panne si elle ne répond pas dans le délai", async () => {
-    // Un délai de 0 ms est écoulé avant la fin de la requête
-    expect(await checkDatabase(0)).toBe(false);
+    const neverAnswers = () => new Promise<never>(() => {});
+    expect(await checkDatabase(50, neverAnswers)).toBe(false);
+  });
+
+  it("juge la base en panne si la requête échoue", async () => {
+    const fails = () => Promise.reject(new Error("connexion refusée"));
+    expect(await checkDatabase(1000, fails)).toBe(false);
   });
 });
