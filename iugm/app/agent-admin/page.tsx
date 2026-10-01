@@ -69,7 +69,7 @@ export default async function AgentAdminPage({
       active="/agent-admin"
     >
         {/* Cartes statistiques du workflow */}
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
           <StatCard
             label="Enregistrés"
             value={countOf("ENREGISTRE")}
@@ -100,7 +100,7 @@ export default async function AgentAdminPage({
           />
         </div>
 
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,380px)_1fr]">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,380px)_1fr]">
           {/* Colonne gauche : enregistrement + CSV */}
           <div className="space-y-8">
             <section className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-zinc-900">

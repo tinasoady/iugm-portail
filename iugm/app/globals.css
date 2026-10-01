@@ -23,6 +23,42 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* Système de design « tableau de bord » — inspiré de la densité et de la
+   sobriété d'un dashboard d'administration pro (cartes plates, bordures
+   fines, rayons resserrés), SANS aucun effet « électrique » (pas de glow,
+   pas de halo coloré, pas d'animation flashy) et sans esthétique « IA
+   générique » (pas de violet/dégradé type produit IA — couleur de marque
+   alignée sur le bleu roi classique du blason IUGM). Ces jetons remplacent
+   les valeurs par défaut de Tailwind : comme `indigo-*`, `rounded-xl` et
+   `rounded-2xl` sont déjà utilisés de façon cohérente dans tout le site,
+   les redéfinir ici suffit à faire évoluer l'ensemble de l'app sans
+   toucher chaque fichier.
+   - La teinte de marque est calée sur le bleu roi classique du blason
+     IUGM (mesuré à #1538AA sur public/icon-512.png : le cercle et le
+     lettrage « IUGM »), pas une teinte « produit IA » générique. Le ton
+     « 600 » (le plus utilisé — boutons, menu actif) reprend précisément
+     le bleu du logo (≈ `blue-800` natif de Tailwind, #193cb8, le plus
+     proche du bleu mesuré) ; le reste de l'échelle est dérivé de la même
+     palette `blue-*` native, décalée pour que ce ton pivot tombe juste.
+   - Les rayons de coin sont resserrés (cartes plus plates, moins « bulles »).
+   - Les ombres restent neutres (gris/noir) : aucune ombre teintée. */
+@theme {
+  --color-indigo-50: oklch(97% 0.014 254.604);
+  --color-indigo-100: oklch(93.2% 0.032 255.585);
+  --color-indigo-200: oklch(88.2% 0.059 254.128);
+  --color-indigo-300: oklch(70.7% 0.165 254.624);
+  --color-indigo-400: oklch(62.3% 0.214 259.815);
+  --color-indigo-500: oklch(48.8% 0.243 264.376);
+  --color-indigo-600: oklch(42.4% 0.199 265.638);
+  --color-indigo-700: oklch(37.9% 0.146 265.522);
+  --color-indigo-800: oklch(28.2% 0.091 267.935);
+  --color-indigo-900: oklch(28.2% 0.091 267.935);
+  --color-indigo-950: oklch(28.2% 0.091 267.935);
+
+  --radius-xl: 0.625rem;
+  --radius-2xl: 0.875rem;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

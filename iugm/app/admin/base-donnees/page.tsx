@@ -34,7 +34,7 @@ export default async function BaseDonneesPage() {
       title="Base de données"
       active="/admin/base-donnees"
     >
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,420px)_1fr]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,420px)_1fr]">
         <section className="h-fit rounded-2xl border border-black/5 bg-white p-4 shadow-sm sm:p-5 dark:border-white/10 dark:bg-zinc-900">
           <h2 className="mb-1 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
             Importer des fiches

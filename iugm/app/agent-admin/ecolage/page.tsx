@@ -95,7 +95,7 @@ export default async function EcolagePage() {
       active="/agent-admin/ecolage"
     >
       {/* Cartes statistiques */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
         <StatCard
           label="Dossiers étudiants"
           value={stats.total}
@@ -136,7 +136,7 @@ export default async function EcolagePage() {
             Aucun dossier pour cette sélection.
           </p>
         ) : (
-          <div className="grid gap-8 lg:grid-cols-[minmax(0,300px)_1fr] lg:items-start">
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,300px)_1fr] lg:items-start">
             <div className="flex flex-col items-center gap-6">
               <Donut
                 segments={[

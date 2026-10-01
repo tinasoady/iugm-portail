@@ -22,13 +22,13 @@ const ROLE_LABELS: Record<string, string> = {
 
 const ROLE_BADGE_CLASSES: Record<string, string> = {
   SUPERADMIN:
-    "rounded-full bg-violet-50 px-2.5 py-0.5 text-xs font-medium text-violet-700 dark:bg-violet-950 dark:text-violet-300",
+    "rounded-full border border-violet-200 bg-violet-50 px-2.5 py-0.5 text-xs font-medium text-violet-700 dark:border-violet-900 dark:bg-violet-950 dark:text-violet-300",
   AGENT_ADMINISTRATION:
-    "rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-medium text-sky-700 dark:bg-sky-950 dark:text-sky-300",
+    "rounded-full border border-sky-200 bg-sky-50 px-2.5 py-0.5 text-xs font-medium text-sky-700 dark:border-sky-900 dark:bg-sky-950 dark:text-sky-300",
   AGENT_PEDAGOGIQUE:
-    "rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
+    "rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-300",
   ETUDIANT:
-    "rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-300",
+    "rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300",
 };
 
 const dateFormatter = new Intl.DateTimeFormat("fr-FR", {
@@ -107,7 +107,7 @@ export default async function AdminPage({
     >
       {/* Cartes statistiques — cliquables : accès rapide à la liste filtrée
           par rôle, juste en-dessous (section "Utilisateurs") */}
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard
           label="Super administrateur"
           value={countOf("SUPERADMIN")}
@@ -198,7 +198,7 @@ export default async function AdminPage({
         />
       </section>
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,380px)_1fr]">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,380px)_1fr]">
         {/* Création d'utilisateur */}
         <section className="h-fit rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-zinc-900">
           <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">

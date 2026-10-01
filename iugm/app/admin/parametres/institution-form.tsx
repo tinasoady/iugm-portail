@@ -14,7 +14,7 @@ export function InstitutionForm({ settings }: { settings: Record<string, string>
 
   return (
     <form action={formAction} className="space-y-4">
-      <div className="grid gap-4 sm:grid-cols-[1fr_140px]">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_140px]">
         <div>
           <label className={labelClass} htmlFor="institutionName">Nom de l&apos;établissement *</label>
           <input
@@ -39,7 +39,7 @@ export function InstitutionForm({ settings }: { settings: Record<string, string>
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label className={labelClass} htmlFor="address">Adresse</label>
           <input id="address" name="address" type="text" defaultValue={settings.address ?? ""} className={inputClass} />
@@ -50,7 +50,7 @@ export function InstitutionForm({ settings }: { settings: Record<string, string>
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label className={labelClass} htmlFor="phone">Téléphone</label>
           <input id="phone" name="phone" type="tel" defaultValue={settings.phone ?? ""} className={inputClass} />
@@ -61,7 +61,7 @@ export function InstitutionForm({ settings }: { settings: Record<string, string>
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label className={labelClass} htmlFor="website">Site web</label>
           <input
