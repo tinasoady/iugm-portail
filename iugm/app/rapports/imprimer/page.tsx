@@ -90,14 +90,14 @@ export default async function PrintReportPage({
           <table className="mb-8 w-full text-left text-xs">
             <thead>
               <tr className="border-b border-black/20 text-zinc-500">
-                <th className="py-1.5 pr-3 font-semibold">Filière</th>
-                <th className="py-1.5 pr-3 font-semibold">Niveau</th>
-                <th className="py-1.5 pr-3 text-right font-semibold">Effectif</th>
-                <th className="py-1.5 pr-3 text-right font-semibold">Payé</th>
-                <th className="py-1.5 pr-3 text-right font-semibold">Partiel</th>
-                <th className="py-1.5 pr-3 text-right font-semibold">Non payé</th>
-                <th className="py-1.5 pr-3 text-right font-semibold">Versé</th>
-                <th className="py-1.5 text-right font-semibold">Reste dû</th>
+                <th scope="col" className="py-1.5 pr-3 font-semibold">Filière</th>
+                <th scope="col" className="py-1.5 pr-3 font-semibold">Niveau</th>
+                <th scope="col" className="py-1.5 pr-3 text-right font-semibold">Effectif</th>
+                <th scope="col" className="py-1.5 pr-3 text-right font-semibold">Payé</th>
+                <th scope="col" className="py-1.5 pr-3 text-right font-semibold">Partiel</th>
+                <th scope="col" className="py-1.5 pr-3 text-right font-semibold">Non payé</th>
+                <th scope="col" className="py-1.5 pr-3 text-right font-semibold">Versé</th>
+                <th scope="col" className="py-1.5 text-right font-semibold">Reste dû</th>
               </tr>
             </thead>
             <tbody>
@@ -134,12 +134,12 @@ export default async function PrintReportPage({
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="border-b border-black/20 text-zinc-500">
-                  <th className="py-1.5 pr-3 font-semibold">Matricule</th>
-                  <th className="py-1.5 pr-3 font-semibold">Nom</th>
-                  <th className="py-1.5 pr-3 font-semibold">Filière / Niveau</th>
-                  <th className="py-1.5 pr-3 font-semibold">Situation</th>
-                  <th className="py-1.5 pr-3 text-right font-semibold">Versé</th>
-                  <th className="py-1.5 text-right font-semibold">Reste dû</th>
+                  <th scope="col" className="py-1.5 pr-3 font-semibold">Matricule</th>
+                  <th scope="col" className="py-1.5 pr-3 font-semibold">Nom</th>
+                  <th scope="col" className="py-1.5 pr-3 font-semibold">Filière / Niveau</th>
+                  <th scope="col" className="py-1.5 pr-3 font-semibold">Situation</th>
+                  <th scope="col" className="py-1.5 pr-3 text-right font-semibold">Versé</th>
+                  <th scope="col" className="py-1.5 text-right font-semibold">Reste dû</th>
                 </tr>
               </thead>
               <tbody>

@@ -149,7 +149,7 @@ export default async function AgentAdminPage({
                 Dossiers étudiants ({students.length})
               </h2>
               <form method="get" className="flex w-full items-center gap-2 sm:w-auto">
-                <input
+                <input aria-label="Rechercher"
                   name="q"
                   type="search"
                   defaultValue={q ?? ""}
@@ -174,12 +174,12 @@ export default async function AgentAdminPage({
                 <table className="w-full text-left text-sm">
                   <thead>
                     <tr className="border-b border-black/10 text-zinc-500 dark:border-white/10 dark:text-zinc-400">
-                      <th className="py-2 pr-4 font-medium">Matricule</th>
-                      <th className="py-2 pr-4 font-medium">Nom</th>
-                      <th className="py-2 pr-4 font-medium">Filière / Niveau</th>
-                      <th className="py-2 pr-4 font-medium">Créé le</th>
-                      <th className="py-2 pr-4 font-medium">Statut</th>
-                      <th className="py-2 font-medium">Action</th>
+                      <th scope="col" className="py-2 pr-4 font-medium">Matricule</th>
+                      <th scope="col" className="py-2 pr-4 font-medium">Nom</th>
+                      <th scope="col" className="py-2 pr-4 font-medium">Filière / Niveau</th>
+                      <th scope="col" className="py-2 pr-4 font-medium">Créé le</th>
+                      <th scope="col" className="py-2 pr-4 font-medium">Statut</th>
+                      <th scope="col" className="py-2 font-medium">Action</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -188,7 +188,7 @@ export default async function AgentAdminPage({
                         <td className="py-2.5 pr-4 whitespace-nowrap font-mono text-xs text-zinc-600 dark:text-zinc-400">
                           {s.matricule}
                           {s.academicYear && (
-                            <span className="block text-[10px] text-zinc-400 dark:text-zinc-500">
+                            <span className="block text-[10px] text-zinc-500 dark:text-zinc-400">
                               {s.academicYear}
                             </span>
                           )}

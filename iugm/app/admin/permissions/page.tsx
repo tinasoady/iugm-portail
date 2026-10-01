@@ -186,7 +186,7 @@ export default async function PermissionsPage({
             {/* Tâches autorisées */}
             {roleTasks.length > 0 && (
               <div className="mt-4 border-t border-black/5 pt-4 dark:border-white/10">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                   Tâches autorisées ({user.permissions.length} / {roleTasks.length})
                 </p>
                 <TaskPermissionsForm
@@ -249,10 +249,10 @@ export default async function PermissionsPage({
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-black/10 text-xs uppercase tracking-wider text-zinc-400 dark:border-white/10 dark:text-zinc-500">
-                  <th className="py-2.5 pr-4 font-semibold">Nom</th>
-                  <th className="py-2.5 pr-4 font-semibold">Matricule</th>
-                  <th className="py-2.5 pr-4 font-semibold">Statut</th>
-                  <th className="py-2.5 font-semibold">Gestion du compte</th>
+                  <th scope="col" className="py-2.5 pr-4 font-semibold">Nom</th>
+                  <th scope="col" className="py-2.5 pr-4 font-semibold">Matricule</th>
+                  <th scope="col" className="py-2.5 pr-4 font-semibold">Statut</th>
+                  <th scope="col" className="py-2.5 font-semibold">Gestion du compte</th>
                 </tr>
               </thead>
               <tbody>

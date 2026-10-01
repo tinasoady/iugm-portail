@@ -92,7 +92,7 @@ export default async function ReinscriptionPage({
             Étudiants éligibles ({totalStudents})
           </h2>
           <form method="get" className="flex w-full items-center gap-2 sm:w-auto">
-            <input
+            <input aria-label="Rechercher"
               name="q"
               type="search"
               defaultValue={q ?? ""}
@@ -124,12 +124,12 @@ export default async function ReinscriptionPage({
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-black/10 text-xs uppercase tracking-wider text-zinc-400 dark:border-white/10 dark:text-zinc-500">
-                  <th className="py-2.5 pr-4 font-semibold">Matricule</th>
-                  <th className="py-2.5 pr-4 font-semibold">Nom</th>
-                  <th className="py-2.5 pr-4 font-semibold">Année actuelle</th>
-                  <th className="py-2.5 pr-4 font-semibold">Moyenne générale</th>
-                  <th className="py-2.5 pr-4 font-semibold">Années passées</th>
-                  <th className="py-2.5 font-semibold">Réinscrire pour</th>
+                  <th scope="col" className="py-2.5 pr-4 font-semibold">Matricule</th>
+                  <th scope="col" className="py-2.5 pr-4 font-semibold">Nom</th>
+                  <th scope="col" className="py-2.5 pr-4 font-semibold">Année actuelle</th>
+                  <th scope="col" className="py-2.5 pr-4 font-semibold">Moyenne générale</th>
+                  <th scope="col" className="py-2.5 pr-4 font-semibold">Années passées</th>
+                  <th scope="col" className="py-2.5 font-semibold">Réinscrire pour</th>
                 </tr>
               </thead>
               <tbody>
@@ -150,7 +150,7 @@ export default async function ReinscriptionPage({
                     <td className="py-2.5 pr-4 whitespace-nowrap text-zinc-600 dark:text-zinc-400">
                       {s.academicYear ?? "—"}
                       {(s.level ?? s.track) && (
-                        <span className="block text-xs text-zinc-400 dark:text-zinc-500">
+                        <span className="block text-xs text-zinc-500 dark:text-zinc-400">
                           Niveau {s.level ?? s.track}
                         </span>
                       )}
@@ -167,7 +167,7 @@ export default async function ReinscriptionPage({
                           {averages.get(s.id)!.toFixed(2)}/20
                         </span>
                       ) : (
-                        <span className="text-xs text-zinc-400 dark:text-zinc-500">
+                        <span className="text-xs text-zinc-500 dark:text-zinc-400">
                           S1/S2 incomplets
                         </span>
                       )}

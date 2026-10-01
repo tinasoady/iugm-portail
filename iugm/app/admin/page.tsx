@@ -260,9 +260,9 @@ export default async function AdminPage({
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-black/10 text-xs uppercase tracking-wider text-zinc-400 dark:border-white/10 dark:text-zinc-500">
-                  <th className="py-2.5 pr-4 font-semibold">Utilisateur</th>
-                  <th className="py-2.5 pr-4 font-semibold">Type</th>
-                  <th className="py-2.5 font-semibold">Identifiant</th>
+                  <th scope="col" className="py-2.5 pr-4 font-semibold">Utilisateur</th>
+                  <th scope="col" className="py-2.5 pr-4 font-semibold">Type</th>
+                  <th scope="col" className="py-2.5 font-semibold">Identifiant</th>
                 </tr>
               </thead>
               <tbody>

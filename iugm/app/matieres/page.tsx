@@ -58,9 +58,9 @@ export default async function MatieresPage() {
                   <table className="w-full text-left text-sm">
                     <thead>
                       <tr className="border-b border-black/10 text-zinc-500 dark:border-white/10 dark:text-zinc-400">
-                        <th className="py-2 pr-4 font-medium">Niveau</th>
-                        <th className="py-2 pr-4 font-medium">Matière</th>
-                        <th className="py-2 font-medium">Caractère</th>
+                        <th scope="col" className="py-2 pr-4 font-medium">Niveau</th>
+                        <th scope="col" className="py-2 pr-4 font-medium">Matière</th>
+                        <th scope="col" className="py-2 font-medium">Caractère</th>
                       </tr>
                     </thead>
                     <tbody>

@@ -4,6 +4,7 @@ import { useRef } from "react";
 import Link from "next/link";
 
 import { logout } from "@/app/auth-actions";
+import { clearOfflineCaches } from "@/lib/offline/clear";
 import { IconBell, IconLogout } from "./icons";
 
 function initials(email: string): string {
@@ -85,13 +86,18 @@ export function AccountMenu({
             )}
           </Link>
         ) : (
-          <span className="flex items-center gap-2 px-4 py-2.5 text-sm text-zinc-400 dark:text-zinc-500">
+          <span className="flex items-center gap-2 px-4 py-2.5 text-sm text-zinc-500 dark:text-zinc-400">
             <IconBell />
             Notifications
           </span>
         )}
 
-        <form action={logout}>
+        <form
+          action={async () => {
+            await clearOfflineCaches();
+            await logout();
+          }}
+        >
           <button
             type="submit"
             className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-red-600 transition hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"

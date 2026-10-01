@@ -97,14 +97,14 @@ export default async function JournalPage({
       {/* Filtres */}
       <section className="rounded-2xl border border-black/5 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-zinc-900">
         <form method="get" className="flex flex-wrap items-center gap-2">
-          <input
+          <input aria-label="Rechercher"
             name="q"
             type="search"
             defaultValue={q ?? ""}
             placeholder="Email de l'auteur, détails..."
             className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-indigo-500/40 sm:w-64 dark:border-white/10 dark:bg-zinc-950 dark:text-zinc-50"
           />
-          <select
+          <select aria-label="Filtrer par action"
             name="action"
             defaultValue={action ?? ""}
             className="rounded-xl border border-black/10 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-indigo-500/40 dark:border-white/10 dark:bg-zinc-950 dark:text-zinc-50"
@@ -165,10 +165,10 @@ export default async function JournalPage({
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-black/10 text-xs uppercase tracking-wider text-zinc-400 dark:border-white/10 dark:text-zinc-500">
-                  <th className="py-2.5 pr-4 font-semibold">Date</th>
-                  <th className="py-2.5 pr-4 font-semibold">Action</th>
-                  <th className="py-2.5 pr-4 font-semibold">Auteur</th>
-                  <th className="py-2.5 font-semibold">Détails</th>
+                  <th scope="col" className="py-2.5 pr-4 font-semibold">Date</th>
+                  <th scope="col" className="py-2.5 pr-4 font-semibold">Action</th>
+                  <th scope="col" className="py-2.5 pr-4 font-semibold">Auteur</th>
+                  <th scope="col" className="py-2.5 font-semibold">Détails</th>
                 </tr>
               </thead>
               <tbody>

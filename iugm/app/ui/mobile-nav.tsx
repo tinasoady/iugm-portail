@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 
@@ -46,13 +46,35 @@ export function MobileNav({
   const [open, setOpen] = useState(false);
   const mounted = useSyncExternalStore(subscribeNever, getMountedSnapshot, getServerMountedSnapshot);
   const close = () => setOpen(false);
+  const openButtonRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
-  // Ferme au clavier (Échap) et bloque le défilement du fond pendant que le
-  // tiroir est ouvert.
+  // Ferme au clavier (Échap), garde le focus dans le tiroir tant qu'il est
+  // ouvert (Tab/Maj+Tab bouclent), le rend au bouton d'ouverture à la fermeture
+  // et bloque le défilement du fond.
   useEffect(() => {
     if (!open) return;
+    const trigger = openButtonRef.current;
+    const dialog = dialogRef.current;
+    const focusables = () =>
+      Array.from(
+        dialog?.querySelectorAll<HTMLElement>("a[href], button:not([disabled]):not([tabindex=\"-1\"])") ?? [],
+      );
+    focusables()[0]?.focus();
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") close();
+      if (e.key !== "Tab") return;
+      const items = focusables();
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     document.addEventListener("keydown", onKeyDown);
     const previousOverflow = document.body.style.overflow;
@@ -60,6 +82,7 @@ export function MobileNav({
     return () => {
       document.removeEventListener("keydown", onKeyDown);
       document.body.style.overflow = previousOverflow;
+      trigger?.focus();
     };
   }, [open]);
 
@@ -76,8 +99,10 @@ export function MobileNav({
 
       {/* Tiroir de navigation */}
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
+        aria-label="Menu de navigation"
         className="fixed inset-y-0 left-0 z-50 flex w-72 max-w-[82%] flex-col bg-zinc-950 shadow-2xl md:hidden"
       >
         <div className="flex items-center justify-between gap-3 px-4 py-4">
@@ -109,7 +134,7 @@ export function MobileNav({
           </button>
         </div>
 
-        <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 pb-6">
+        <nav aria-label="Navigation principale" className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 pb-6">
           {items.map((item) => {
             const isActive = item.href === active;
             return (
@@ -117,6 +142,7 @@ export function MobileNav({
                 <Link
                   href={item.href}
                   onClick={close}
+                  aria-current={isActive ? "page" : undefined}
                   className={
                     isActive
                       ? "flex items-center gap-3 rounded-xl bg-indigo-600 px-3 py-3 text-sm font-semibold text-white shadow-md"
@@ -135,10 +161,11 @@ export function MobileNav({
                           key={child.href}
                           href={child.href}
                           onClick={close}
+                          aria-current={isChildActive ? "page" : undefined}
                           className={
                             isChildActive
                               ? "block rounded-lg px-3 py-2 text-xs font-semibold text-white"
-                              : "block rounded-lg px-3 py-2 text-xs font-medium text-zinc-500 transition hover:bg-white/5 hover:text-white"
+                              : "block rounded-lg px-3 py-2 text-xs font-medium text-zinc-400 transition hover:bg-white/5 hover:text-white"
                           }
                         >
                           {child.label}
@@ -158,6 +185,7 @@ export function MobileNav({
   return (
     <>
       <button
+        ref={openButtonRef}
         type="button"
         aria-label="Ouvrir le menu"
         aria-expanded={open}

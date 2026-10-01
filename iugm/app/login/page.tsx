@@ -52,7 +52,7 @@ export default async function LoginPage({
 
         <LoginForm />
 
-        <div className="mt-6 text-center text-xs text-zinc-400 dark:text-zinc-500">
+        <div className="mt-6 text-center text-xs text-zinc-500 dark:text-zinc-400">
           @{settings.institutionAcronym}-{(settings.city ?? "").toUpperCase()}
         </div>
       </div>

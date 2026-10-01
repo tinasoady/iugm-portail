@@ -40,7 +40,7 @@ export function ForgotPasswordForm() {
           </p>
         )}
         {state.success && (
-          <p className="flex items-start gap-2 rounded-xl bg-green-50 px-3 py-2 text-sm text-green-700 dark:bg-green-950 dark:text-green-300">
+          <p role="status" className="flex items-start gap-2 rounded-xl bg-green-50 px-3 py-2 text-sm text-green-700 dark:bg-green-950 dark:text-green-300">
             <FaCheckCircle className="mt-0.5 shrink-0" size={14} aria-hidden="true" />
             {state.success}
           </p>

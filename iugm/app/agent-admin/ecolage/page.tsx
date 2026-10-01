@@ -257,10 +257,10 @@ export default async function EcolagePage({
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-black/10 text-xs uppercase tracking-wider text-zinc-400 dark:border-white/10 dark:text-zinc-500">
-                  <th className="py-2.5 pr-4 font-semibold">Formation</th>
-                  <th className="py-2.5 pr-4 font-semibold">Intégral / Partiel / Non payé</th>
-                  <th className="py-2.5 pr-4 font-semibold">Taux</th>
-                  <th className="w-1/3 py-2.5 font-semibold">Progression</th>
+                  <th scope="col" className="py-2.5 pr-4 font-semibold">Formation</th>
+                  <th scope="col" className="py-2.5 pr-4 font-semibold">Intégral / Partiel / Non payé</th>
+                  <th scope="col" className="py-2.5 pr-4 font-semibold">Taux</th>
+                  <th scope="col" className="w-1/3 py-2.5 font-semibold">Progression</th>
                 </tr>
               </thead>
               <tbody>
@@ -274,7 +274,7 @@ export default async function EcolagePage({
                     </td>
                     <td className="py-2.5 pr-4 text-zinc-600 dark:text-zinc-400">
                       {f.full} / {f.partial} / {f.unpaid}{" "}
-                      <span className="text-zinc-400 dark:text-zinc-500">(sur {f.total})</span>
+                      <span className="text-zinc-500 dark:text-zinc-400">(sur {f.total})</span>
                     </td>
                     <td className="py-2.5 pr-4 font-semibold text-zinc-900 dark:text-zinc-50">
                       {pct(f.full, f.total)}%
@@ -308,13 +308,13 @@ export default async function EcolagePage({
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-black/10 text-xs uppercase tracking-wider text-zinc-400 dark:border-white/10 dark:text-zinc-500">
-                  <th className="py-2.5 pr-4 font-semibold">Matricule</th>
-                  <th className="py-2.5 pr-4 font-semibold">Nom</th>
-                  <th className="py-2.5 pr-4 font-semibold">Formation</th>
-                  <th className="py-2.5 pr-4 font-semibold">Statut</th>
-                  <th className="py-2.5 pr-4 font-semibold">Montant dû</th>
-                  <th className="py-2.5 pr-4 font-semibold">Téléphone</th>
-                  <th className="py-2.5 font-semibold">Action</th>
+                  <th scope="col" className="py-2.5 pr-4 font-semibold">Matricule</th>
+                  <th scope="col" className="py-2.5 pr-4 font-semibold">Nom</th>
+                  <th scope="col" className="py-2.5 pr-4 font-semibold">Formation</th>
+                  <th scope="col" className="py-2.5 pr-4 font-semibold">Statut</th>
+                  <th scope="col" className="py-2.5 pr-4 font-semibold">Montant dû</th>
+                  <th scope="col" className="py-2.5 pr-4 font-semibold">Téléphone</th>
+                  <th scope="col" className="py-2.5 font-semibold">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -323,7 +323,7 @@ export default async function EcolagePage({
                     <td className="py-2.5 pr-4 whitespace-nowrap font-mono text-xs text-zinc-600 dark:text-zinc-400">
                       {s.matricule}
                       {s.academicYear && (
-                        <span className="block text-[10px] text-zinc-400 dark:text-zinc-500">
+                        <span className="block text-[10px] text-zinc-500 dark:text-zinc-400">
                           {s.academicYear}
                         </span>
                       )}

@@ -50,7 +50,7 @@ export function PermissionActions({
 
   if (isSelf) {
     return (
-      <p className="text-xs text-zinc-400 dark:text-zinc-500">
+      <p className="text-xs text-zinc-500 dark:text-zinc-400">
         Votre propre compte — non modifiable ici.
       </p>
     );
@@ -62,7 +62,7 @@ export function PermissionActions({
         {/* Changement de rôle */}
         <form action={roleFormAction} className="flex items-center gap-1.5">
           <input type="hidden" name="userId" value={userId} />
-          <select
+          <select aria-label="Rôle"
             name="role"
             defaultValue={role}
             className="rounded-lg border border-black/10 bg-white px-2 py-1.5 text-xs text-zinc-900 outline-none focus:ring-2 focus:ring-indigo-500/40 dark:border-white/10 dark:bg-zinc-950 dark:text-zinc-50"
@@ -153,7 +153,7 @@ export function PermissionActions({
 
       {state.error && <p className="text-xs text-red-600 dark:text-red-400">{state.error}</p>}
       {state.success && (
-        <p className="text-xs text-green-600 dark:text-green-400">{state.success}</p>
+        <p role="status" className="text-xs text-green-600 dark:text-green-400">{state.success}</p>
       )}
       {resetState.tempPassword && (
         <p className="rounded-lg bg-amber-50 px-2 py-1.5 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">

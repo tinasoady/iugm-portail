@@ -82,7 +82,7 @@ export default async function AgentPedagogiqueNotesPage({
         </p>
 
         <form method="get" className="mb-4 flex flex-wrap items-center gap-2">
-          <input
+          <input aria-label="Rechercher un étudiant inscrit"
             name="qi"
             type="search"
             defaultValue={qi ?? ""}
@@ -106,10 +106,10 @@ export default async function AgentPedagogiqueNotesPage({
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-black/10 text-zinc-500 dark:border-white/10 dark:text-zinc-400">
-                  <th className="py-2 pr-4 font-medium">Matricule</th>
-                  <th className="py-2 pr-4 font-medium">Nom</th>
-                  <th className="py-2 pr-4 font-medium">Filière / Niveau</th>
-                  <th className="py-2 font-medium">Action</th>
+                  <th scope="col" className="py-2 pr-4 font-medium">Matricule</th>
+                  <th scope="col" className="py-2 pr-4 font-medium">Nom</th>
+                  <th scope="col" className="py-2 pr-4 font-medium">Filière / Niveau</th>
+                  <th scope="col" className="py-2 font-medium">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -183,7 +183,7 @@ export default async function AgentPedagogiqueNotesPage({
               <form method="get" className="mb-4 flex flex-wrap items-center gap-2">
                 <input type="hidden" name="studentId" value={studentId} />
                 {qi && <input type="hidden" name="qi" value={qi} />}
-                <input
+                <input aria-label="Année universitaire"
                   name="academicYear"
                   type="text"
                   required
@@ -192,7 +192,7 @@ export default async function AgentPedagogiqueNotesPage({
                   title="Format : 2025-2026"
                   className={`w-28 ${selectClass}`}
                 />
-                <select name="semester" defaultValue={gradingSemester} className={selectClass}>
+                <select aria-label="Semestre" name="semester" defaultValue={gradingSemester} className={selectClass}>
                   <option value="S1">S1</option>
                   <option value="S2">S2</option>
                 </select>

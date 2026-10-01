@@ -168,6 +168,7 @@ export function InscriptionEntry({
         <div className="relative">
           <input
             type="search"
+            aria-label="Nom de l'étudiant à rechercher"
             value={query}
             onChange={(e) => handleQueryChange(e.target.value)}
             placeholder="Nom de l'étudiant (ex : RAKOTO Jean)"
@@ -217,7 +218,7 @@ export function InscriptionEntry({
                             </span>
                           )}
                           {loadingId === r.id && (
-                            <span className="text-[11px] text-zinc-400">Chargement...</span>
+                            <span className="text-[11px] text-zinc-500 dark:text-zinc-400">Chargement...</span>
                           )}
                         </span>
                         <span className="text-xs text-zinc-500 dark:text-zinc-400">

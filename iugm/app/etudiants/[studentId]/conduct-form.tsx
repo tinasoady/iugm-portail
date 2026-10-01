@@ -17,7 +17,7 @@ export function ConductForm({
   return (
     <form action={formAction} className="space-y-3">
       <input type="hidden" name="studentId" value={studentId} />
-      <textarea
+      <textarea aria-label="Appréciation de conduite"
         name="conduct"
         rows={4}
         maxLength={2000}
@@ -26,12 +26,12 @@ export function ConductForm({
         className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-indigo-500/40 dark:border-white/10 dark:bg-zinc-950 dark:text-zinc-50"
       />
       {state.error && (
-        <p className="rounded-xl bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950 dark:text-red-300">
+        <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950 dark:text-red-300">
           {state.error}
         </p>
       )}
       {state.success && (
-        <p className="rounded-xl bg-green-50 px-3 py-2 text-xs text-green-700 dark:bg-green-950 dark:text-green-300">
+        <p role="status" className="rounded-xl bg-green-50 px-3 py-2 text-xs text-green-700 dark:bg-green-950 dark:text-green-300">
           {state.success}
         </p>
       )}

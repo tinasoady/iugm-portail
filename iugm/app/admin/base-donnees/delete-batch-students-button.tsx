@@ -69,7 +69,7 @@ export function DeleteBatchStudentsButton({
         <input type="hidden" name="category" value={category} />
         <input type="hidden" name="formation" value={formation ?? ""} />
         <input type="hidden" name="level" value={level ?? ""} />
-        <input
+        <input aria-label="Confirmation de la suppression"
           type="text"
           name="confirmText"
           value={confirmText}

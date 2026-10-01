@@ -154,11 +154,11 @@ export default async function AgentPedagogiquePage({
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-black/10 text-zinc-500 dark:border-white/10 dark:text-zinc-400">
-                    <th className="py-2 pr-4 font-medium">Matricule</th>
-                    <th className="py-2 pr-4 font-medium">Nom</th>
-                    <th className="py-2 pr-4 font-medium">Filière / Niveau</th>
-                    <th className="py-2 pr-4 font-medium">Reçu bancaire</th>
-                    <th className="py-2 font-medium">Action</th>
+                    <th scope="col" className="py-2 pr-4 font-medium">Matricule</th>
+                    <th scope="col" className="py-2 pr-4 font-medium">Nom</th>
+                    <th scope="col" className="py-2 pr-4 font-medium">Filière / Niveau</th>
+                    <th scope="col" className="py-2 pr-4 font-medium">Reçu bancaire</th>
+                    <th scope="col" className="py-2 font-medium">Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -203,14 +203,14 @@ export default async function AgentPedagogiquePage({
           </p>
 
           <form method="get" className="mb-4 flex flex-wrap items-center gap-2">
-            <input
+            <input aria-label="Rechercher un étudiant inscrit"
               name="qi"
               type="search"
               defaultValue={qi ?? ""}
               placeholder="Nom ou matricule..."
               className={`w-full sm:w-44 ${selectClass}`}
             />
-            <select name="program" defaultValue={program ?? ""} className={selectClass}>
+            <select aria-label="Filière" name="program" defaultValue={program ?? ""} className={selectClass}>
               <option value="">Toutes filières</option>
               {filterOptions.programs.map((p) => (
                 <option key={p} value={p}>
@@ -218,7 +218,7 @@ export default async function AgentPedagogiquePage({
                 </option>
               ))}
             </select>
-            <select name="department" defaultValue={department ?? ""} className={selectClass}>
+            <select aria-label="Département" name="department" defaultValue={department ?? ""} className={selectClass}>
               <option value="">Tous départements</option>
               {filterOptions.departments.map((d) => (
                 <option key={d} value={d}>
@@ -226,7 +226,7 @@ export default async function AgentPedagogiquePage({
                 </option>
               ))}
             </select>
-            <select name="mention" defaultValue={mention ?? ""} className={selectClass}>
+            <select aria-label="Mention" name="mention" defaultValue={mention ?? ""} className={selectClass}>
               <option value="">Toutes mentions</option>
               {Object.entries(MENTION_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>
@@ -251,13 +251,13 @@ export default async function AgentPedagogiquePage({
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-black/10 text-zinc-500 dark:border-white/10 dark:text-zinc-400">
-                    <th className="py-2 pr-4 font-medium">Matricule</th>
-                    <th className="py-2 pr-4 font-medium">Nom</th>
-                    <th className="py-2 pr-4 font-medium">Filière / Niveau / Dépt</th>
-                    <th className="py-2 pr-4 font-medium">Résultats</th>
-                    <th className="py-2 pr-4 font-medium">Assigner un résultat</th>
-                    <th className="py-2 pr-4 font-medium">Notes</th>
-                    <th className="py-2 font-medium">Reçu</th>
+                    <th scope="col" className="py-2 pr-4 font-medium">Matricule</th>
+                    <th scope="col" className="py-2 pr-4 font-medium">Nom</th>
+                    <th scope="col" className="py-2 pr-4 font-medium">Filière / Niveau / Dépt</th>
+                    <th scope="col" className="py-2 pr-4 font-medium">Résultats</th>
+                    <th scope="col" className="py-2 pr-4 font-medium">Assigner un résultat</th>
+                    <th scope="col" className="py-2 pr-4 font-medium">Notes</th>
+                    <th scope="col" className="py-2 font-medium">Reçu</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -273,7 +273,7 @@ export default async function AgentPedagogiquePage({
                       </td>
                       <td className="py-2.5 pr-4">
                         {s.results.length === 0 ? (
-                          <span className="text-xs text-zinc-400 dark:text-zinc-500">Aucun</span>
+                          <span className="text-xs text-zinc-500 dark:text-zinc-400">Aucun</span>
                         ) : (
                           <ul className="space-y-1">
                             {s.results.map((r) => (
@@ -328,7 +328,7 @@ export default async function AgentPedagogiquePage({
               Dossiers en cours ({upstream.length})
             </h2>
             <form method="get" className="flex items-center gap-2">
-              <input
+              <input aria-label="Rechercher"
                 name="q"
                 type="search"
                 defaultValue={q ?? ""}
@@ -353,10 +353,10 @@ export default async function AgentPedagogiquePage({
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-black/10 text-zinc-500 dark:border-white/10 dark:text-zinc-400">
-                    <th className="py-2 pr-4 font-medium">Matricule</th>
-                    <th className="py-2 pr-4 font-medium">Nom</th>
-                    <th className="py-2 pr-4 font-medium">Filière / Niveau</th>
-                    <th className="py-2 font-medium">Statut</th>
+                    <th scope="col" className="py-2 pr-4 font-medium">Matricule</th>
+                    <th scope="col" className="py-2 pr-4 font-medium">Nom</th>
+                    <th scope="col" className="py-2 pr-4 font-medium">Filière / Niveau</th>
+                    <th scope="col" className="py-2 font-medium">Statut</th>
                   </tr>
                 </thead>
                 <tbody>

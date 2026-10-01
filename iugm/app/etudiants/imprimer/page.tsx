@@ -104,11 +104,11 @@ export default async function ImprimerListePage({
                     <table className="w-full min-w-140 text-left text-xs print:min-w-0">
                       <thead>
                         <tr className="border-b border-black/20 text-zinc-500">
-                          <th className="py-1.5 pr-3 font-semibold">Matricule</th>
-                          <th className="py-1.5 pr-3 font-semibold">Nom</th>
-                          <th className="py-1.5 pr-3 font-semibold">Filière / Niveau</th>
-                          <th className="py-1.5 pr-3 font-semibold">Statut</th>
-                          <th className="py-1.5 font-semibold">Inscrit le</th>
+                          <th scope="col" className="py-1.5 pr-3 font-semibold">Matricule</th>
+                          <th scope="col" className="py-1.5 pr-3 font-semibold">Nom</th>
+                          <th scope="col" className="py-1.5 pr-3 font-semibold">Filière / Niveau</th>
+                          <th scope="col" className="py-1.5 pr-3 font-semibold">Statut</th>
+                          <th scope="col" className="py-1.5 font-semibold">Inscrit le</th>
                         </tr>
                       </thead>
                       <tbody>

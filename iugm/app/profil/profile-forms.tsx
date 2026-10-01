@@ -56,7 +56,7 @@ export function PhotoForm({
       </div>
 
       <form action={uploadFormAction} className="space-y-3">
-        <input
+        <input aria-label="Fichier de la photo"
           name="photo"
           type="file"
           accept="image/png,image/jpeg,image/webp"
@@ -83,12 +83,12 @@ export function PhotoForm({
       <p className="text-xs text-zinc-500 dark:text-zinc-400">PNG, JPEG ou WebP — 1 Mo maximum.</p>
 
       {state.error && (
-        <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
+        <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
           {state.error}
         </p>
       )}
       {state.success && (
-        <p className="rounded-xl bg-green-50 px-3 py-2 text-sm text-green-700 dark:bg-green-950 dark:text-green-300">
+        <p role="status" className="rounded-xl bg-green-50 px-3 py-2 text-sm text-green-700 dark:bg-green-950 dark:text-green-300">
           {state.success}
         </p>
       )}
@@ -118,12 +118,12 @@ export function InfoForm({ fullName }: { fullName?: string | null }) {
       </div>
 
       {state.error && (
-        <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
+        <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
           {state.error}
         </p>
       )}
       {state.success && (
-        <p className="rounded-xl bg-green-50 px-3 py-2 text-sm text-green-700 dark:bg-green-950 dark:text-green-300">
+        <p role="status" className="rounded-xl bg-green-50 px-3 py-2 text-sm text-green-700 dark:bg-green-950 dark:text-green-300">
           {state.success}
         </p>
       )}

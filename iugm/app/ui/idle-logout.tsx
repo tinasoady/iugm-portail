@@ -3,6 +3,7 @@
 import { startTransition, useCallback, useEffect, useRef, useState } from "react";
 
 import { logout } from "@/app/auth-actions";
+import { clearOfflineCaches } from "@/lib/offline/clear";
 
 const IDLE_LIMIT_MS = 20 * 60 * 1000;
 const WARNING_BEFORE_MS = 60 * 1000;
@@ -32,6 +33,7 @@ export function IdleLogout() {
     }, IDLE_LIMIT_MS - WARNING_BEFORE_MS);
     idleTimer.current = setTimeout(() => {
       startTransition(async () => {
+        await clearOfflineCaches();
         await logout();
       });
     }, IDLE_LIMIT_MS);
