@@ -35,6 +35,40 @@ notifications ne partent pas et la page « Mot de passe oublié » indique que
 la réinitialisation par e-mail n'est pas activée (le superadmin réinitialise
 alors les mots de passe depuis **Permissions**).
 
+### Mettre en place l'envoi d'e-mails (pas à pas)
+
+Tant que `SMTP_HOST` et `MAIL_FROM` manquent, la page « Mot de passe oublié » affiche
+« La réinitialisation par e-mail n'est pas activée ». Deux fournisseurs gratuits qui conviennent sans nom de domaine :
+
+**Option A — Gmail** (le plus rapide ; environ 500 e-mails par jour, l'expéditeur affiché est l'adresse Gmail elle-même)
+
+1. Compte Google → Sécurité → activer la **validation en 2 étapes**.
+2. Ouvrir <https://myaccount.google.com/apppasswords>, créer un mot de passe d'application nommé « Portail IUGM » : Google affiche 16 caractères. C'est ce mot de passe-là, **pas** celui du compte.
+3. Variables Vercel :
+
+| Variable | Valeur |
+|---|---|
+| `SMTP_HOST` | `smtp.gmail.com` |
+| `SMTP_PORT` | `465` |
+| `SMTP_SECURE` | `true` |
+| `SMTP_USER` | l'adresse Gmail complète |
+| `SMTP_PASS` | les 16 caractères, sans espaces |
+| `MAIL_FROM` | `Portail IUGM <la même adresse Gmail>` |
+
+**Option B — Brevo** (environ 300 e-mails par jour, expéditeur à vérifier chez eux)
+
+1. Créer un compte sur brevo.com, puis *SMTP & API* → générer une **clé SMTP** et noter le « login SMTP ».
+2. *Expéditeurs* → ajouter et **vérifier** l'adresse qui enverra les messages.
+3. Variables Vercel : `SMTP_HOST=smtp-relay.brevo.com`, `SMTP_PORT=587`, `SMTP_USER=<login SMTP>`, `SMTP_PASS=<clé SMTP>`, `MAIL_FROM=Portail IUGM <adresse vérifiée>`.
+
+**Dans Vercel** : projet → Settings → Environment Variables → ajouter chaque variable pour l'environnement *Production* (cocher « Sensitive » pour `SMTP_PASS`), puis **redéployer** (Deployments → ⋯ → Redeploy). Les variables ne sont lues qu'au démarrage d'un déploiement.
+
+**Vérifier** : connectez-vous en superadmin → **Paramètres** → section *Envoi d'e-mails*. Elle affiche l'état de la configuration (variables manquantes, serveur, expéditeur) et un bouton **Envoyer le test** ; en cas d'échec, le message indique la cause probable (identifiants refusés, serveur injoignable, expéditeur non autorisé...).
+
+Les liens des e-mails utilisent le domaine de production détecté automatiquement par Vercel ; définissez `APP_URL` seulement si vous avez un domaine personnalisé.
+
+Les adresses des **comptes du personnel** doivent être de vraies boîtes mail pour recevoir un lien « mot de passe oublié » ; celles des étudiants viennent de l'adresse personnelle de leur dossier.
+
 ## 3. Première mise en production
 
 1. Créer la base PostgreSQL et récupérer `DATABASE_URL`.

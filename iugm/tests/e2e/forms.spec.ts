@@ -37,4 +37,20 @@ test.describe("formulaires", () => {
     await page.getByRole("button", { name: /Créer/ }).click();
     await expect(alertOf(page)).toHaveText(/lettre et un chiffre/);
   });
+
+  test("Paramètres : l'état de l'envoi d'e-mails s'affiche et le test d'envoi répond", async ({ page }) => {
+    await signIn(page, ACCOUNTS.superadmin);
+    await page.goto("/admin/parametres");
+    await expect(page.getByRole("heading", { name: "Envoi d'e-mails" })).toBeVisible();
+    // Les tests tournent en mode journal (MAIL_DRIVER=log) : rien n'est réellement envoyé
+    await expect(page.getByText("Mode journal (aucun envoi réel)")).toBeVisible();
+
+    await page.locator("#test-email-to").fill("destinataire@e2e.test");
+    await page.getByRole("button", { name: "Envoyer le test" }).click();
+    await expect(page.getByText(/écrit dans les journaux du serveur/)).toBeVisible();
+
+    // Une adresse invalide est refusée avant tout envoi
+    await page.locator("#test-email-to").fill("pas-une-adresse");
+    await expect(page.locator("#test-email-to")).toHaveAttribute("type", "email");
+  });
 });

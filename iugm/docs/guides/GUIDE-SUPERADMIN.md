@@ -61,7 +61,9 @@ Menu **Journaux d'activité** : toutes les actions sensibles, 50 par page, avec 
 
 ## 9. E-mails
 
-Si le serveur d'envoi est configuré ([`../DEPLOIEMENT.md`](../DEPLOIEMENT.md) § 2), le portail envoie : le lien « mot de passe oublié » (aux agents à leur e-mail, aux étudiants à l'adresse personnelle de leur dossier) et les notifications aux étudiants. Un envoi qui échoue apparaît dans les journaux (« Notification e-mail non envoyée »). Sans configuration, rien ne part et le portail fonctionne normalement.
+La section **Paramètres → Envoi d'e-mails** montre l'état de la configuration et permet d'**envoyer un e-mail de test** (avec, en cas d'échec, la cause probable). La mise en place pas à pas est dans [`../DEPLOIEMENT.md`](../DEPLOIEMENT.md) § 2.
+
+Si le serveur d'envoi est configuré, le portail envoie : le lien « mot de passe oublié » (aux agents à leur e-mail, aux étudiants à l'adresse personnelle de leur dossier) et les notifications aux étudiants. Un envoi qui échoue apparaît dans les journaux (« Notification e-mail non envoyée »). Sans configuration, rien ne part et le portail fonctionne normalement.
 
 ## 10. Que faire si…
 

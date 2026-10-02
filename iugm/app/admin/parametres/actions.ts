@@ -10,6 +10,9 @@ import { saveUploadedFile, deleteUploadedFile } from "@/lib/storage";
 import { resolveImageType } from "@/lib/image-sniff";
 import { FINANCIAL_INFO_DEFAULTS, type FinancialInfoFields } from "@/lib/finance";
 import { LEVELS } from "@/lib/level-shared";
+import { sendMail, getMailStatus, explainMailError, isValidEmailAddress } from "@/lib/mailer";
+import { getTrustedAppOrigin } from "@/lib/url";
+import { checkActionRateLimit } from "@/lib/rate-limit";
 
 export type SettingsState = { success?: string; error?: string };
 
@@ -136,4 +139,62 @@ export async function updateLevelFinancialInfoAction(
   await logAction("SETTINGS_UPDATED", `Renseignements financiers mis à jour pour ${level}`, session.sub);
   revalidatePath("/admin/parametres");
   return { success: `Renseignements financiers de ${level} enregistrés.` };
+}
+
+// ---------------------------------------------------------------------------
+// E-mail de test : prouve que la configuration SMTP fonctionne, depuis le site
+// ---------------------------------------------------------------------------
+
+export type TestEmailState = { success?: string; error?: string; hint?: string };
+
+// Quelques essais par tranche de 5 min : un SMTP mal réglé ne doit pas être
+// martelé, ni servir à envoyer du courrier en rafale.
+const MAX_TEST_EMAILS_PER_WINDOW = 5;
+
+export async function sendTestEmailAction(
+  _prev: TestEmailState,
+  formData: FormData,
+): Promise<TestEmailState> {
+  const session = await requireSuperadmin();
+  if (!session) return { error: "Accès refusé." };
+
+  const limit = checkActionRateLimit(`test-email:${session.sub}`, MAX_TEST_EMAILS_PER_WINDOW);
+  if (limit.limited) {
+    return { error: `Trop d'essais. Réessayez dans ${limit.retryAfterMinutes} minutes.` };
+  }
+
+  const to = String(formData.get("to") ?? "").trim();
+  if (!isValidEmailAddress(to)) return { error: "Adresse de destination invalide." };
+
+  const status = getMailStatus();
+  if (status.mode === "none") {
+    return {
+      error: `L'envoi d'e-mails n'est pas configuré : il manque ${status.missing.join(" et ")}.`,
+      hint: "Renseignez ces variables dans Vercel (Settings → Environment Variables), puis redéployez.",
+    };
+  }
+
+  const settings = await getSettings();
+  const origin = await getTrustedAppOrigin().catch(() => null);
+  const result = await sendMail({
+    to,
+    subject: `Test d'envoi — ${settings.institutionAcronym}`,
+    text:
+      `Ceci est un e-mail de test envoyé depuis le portail ${settings.institutionAcronym}.\n\n` +
+      `Si vous le lisez, l'envoi d'e-mails fonctionne : « mot de passe oublié » et les notifications aux étudiants peuvent partir.` +
+      (origin ? `\n\nPortail : ${origin}` : ""),
+  });
+
+  if (!result.ok) {
+    await logAction("NOTIFICATION_FAILED", `E-mail de test vers ${to} : échec — ${result.error}`, session.sub);
+    return { error: result.error, hint: explainMailError(result.error, result.code) ?? undefined };
+  }
+
+  await logAction("SETTINGS_UPDATED", `E-mail de test envoyé à ${to} (${status.mode})`, session.sub);
+  return {
+    success:
+      status.mode === "log"
+        ? "Mode journal : le message a été écrit dans les journaux du serveur, rien n'a été envoyé."
+        : `E-mail de test envoyé à ${to}. Vérifiez sa réception (et les courriers indésirables).`,
+  };
 }

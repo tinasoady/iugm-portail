@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { isMailConfigured, isValidEmailAddress, sendMail } from "@/lib/mailer";
+import {
+  explainMailError,
+  getMailStatus,
+  isMailConfigured,
+  isValidEmailAddress,
+  sendMail,
+} from "@/lib/mailer";
 import {
   escapeHtml,
   passwordResetEmail,
@@ -140,5 +146,59 @@ describe("modèles d'e-mails", () => {
     ] as const;
     const subjects = events.map((e) => studentNotificationEmail(BRAND, { fullName: "X" }, e).subject);
     expect(new Set(subjects).size).toBe(events.length);
+  });
+});
+
+describe("getMailStatus", () => {
+  it("non configuré : liste ce qui manque", () => {
+    const status = getMailStatus({});
+    expect(status.mode).toBe("none");
+    expect(status.missing).toEqual(["SMTP_HOST", "MAIL_FROM"]);
+  });
+
+  it("configuré : SMTP avec STARTTLS par défaut, port 465 = TLS direct", () => {
+    const base = { SMTP_HOST: "smtp.gmail.com", MAIL_FROM: "Portail <a@b.mg>", SMTP_USER: "u", SMTP_PASS: "p" };
+    expect(getMailStatus(base)).toMatchObject({ mode: "smtp", port: 587, secure: false, hasCredentials: true, missing: [] });
+    expect(getMailStatus({ ...base, SMTP_PORT: "465" })).toMatchObject({ port: 465, secure: true });
+  });
+
+  it("ne renvoie jamais le mot de passe SMTP", () => {
+    const status = getMailStatus({ SMTP_HOST: "h", MAIL_FROM: "a@b.mg", SMTP_USER: "u", SMTP_PASS: "secret-tres-secret" });
+    expect(JSON.stringify(status)).not.toContain("secret-tres-secret");
+  });
+
+  it("signale les réglages incohérents", () => {
+    const noPass = getMailStatus({ SMTP_HOST: "h.example", MAIL_FROM: "a@b.mg", SMTP_USER: "u" });
+    expect(noPass.warnings.join(" ")).toMatch(/SMTP_PASS/);
+    const noAuth = getMailStatus({ SMTP_HOST: "smtp.example.com", MAIL_FROM: "a@b.mg" });
+    expect(noAuth.warnings.join(" ")).toMatch(/identifiant/i);
+  });
+
+  it("mode journal", () => {
+    expect(getMailStatus({ MAIL_DRIVER: "log" })).toMatchObject({ mode: "log", missing: [] });
+  });
+});
+
+describe("explainMailError", () => {
+  it("authentification refusée (Gmail, Brevo)", () => {
+    const hint = explainMailError("Invalid login: 535-5.7.8 Username and Password not accepted", "EAUTH");
+    expect(hint).toMatch(/mot de passe d'application/);
+  });
+
+  it("serveur injoignable", () => {
+    expect(explainMailError("getaddrinfo ENOTFOUND smtp.gmial.com", "EDNS")).toMatch(/SMTP_HOST/);
+    expect(explainMailError("Connection timeout", "ETIMEDOUT")).toMatch(/injoignable/);
+  });
+
+  it("mauvaise combinaison port / chiffrement", () => {
+    expect(explainMailError("error:0A00010B:SSL routines:ssl3_get_record:wrong version number")).toMatch(/465/);
+  });
+
+  it("expéditeur refusé", () => {
+    expect(explainMailError("550 5.7.1 Sender address not allowed", "EENVELOPE")).toMatch(/MAIL_FROM/);
+  });
+
+  it("erreur inconnue : pas de conseil inventé", () => {
+    expect(explainMailError("quelque chose d'inattendu")).toBeNull();
   });
 });
