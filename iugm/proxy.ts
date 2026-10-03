@@ -12,6 +12,7 @@ const PUBLIC_PREFIXES = [
   "/carte-etudiant",
   "/mot-de-passe-oublie",
   "/reinitialiser-mot-de-passe",
+  "/confirmer-adresse",
   "/api/health",
 ];
 

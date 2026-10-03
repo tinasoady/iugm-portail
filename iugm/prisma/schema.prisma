@@ -43,6 +43,12 @@ model User {
   // Codes de secours à usage unique (empreintes SHA-256, jamais en clair)
   recoveryCodes           String[]                @default([])
   passwordResetTokens     PasswordResetToken[]
+  // Adresse de RÉCUPÉRATION (vraie boîte mail), distincte de l'identifiant de
+  // connexion qui peut n'être qu'un libellé sans boîte (ex. admin@iugm.edu).
+  // Reçoit le lien « mot de passe oublié ». Renseignée UNIQUEMENT après
+  // vérification (voir RecoveryEmailToken), jamais saisie directement.
+  recoveryEmail           String?
+  recoveryEmailTokens     RecoveryEmailToken[]
   // Fonction / poste (ex : Secrétaire, Chef de scolarité, Responsable finance...)
   jobTitle                String?
   // Photo de profil (data URL, gérée par l'utilisateur sur sa page Mon compte)
@@ -523,6 +529,24 @@ model PasswordResetToken {
   id        String    @id @default(cuid())
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// Demande de changement d'adresse de récupération, en attente de confirmation :
+// le lien est envoyé à la NOUVELLE adresse, qui n'est enregistrée sur le compte
+// qu'une fois le lien ouvert — preuve que la personne en a bien la boîte.
+// Seule l'empreinte SHA-256 du jeton est stockée.
+model RecoveryEmailToken {
+  id        String    @id @default(cuid())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  newEmail  String
   tokenHash String    @unique
   expiresAt DateTime
   usedAt    DateTime?

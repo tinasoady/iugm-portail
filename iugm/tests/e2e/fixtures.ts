@@ -13,6 +13,8 @@ export const ACCOUNTS = {
   // Compte étudiant dont le mot de passe est temporaire (changement obligatoire)
   mustChange: { email: "etudiant-temp@e2e.test", password: PASSWORD, home: "/mon-profil" },
   // Compte pour le scénario « mot de passe oublié » (adresse e-mail réelle du compte)
+  // Agent qui configure son adresse de récupération pendant le scénario dédié
+  recoveryUser: { email: "recup@e2e.test", password: PASSWORD, home: "/agent-pedagogique" },
   resetUser: { email: "oubli@e2e.test", password: PASSWORD, home: "/agent-admin" },
 } as const;
 

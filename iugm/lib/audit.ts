@@ -48,7 +48,10 @@ export type AuditAction =
   | "RECOVERY_CODES_REGENERATED"
   | "PASSWORD_RESET_REQUESTED"
   | "PASSWORD_RESET_COMPLETED"
-  | "NOTIFICATION_FAILED";
+  | "NOTIFICATION_FAILED"
+  | "RECOVERY_EMAIL_REQUESTED"
+  | "RECOVERY_EMAIL_CONFIRMED"
+  | "RECOVERY_EMAIL_REMOVED";
 
 export async function logAction(action: AuditAction, details?: string, actorId?: string | null) {
   try {

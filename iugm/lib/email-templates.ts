@@ -67,6 +67,52 @@ export function passwordResetEmail(
   };
 }
 
+// --- Adresse de récupération ------------------------------------------------
+
+export function recoveryEmailConfirmationEmail(
+  brand: Branding,
+  params: { fullName?: string | null; confirmUrl: string; validForHours: number },
+): EmailContent {
+  const greeting = params.fullName ? `Bonjour ${params.fullName},` : "Bonjour,";
+  const lines = [
+    greeting,
+    `Cette adresse a été indiquée comme adresse de récupération d'un compte du portail ${brand.institutionAcronym}. Elle servira à recevoir le lien si le mot de passe est oublié.`,
+    `Pour la confirmer, ouvrez le lien ci-dessous puis cliquez sur « Confirmer ». Il est valable ${params.validForHours} heures et ne peut servir qu'une fois.`,
+    "Si vous n'êtes pas à l'origine de cette demande, ignorez ce message : rien ne sera enregistré.",
+  ];
+  return {
+    subject: `Confirmez votre adresse de récupération — ${brand.institutionAcronym}`,
+    text: `${lines.join("\n\n")}\n\n${params.confirmUrl}${footerText(brand)}`,
+    html: layout(brand, "Confirmer l'adresse de récupération", paragraphs(lines), {
+      label: "Confirmer cette adresse",
+      url: params.confirmUrl,
+    }),
+  };
+}
+
+// Prévient l'ANCIENNE adresse de récupération qu'elle vient d'être remplacée ou
+// retirée : si ce n'est pas voulu, c'est le signe qu'un compte est compromis.
+export function recoveryEmailChangedNotice(
+  brand: Branding,
+  params: { fullName?: string | null; change: "replaced" | "removed"; newEmailMasked?: string },
+): EmailContent {
+  const greeting = params.fullName ? `Bonjour ${params.fullName},` : "Bonjour,";
+  const what =
+    params.change === "replaced"
+      ? `remplacée par ${params.newEmailMasked ?? "une autre adresse"}`
+      : "retirée du compte";
+  const lines = [
+    greeting,
+    `Votre adresse de récupération du portail ${brand.institutionAcronym} vient d'être ${what}.`,
+    "Si c'est vous, il n'y a rien à faire. Sinon, contactez immédiatement l'administration : quelqu'un a peut-être accès à votre compte.",
+  ];
+  return {
+    subject: `Adresse de récupération modifiée — ${brand.institutionAcronym}`,
+    text: `${lines.join("\n\n")}${footerText(brand)}`,
+    html: layout(brand, "Adresse de récupération modifiée", paragraphs(lines)),
+  };
+}
+
 // --- Notifications aux étudiants ------------------------------------------
 
 export type StudentNotification =

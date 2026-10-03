@@ -12,7 +12,8 @@ Un compte superadmin ouvre tous les accès. Dès la première connexion :
 
 1. changez le mot de passe provisoire (imposé) ;
 2. **activez la double authentification** : **Mon compte** → *Double authentification* → *Activer*. Scannez le QR code avec une application d'authentification, saisissez le code à 6 chiffres, puis **conservez les 8 codes de secours** (affichés une seule fois, usage unique, à ranger loin du mot de passe). Un bandeau sur le tableau de bord vous le rappelle tant que ce n'est pas fait ;
-3. gardez au moins **deux** superadmins actifs : le portail refuse de désactiver ou supprimer le dernier.
+3. renseignez votre **adresse de récupération** (**Mon compte** → *Adresse de récupération*) : une vraie boîte mail, distincte de votre identifiant de connexion qui n'en est peut-être pas une. Le portail envoie un message de confirmation à cette adresse ; elle ne devient active qu'après avoir cliqué sur le lien reçu. Un rappel s'affiche sur le tableau de bord tant que ce n'est pas fait ;
+4. gardez au moins **deux** superadmins actifs : le portail refuse de désactiver ou supprimer le dernier. Dans **Permissions**, une pastille « Sans adresse de récupération » signale les comptes qui n'en ont pas.
 
 ## 2. Tableau de bord
 

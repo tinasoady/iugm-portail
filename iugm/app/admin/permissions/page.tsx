@@ -70,6 +70,7 @@ export default async function PermissionsPage({
         active: true,
         mustChangePassword: true,
         totpEnabled: true,
+        recoveryEmail: true,
         jobTitle: true,
         permissions: true,
         formation: true,
@@ -152,6 +153,14 @@ export default async function PermissionsPage({
                   ) : (
                     <span className="rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-medium text-red-700 dark:bg-red-950 dark:text-red-300">
                       ● Désactivé
+                    </span>
+                  )}
+                  {!user.recoveryEmail && (
+                    <span
+                      className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                      title="Aucune adresse de récupération confirmée : le lien « mot de passe oublié » est envoyé à l'identifiant de connexion, qui n'est peut-être pas une vraie boîte mail"
+                    >
+                      Sans adresse de récupération
                     </span>
                   )}
                   {user.totpEnabled && (

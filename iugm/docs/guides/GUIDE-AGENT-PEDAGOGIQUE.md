@@ -7,6 +7,7 @@ matière, la conduite et les communiqués.
 > résultats, notes, conduite, communiqués, matières). Si vous êtes affecté à
 > une **formation**, vous ne voyez que les dossiers de cette formation.
 > Activez la **double authentification** depuis **Mon compte**.
+> Renseignez aussi votre **adresse de récupération** (**Mon compte**) : une vraie boîte mail qui recevra le lien « mot de passe oublié », votre identifiant de connexion n'en étant peut-être pas une.
 
 ## 1. Valider une inscription pédagogique
 

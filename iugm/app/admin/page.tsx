@@ -93,7 +93,7 @@ export default async function AdminPage({
   ]);
 
   const [me, users, roleCounts, trend] = await Promise.all([
-    prisma.user.findUnique({ where: { id: session.sub }, select: { totpEnabled: true } }),
+    prisma.user.findUnique({ where: { id: session.sub }, select: { totpEnabled: true, recoveryEmail: true } }),
     prisma.user.findMany({
       where: roleFilter ? { role: roleFilter } : undefined,
       orderBy: { createdAt: "desc" },
@@ -133,6 +133,26 @@ export default async function AdminPage({
             className="rounded-lg bg-amber-700 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-amber-600"
           >
             Activer maintenant
+          </Link>
+        </div>
+      )}
+
+      {/* Sans adresse de récupération, un mot de passe oublié ne peut pas être réinitialisé par e-mail */}
+      {me && !me.recoveryEmail && (
+        <div
+          role="note"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300"
+        >
+          <p>
+            <strong>Adresse de récupération manquante :</strong> si vous oubliez votre mot de passe,
+            le lien serait envoyé à votre identifiant de connexion, qui n&apos;est peut-être pas une
+            vraie boîte mail.
+          </p>
+          <Link
+            href="/profil"
+            className="rounded-lg bg-amber-700 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-amber-600"
+          >
+            Renseigner une adresse
           </Link>
         </div>
       )}

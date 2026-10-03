@@ -34,17 +34,21 @@ export type ResetRequestOutcome =
   | { sent: true }
   | { sent: false; reason: "unknown-account" | "inactive" | "no-address" | "throttled" | "no-origin" | "not-configured" | "send-failed" };
 
-// Adresse où envoyer le lien : l'e-mail du compte pour le personnel ; pour un
-// étudiant, dont l'identifiant de connexion est généré par le portail (pas une
-// vraie boîte), l'adresse personnelle de son dossier.
-function recipientFor(user: {
+// Adresse où envoyer le lien : pour le personnel, l'adresse de RÉCUPÉRATION
+// vérifiée si le compte en a une (l'identifiant de connexion peut n'être qu'un
+// libellé sans boîte, ex. admin@iugm.edu), sinon l'identifiant lui-même ; pour
+// un étudiant, dont l'identifiant est généré par le portail (pas une vraie
+// boîte), l'adresse personnelle de son dossier.
+export function recipientFor(user: {
   email: string;
   role: string;
+  recoveryEmail?: string | null;
   studentFile: { personalEmail: string | null } | null;
 }): string | null {
   if (user.role === "ETUDIANT") {
     return isValidEmailAddress(user.studentFile?.personalEmail) ? user.studentFile.personalEmail : null;
   }
+  if (isValidEmailAddress(user.recoveryEmail)) return user.recoveryEmail;
   return isValidEmailAddress(user.email) ? user.email : null;
 }
 
@@ -65,6 +69,7 @@ export async function requestPasswordReset(
       fullName: true,
       role: true,
       active: true,
+      recoveryEmail: true,
       studentFile: { select: { personalEmail: true } },
     },
   });

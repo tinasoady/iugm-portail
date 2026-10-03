@@ -99,6 +99,8 @@ curl -s https://<domaine>/api/health      # {"status":"ok","database":"ok",...}
 Avant tout déploiement, la CI doit être verte (types, lint, 300+ tests, build,
 tests de bout en bout). En local : `npm test` puis `npm run test:e2e`.
 
+Migration `20261003100000_recovery_email` (adresse de récupération) : une colonne nullable et une table, rien de destructif. Elle s'applique comme les autres ; la construction Vercel exécute `prisma migrate deploy`.
+
 Les migrations sont écrites pour s'appliquer sur une base en service : colonnes
 ajoutées avec une valeur par défaut, aucune suppression de données.
 

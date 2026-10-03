@@ -5,8 +5,10 @@ import { getSession } from "@/lib/auth";
 import { AppShell } from "@/app/ui/app-shell";
 import { ChangePasswordForm } from "@/app/changer-mot-de-passe/change-password-form";
 import { canUseTwoFactor } from "@/lib/two-factor";
+import { canUseRecoveryEmail, maskEmail } from "@/lib/recovery-email";
 import { PhotoForm, InfoForm } from "./profile-forms";
 import { TwoFactorCard } from "./two-factor-card";
+import { RecoveryEmailCard } from "./recovery-email-card";
 
 const ROLE_LABELS: Record<string, string> = {
   SUPERADMIN: "Super administrateur",
@@ -52,6 +54,7 @@ export default async function ProfilPage() {
       mustChangePassword: true,
       totpEnabled: true,
       recoveryCodes: true,
+      recoveryEmail: true,
       createdAt: true,
     },
   });
@@ -101,6 +104,19 @@ export default async function ProfilPage() {
         </h2>
         <ChangePasswordForm />
       </section>
+
+      {/* Adresse de récupération : réservée au personnel (l'étudiant a l'adresse personnelle de son dossier) */}
+      {canUseRecoveryEmail(user.role) && (
+        <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm lg:max-w-xl dark:border-white/10 dark:bg-zinc-900">
+          <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+            Adresse de récupération
+          </h2>
+          <RecoveryEmailCard
+            loginEmail={user.email}
+            maskedRecovery={user.recoveryEmail ? maskEmail(user.recoveryEmail) : null}
+          />
+        </section>
+      )}
 
       {/* Double authentification : réservée au personnel (pas aux étudiants) */}
       {canUseTwoFactor(user.role) && (
