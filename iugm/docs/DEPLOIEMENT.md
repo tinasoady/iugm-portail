@@ -12,7 +12,7 @@ sont dans [`guides/`](guides/).
 | PostgreSQL 16 | Toutes les données | Service managé en production, conteneur Docker en développement |
 | Vercel Blob | Logo, photos de profil, fichiers d'import volumineux | `BLOB_READ_WRITE_TOKEN` |
 | Serveur SMTP (optionnel) | E-mails : mot de passe oublié, notifications aux étudiants | `SMTP_*` |
-| Stockage S3 externe (recommandé) | Sauvegardes chiffrées | voir [`SAUVEGARDE.md`](SAUVEGARDE.md) |
+| Vercel Blob (dossier `backups/`) | Sauvegardes quotidiennes chiffrées | voir [`SAUVEGARDE.md`](SAUVEGARDE.md) |
 
 ## 2. Variables d'environnement
 

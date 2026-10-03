@@ -77,7 +77,7 @@ Superadmin → **Permissions** → ligne de l'agent → **Réinit. 2FA**. Ses se
 Le portail refuse de désactiver ou supprimer le dernier superadmin actif. En cas de perte totale d'accès : créer un nouveau superadmin avec `npm run seed` contre la base (mot de passe affiché une fois, changement imposé), puis réinitialiser l'ancien compte.
 
 ### `AUTH_SECRET` ou un secret de sauvegarde a fuité
-`AUTH_SECRET` : [`DEPLOIEMENT.md`](DEPLOIEMENT.md) § 5. `BACKUP_PASSPHRASE` : la changer, puis les anciennes sauvegardes restent lisibles avec l'ancienne phrase (à conserver) ; considérer qu'un attaquant ayant aussi accès au bucket peut les lire.
+`AUTH_SECRET` : [`DEPLOIEMENT.md`](DEPLOIEMENT.md) § 5. `BACKUP_PASSPHRASE` : la changer, puis les anciennes sauvegardes restent lisibles avec l'ancienne phrase (à conserver) ; considérer qu'un attaquant connaissant l'adresse d'un fichier peut le lire (le magasin Blob est public : voir SAUVEGARDE.md).
 
 ## 4. Vérifier soi-même
 
