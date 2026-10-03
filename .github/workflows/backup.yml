@@ -1,12 +1,13 @@
 name: Sauvegarde quotidienne de la base
 
 # Sauvegarde la base de PRODUCTION chaque nuit, PROUVE qu'elle se restaure, la
-# chiffre, puis l'envoie dans un stockage externe compatible S3 (Cloudflare R2,
-# Backblaze B2, AWS S3, Wasabi...).
+# chiffre, puis la dépose dans Vercel Blob (dossier backups/iugm/).
 #
-# ⚠ Le dépôt est PUBLIC : le dump n'est donc JAMAIS publié comme artefact
-# GitHub (téléchargeable par n'importe quel compte GitHub). Il n'existe que
-# dans le runner, le temps du job, puis chiffré dans votre bucket privé.
+# ⚠ Le dépôt est PUBLIC et le magasin Blob l'est aussi : le dump n'est donc jamais
+# publié comme artefact GitHub, et n'est déposé dans Blob que CHIFFRÉ (AES-256,
+# phrase aléatoire de 48 caractères), sous un nom à suffixe aléatoire dont
+# l'adresse n'est jamais écrite dans les journaux. Il n'existe en clair que dans
+# le runner, le temps du job.
 #
 # Si un secret manque ou si l'étape de restauration échoue, le job échoue et
 # GitHub envoie un e-mail : une sauvegarde silencieusement cassée est pire
@@ -29,10 +30,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
-    # Base jetable dans laquelle la sauvegarde est restaurée pour vérification
+    # Base jetable dans laquelle la sauvegarde est restaurée pour vérification.
+    # Même version majeure que la production : un dump récent ne se restaure pas
+    # dans un PostgreSQL plus ancien.
     services:
       verify-db:
-        image: postgres:16-alpine
+        image: postgres:${{ vars.PG_MAJOR || '16' }}-alpine
         env:
           POSTGRES_USER: verify
           POSTGRES_PASSWORD: verify
@@ -52,16 +55,17 @@ jobs:
       PG_MAJOR: ${{ vars.PG_MAJOR || '16' }}
 
     steps:
+      - name: 0. Récupérer le code (scripts de sauvegarde)
+        uses: actions/checkout@v4
+
       - name: 1. Vérifier que la configuration est complète
         env:
           BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
           BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
-          S3_BUCKET: ${{ secrets.BACKUP_S3_BUCKET }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_S3_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_S3_SECRET_ACCESS_KEY }}
+          BACKUP_BLOB_TOKEN: ${{ secrets.BACKUP_BLOB_TOKEN }}
         run: |
           missing=0
-          for name in BACKUP_DATABASE_URL BACKUP_PASSPHRASE S3_BUCKET AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY; do
+          for name in BACKUP_DATABASE_URL BACKUP_PASSPHRASE BACKUP_BLOB_TOKEN; do
             if [ -z "${!name}" ]; then
               echo "::error::Secret manquant : $name (voir iugm/docs/SAUVEGARDE.md)"
               missing=1
@@ -141,31 +145,22 @@ jobs:
           fi
           exit $status
 
-      - name: 6. Chiffrer (AES-256) puis envoyer dans le stockage externe
+      - name: 6. Chiffrer (AES-256) le dump
         env:
           BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
-          S3_BUCKET: ${{ secrets.BACKUP_S3_BUCKET }}
-          S3_ENDPOINT: ${{ secrets.BACKUP_S3_ENDPOINT }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_S3_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_S3_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: ${{ secrets.BACKUP_S3_REGION || 'auto' }}
         run: |
           set -euo pipefail
-          stamp=$(date -u +%Y%m%dT%H%M%SZ)
           openssl enc -aes-256-cbc -pbkdf2 -iter 600000 -salt \
             -in backup.dump -out backup.dump.enc -pass env:BACKUP_PASSPHRASE
           shred -u backup.dump 2>/dev/null || rm -f backup.dump
+          ls -l backup.dump.enc
 
-          endpoint=()
-          if [ -n "${S3_ENDPOINT:-}" ]; then endpoint=(--endpoint-url "$S3_ENDPOINT"); fi
-          key="iugm/$(date -u +%Y/%m)/iugm-$stamp.dump.enc"
-          aws s3 cp backup.dump.enc "s3://$S3_BUCKET/$key" "${endpoint[@]}" --no-progress
+      - name: 7. Installer les dépendances du script d'envoi
+        working-directory: ./iugm
+        run: npm ci --omit=dev --ignore-scripts
 
-          # Relecture : l'objet doit exister et avoir la même taille
-          local_size=$(stat -c %s backup.dump.enc)
-          remote_size=$(aws s3api head-object --bucket "$S3_BUCKET" --key "$key" "${endpoint[@]}" --query ContentLength --output text)
-          if [ "$local_size" != "$remote_size" ]; then
-            echo "::error::Taille distante ($remote_size) différente de la taille locale ($local_size)"
-            exit 1
-          fi
-          echo "Sauvegarde envoyée : s3://$S3_BUCKET/$key ($local_size octets)"
+      - name: 8. Déposer dans Vercel Blob (taille vérifiée, anciennes sauvegardes purgées)
+        working-directory: ./iugm
+        env:
+          BACKUP_BLOB_TOKEN: ${{ secrets.BACKUP_BLOB_TOKEN }}
+        run: node scripts/backup-blob.mjs upload ../backup.dump.enc
