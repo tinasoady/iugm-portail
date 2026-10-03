@@ -7,10 +7,20 @@ import { LoginForm } from "./login-form";
 // build (échec si la DB n'est pas joignable à ce moment-là, ex. en CI).
 export const dynamic = "force-dynamic";
 
+// Motifs de fermeture de session (voir SessionFailure dans lib/auth.ts) ; toute
+// autre valeur d'URL est ignorée : on n'affiche jamais un texte venu de l'adresse.
+const SESSION_CLOSED_MESSAGES: Record<string, string> = {
+  replaced:
+    "Votre compte vient de se connecter sur un autre appareil : cette session a été fermée (un compte n'est connecté qu'à un endroit à la fois). Si ce n'était pas vous, changez votre mot de passe.",
+  disabled: "Ce compte a été désactivé ou supprimé. Contactez l'administration.",
+  revoked: "Votre mot de passe a été modifié : reconnectez-vous.",
+  expired: "Votre session a expiré : reconnectez-vous.",
+};
+
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ reinitialise?: string }>;
+  searchParams: Promise<{ reinitialise?: string; raison?: string }>;
 }) {
   const [settings, params] = await Promise.all([getSettings(), searchParams]);
 
@@ -40,6 +50,15 @@ export default async function LoginPage({
             {settings.institutionName}
           </p>
         </div>
+
+        {params.raison && Object.hasOwn(SESSION_CLOSED_MESSAGES, params.raison) && (
+          <p
+            role="status"
+            className="mb-4 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
+          >
+            {SESSION_CLOSED_MESSAGES[params.raison]}
+          </p>
+        )}
 
         {params.reinitialise === "1" && (
           <p

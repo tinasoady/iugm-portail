@@ -73,4 +73,5 @@ Les listes affichent 20 lignes ; **Voir plus** en ajoute 20 (chaque liste de la 
 | Dossier d'une autre formation | Hors périmètre : renvoyer l'étudiant vers le secrétaire de sa formation |
 | Mot de passe provisoire de l'étudiant perdu avant remise | Superadmin → Permissions → *Réinit. mdp* |
 | Téléphone perdu (double authentification) | Code de secours, ou superadmin → *Réinit. 2FA* |
+| « Votre compte vient de se connecter sur un autre appareil » | Un compte n'est connecté qu'à un appareil à la fois (ordinateur **ou** téléphone) : se connecter ailleurs ferme l'autre. Si ce n'était pas vous, changez votre mot de passe |
 | Page « Une erreur est survenue » | Noter la **référence** et la transmettre à l'administrateur |

@@ -7,6 +7,9 @@ import { ConfirmForm } from "./confirm-form";
 
 export const dynamic = "force-dynamic";
 
+// Jamais indexée : l'adresse contient un jeton
+export const metadata = { robots: { index: false, follow: false } };
+
 // Page ouverte depuis le lien d'un e-mail, parfois sans session : publique (voir
 // proxy.ts). Elle ne modifie RIEN au chargement ; seul le bouton confirme.
 export default async function ConfirmRecoveryEmailPage({
@@ -36,6 +39,10 @@ export default async function ConfirmRecoveryEmailPage({
         ) : (
           <div role="alert" className="space-y-3 text-center text-sm text-zinc-600 dark:text-zinc-400">
             <p>Ce lien est invalide ou a expiré.</p>
+            <p className="text-xs">
+              Si vous venez d&apos;actualiser la page, rouvrez le lien depuis votre e-mail : pour votre
+              sécurité, il n&apos;est plus conservé dans l&apos;adresse du navigateur.
+            </p>
             <Link
               href="/login"
               className="font-medium text-indigo-600 hover:underline dark:text-indigo-400"

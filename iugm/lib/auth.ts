@@ -20,6 +20,10 @@ export type SessionPayload = {
   // Changement de mot de passe obligatoire : le proxy cantonne alors la
   // session à /changer-mot-de-passe (voir proxy.ts).
   mcp?: boolean;
+  // Identifiant de session (voir User.currentSessionId) : absent des jetons émis
+  // avant l'introduction de la session unique, qui restent valables jusqu'à la
+  // prochaine connexion du compte.
+  sid?: string;
 };
 
 function getAuthSecret(): string {
@@ -72,13 +76,20 @@ export function verifySessionToken(token: string): SessionPayload | null {
   const payload = decodeSigned(token);
   if (!payload || "typ" in payload) return null;
 
-  const { sub, email, role, iat, mcp } = payload;
+  const { sub, email, role, iat, mcp, sid } = payload;
   if (typeof sub !== "string" || typeof email !== "string" || typeof role !== "string") return null;
   if (typeof iat !== "number") return null;
   // Expiration côté serveur (le maxAge du cookie ne suffit pas)
   if (iat + SESSION_MAX_AGE < Math.floor(Date.now() / 1000)) return null;
 
-  return { sub, email, role, iat, ...(mcp === true ? { mcp: true } : {}) };
+  return {
+    sub,
+    email,
+    role,
+    iat,
+    ...(mcp === true ? { mcp: true } : {}),
+    ...(typeof sid === "string" ? { sid } : {}),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -120,10 +131,23 @@ export type ResolveSessionOptions = {
   allowPasswordChange?: boolean;
 };
 
-export async function resolveSession(
+// Pourquoi une session cesse d'être valable (affiché à l'utilisateur sur la page
+// de connexion) :
+//  - replaced : le compte s'est connecté sur un autre appareil (session unique) ;
+//  - disabled : compte désactivé ou supprimé ;
+//  - revoked  : mot de passe modifié ou réinitialisé depuis ;
+//  - password : changement de mot de passe obligatoire en attente ;
+//  - expired  : jeton absent, falsifié ou périmé.
+export type SessionFailure = "replaced" | "disabled" | "revoked" | "password" | "expired";
+
+export type SessionEvaluation =
+  | { ok: true; session: SessionPayload }
+  | { ok: false; reason: SessionFailure };
+
+export async function evaluateSession(
   payload: SessionPayload,
   options: ResolveSessionOptions = {},
-): Promise<SessionPayload | null> {
+): Promise<SessionEvaluation> {
   const user = await prisma.user.findUnique({
     where: { id: payload.sub },
     select: {
@@ -133,22 +157,65 @@ export async function resolveSession(
       active: true,
       mustChangePassword: true,
       sessionsValidAfter: true,
+      currentSessionId: true,
     },
   });
-  if (!user || !user.active) return null;
+  if (!user || !user.active) return { ok: false, reason: "disabled" };
+
+  // Session unique : seule la session ouverte en dernier est valable. Un compte
+  // sans identifiant enregistré (jamais reconnecté depuis cette fonctionnalité)
+  // garde ses sessions existantes jusqu'à sa prochaine connexion.
+  if (user.currentSessionId && payload.sid !== user.currentSessionId) {
+    return { ok: false, reason: "replaced" };
+  }
 
   if (user.sessionsValidAfter) {
     // Comparaison à la seconde (iat est en secondes) : le jeton réémis juste
     // après un changement de mot de passe doit rester valide.
     const validAfter = Math.floor(user.sessionsValidAfter.getTime() / 1000);
-    if (payload.iat < validAfter) return null;
+    if (payload.iat < validAfter) return { ok: false, reason: "revoked" };
   }
 
-  if (user.mustChangePassword && !options.allowPasswordChange) return null;
+  if (user.mustChangePassword && !options.allowPasswordChange) {
+    return { ok: false, reason: "password" };
+  }
 
   // Email et rôle viennent de la base, pas du jeton : un changement de rôle
   // prend effet tout de suite.
-  return { sub: user.id, email: user.email, role: user.role, iat: payload.iat };
+  return {
+    ok: true,
+    session: {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+      iat: payload.iat,
+      ...(payload.sid ? { sid: payload.sid } : {}),
+    },
+  };
+}
+
+export async function resolveSession(
+  payload: SessionPayload,
+  options: ResolveSessionOptions = {},
+): Promise<SessionPayload | null> {
+  const evaluation = await evaluateSession(payload, options);
+  return evaluation.ok ? evaluation.session : null;
+}
+
+// Nouvel identifiant de session : à enregistrer dans User.currentSessionId ET à
+// placer dans le jeton. 128 bits aléatoires, jamais devinables.
+export function newSessionId(): string {
+  return crypto.randomBytes(16).toString("base64url");
+}
+
+// État de la session du cookie courant, avec le motif en cas d'échec : sert au
+// contrôle périodique côté navigateur (/api/session/status).
+export async function getSessionStatus(): Promise<SessionEvaluation> {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(SESSION_COOKIE)?.value;
+  const payload = token ? verifySessionToken(token) : null;
+  if (!payload) return { ok: false, reason: "expired" };
+  return evaluateSession(payload, { allowPasswordChange: true });
 }
 
 // cache() déduplique les appels d'une même requête (page + layout + actions) :

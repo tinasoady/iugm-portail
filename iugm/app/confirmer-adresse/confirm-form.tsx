@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState } from "react";
 import { FaExclamationTriangle, FaCheckCircle } from "react-icons/fa";
 
+import { StripUrlQuery } from "@/app/ui/strip-url-query";
 import { confirmRecoveryEmailAction, type ConfirmState } from "./actions";
 
 const initialState: ConfirmState = {};
@@ -33,6 +34,7 @@ export function ConfirmForm({ token, maskedEmail }: { token: string; maskedEmail
 
   return (
     <form action={formAction} className="space-y-4">
+      <StripUrlQuery />
       <input type="hidden" name="token" value={token} />
       <p className="text-sm text-zinc-600 dark:text-zinc-400">
         Vous allez confirmer <strong className="text-zinc-900 dark:text-zinc-50">{maskedEmail}</strong>{" "}

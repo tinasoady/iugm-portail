@@ -80,7 +80,12 @@ export async function changePasswordAction(
   const cookieStore = await cookies();
   cookieStore.set(
     SESSION_COOKIE,
-    createSessionToken({ sub: user.id, email: user.email, role: user.role }),
+    createSessionToken({
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+      ...(session.sid ? { sid: session.sid } : {}),
+    }),
     sessionCookieOptions(),
   );
 

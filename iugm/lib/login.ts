@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
 import {
   createSessionToken,
+  newSessionId,
   createTwoFactorChallengeToken,
   verifyTwoFactorChallengeToken,
 } from "./auth";
@@ -106,16 +107,34 @@ export async function authenticateUser(email: string, password: string): Promise
   }
 
   await recordLoginAttempt(email, ip, true);
-  const token = createSessionToken({
-    sub: user.id,
-    email: user.email,
-    role: user.role,
-    ...(user.mustChangePassword ? { mcp: true } : {}),
-  });
+  const token = await openSession(user);
   await logAction("LOGIN_SUCCESS", `Connexion de ${user.email}`, user.id);
   await runFirstLoginHooks(user.id, user.role);
 
   return { ok: true, kind: "session", token, destination };
+}
+
+// Ouvre LA session du compte : un nouvel identifiant remplace celui enregistré
+// (User.currentSessionId), ce qui ferme d'un coup les sessions ouvertes sur tout
+// autre appareil — un compte n'est connecté qu'à un endroit à la fois.
+// L'écriture précède l'émission du jeton : à aucun moment il n'existe de jeton
+// valable que la base ne reconnaisse pas, et de deux connexions simultanées une
+// seule survit (la dernière à écrire).
+async function openSession(user: {
+  id: string;
+  email: string;
+  role: string;
+  mustChangePassword: boolean;
+}): Promise<string> {
+  const sid = newSessionId();
+  await prisma.user.update({ where: { id: user.id }, data: { currentSessionId: sid } });
+  return createSessionToken({
+    sub: user.id,
+    email: user.email,
+    role: user.role,
+    sid,
+    ...(user.mustChangePassword ? { mcp: true } : {}),
+  });
 }
 
 // Best-effort : un souci ici (compte étudiant sans dossier lié, etc.) ne
@@ -179,12 +198,7 @@ export async function completeTwoFactorLogin(
   }
 
   await recordLoginAttempt(user.email, ip, true);
-  const token = createSessionToken({
-    sub: user.id,
-    email: user.email,
-    role: user.role,
-    ...(user.mustChangePassword ? { mcp: true } : {}),
-  });
+  const token = await openSession(user);
   await logAction(
     "LOGIN_SUCCESS",
     verification.usedRecoveryCode

@@ -7,6 +7,9 @@ import { ResetPasswordForm } from "./reset-password-form";
 
 export const dynamic = "force-dynamic";
 
+// Jamais indexée : l'adresse contient un jeton
+export const metadata = { robots: { index: false, follow: false } };
+
 export default async function ResetPasswordPage({
   searchParams,
 }: {
@@ -36,6 +39,10 @@ export default async function ResetPasswordPage({
         ) : (
           <div role="alert" className="space-y-3 text-center text-sm text-zinc-600 dark:text-zinc-400">
             <p>Ce lien est invalide ou a expiré.</p>
+            <p className="text-xs">
+              Si vous venez d&apos;actualiser la page, rouvrez le lien depuis votre e-mail : pour votre
+              sécurité, il n&apos;est plus conservé dans l&apos;adresse du navigateur.
+            </p>
             <Link
               href="/mot-de-passe-oublie"
               className="font-medium text-indigo-600 hover:underline dark:text-indigo-400"

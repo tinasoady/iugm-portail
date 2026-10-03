@@ -63,7 +63,11 @@ Le portail répond de la même façon que le compte existe ou non (c'est voulu, 
 
 Après **5 mauvaises tentatives** de connexion, le compte est bloqué pendant **15 minutes**. Attendez, puis réessayez avec le bon mot de passe (ou utilisez « Mot de passe oublié ? »).
 
-## 8. Bonnes pratiques
+## 8. Un seul appareil à la fois
+
+Votre compte n'est connecté qu'à **un seul appareil à la fois**. Si vous vous connectez sur un autre téléphone ou ordinateur, la session de l'appareil précédent se ferme automatiquement, et il vous affiche « Votre compte vient de se connecter sur un autre appareil ». C'est normal et voulu. Si ce message apparaît alors que ce n'était pas vous, **changez votre mot de passe** (Mon compte) : quelqu'un d'autre connaît peut-être votre mot de passe.
+
+## 9. Bonnes pratiques
 
 - Déconnectez-vous toujours sur un ordinateur partagé (menu en haut à droite → **Se déconnecter**). Le portail vous déconnecte de lui-même après 20 minutes d'inactivité.
 - Ne communiquez jamais votre mot de passe, même à un camarade.

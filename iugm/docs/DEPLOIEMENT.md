@@ -101,6 +101,8 @@ tests de bout en bout). En local : `npm test` puis `npm run test:e2e`.
 
 Migration `20261003100000_recovery_email` (adresse de récupération) : une colonne nullable et une table, rien de destructif. Elle s'applique comme les autres ; la construction Vercel exécute `prisma migrate deploy`.
 
+Migration `20261003120000_single_session` (session unique par compte) : une colonne nullable. **Effet au déploiement** : les sessions déjà ouvertes restent valables jusqu'à la prochaine connexion de chaque compte ; dès qu'un compte se reconnecte, son identifiant de session est enregistré et seule cette session reste valable.
+
 Les migrations sont écrites pour s'appliquer sur une base en service : colonnes
 ajoutées avec une valeur par défaut, aucune suppression de données.
 

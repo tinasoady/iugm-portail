@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { FaEye, FaEyeSlash, FaExclamationTriangle } from "react-icons/fa";
 
+import { StripUrlQuery } from "@/app/ui/strip-url-query";
 import { resetPasswordAction, type ResetPasswordState } from "./actions";
 
 const initialState: ResetPasswordState = {};
@@ -53,6 +54,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
 
   return (
     <form className="space-y-4" action={formAction}>
+      <StripUrlQuery />
       <input type="hidden" name="token" value={token} />
       <PasswordField
         id="newPassword"

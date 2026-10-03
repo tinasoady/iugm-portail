@@ -47,8 +47,10 @@ test.describe.serial("adresse de récupération", () => {
 
     await context.clearCookies(); // ouvert depuis la boîte mail, sans être connecté
     await page.goto(`/confirmer-adresse?token=${encodeURIComponent(token)}`);
-    await expect(page).toHaveURL(/\/confirmer-adresse\?/);
     await expect(page.getByText("v***e@e2e.test")).toBeVisible();
+    // Le jeton ne reste pas dans la barre d'adresse (capture d'écran, historique)
+    await expect(page).toHaveURL(/\/confirmer-adresse$/);
+    expect(page.url()).not.toContain(token);
 
     // Charger la page (ce que font les antivirus de messagerie) n'enregistre RIEN
     expect((await prisma.user.findUniqueOrThrow({ where: { id: user.id } })).recoveryEmail).toBeNull();

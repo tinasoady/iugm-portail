@@ -14,6 +14,8 @@ const PUBLIC_PREFIXES = [
   "/reinitialiser-mot-de-passe",
   "/confirmer-adresse",
   "/api/health",
+  // Répond 401 + motif au contrôle périodique du navigateur (voir la route)
+  "/api/session/status",
 ];
 
 // Fichiers statiques de public/ que le NAVIGATEUR réclame sans session : icône

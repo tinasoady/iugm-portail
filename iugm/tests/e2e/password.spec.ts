@@ -62,6 +62,9 @@ test.describe("mot de passe oublié", () => {
     await prisma.$disconnect();
 
     await page.goto(`/reinitialiser-mot-de-passe?token=${encodeURIComponent(token)}`);
+    // Le jeton disparaît de la barre d'adresse dès que la page est affichée
+    await expect(page).toHaveURL(/\/reinitialiser-mot-de-passe$/);
+    expect(page.url()).not.toContain(token);
     await page.locator("#newPassword").fill(NEW_PASSWORD);
     await page.locator("#confirm").fill(NEW_PASSWORD);
     await page.getByRole("button", { name: "Enregistrer le mot de passe" }).click();

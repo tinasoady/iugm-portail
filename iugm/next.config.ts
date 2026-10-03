@@ -45,6 +45,15 @@ const cspHeader = `
   .replace(/\s{2,}/g, " ")
   .trim();
 
+// Pages ouvertes depuis un lien d'e-mail contenant un jeton dans l'adresse :
+// jamais mises en cache (ni par le navigateur ni par un intermédiaire), aucun
+// référent envoyé (le jeton ne peut fuiter vers aucun autre site), jamais indexées.
+const tokenPageHeaders = [
+  { key: "Cache-Control", value: "no-store, max-age=0" },
+  { key: "Referrer-Policy", value: "no-referrer" },
+  { key: "X-Robots-Tag", value: "noindex, nofollow" },
+];
+
 const nextConfig: NextConfig = {
   experimental: {
     serverActions: {
@@ -79,6 +88,8 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      { source: "/reinitialiser-mot-de-passe", headers: tokenPageHeaders },
+      { source: "/confirmer-adresse", headers: tokenPageHeaders },
     ];
   },
 };

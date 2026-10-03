@@ -65,6 +65,15 @@ test.describe("accès et connexion", () => {
     expect(html).toMatch(/<link[^>]*rel="icon"[^>]*href="\/icon\.png/);
   });
 
+  test("les pages à jeton ne sont ni mises en cache, ni indexées, ni envoyées comme référent", async ({ request }) => {
+    for (const path of ["/reinitialiser-mot-de-passe?token=x", "/confirmer-adresse?token=x"]) {
+      const headers = (await request.get(path)).headers();
+      expect(headers["cache-control"], path).toContain("no-store");
+      expect(headers["referrer-policy"], path).toBe("no-referrer");
+      expect(headers["x-robots-tag"], path).toContain("noindex");
+    }
+  });
+
   test("la sonde de santé répond 200 sans détail interne", async ({ request }) => {
     const response = await request.get("/api/health");
     expect(response.status()).toBe(200);

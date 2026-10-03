@@ -41,6 +41,7 @@ export default async function globalSetup() {
     ["agentPedago", "AGENT_PEDAGOGIQUE"],
     ["resetUser", "AGENT_ADMINISTRATION"],
     ["recoveryUser", "AGENT_PEDAGOGIQUE"],
+    ["twoDevices", "AGENT_ADMINISTRATION"],
   ] as const) {
     await prisma.user.create({
       data: {

@@ -31,6 +31,7 @@ import {
 } from "./icons";
 import { ThemeToggle } from "./theme-toggle";
 import { LiveClock } from "./live-clock";
+import { SessionWatcher } from "./session-watcher";
 import { BsClipboardData, BsDatabase } from "react-icons/bs";
 import { FaBook, FaPencilAlt, FaTasks } from "react-icons/fa";
 
@@ -245,6 +246,7 @@ export async function AppShell({
         Aller au contenu principal
       </a>
       <IdleLogout />
+      <SessionWatcher />
       {/* Sidebar */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col bg-zinc-950 md:flex">
         <div className="flex items-center gap-3 px-6 py-6">

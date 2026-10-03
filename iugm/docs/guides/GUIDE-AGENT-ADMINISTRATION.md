@@ -80,5 +80,6 @@ Menu **Communiquer** : titre, message, filière et niveau ciblés (vides = tous)
 | « Ce dossier relève d'une autre formation » | Dossier hors de votre périmètre : l'étudiant doit voir le secrétaire de sa formation |
 | Compte bloqué (5 échecs) | Attendre 15 minutes, ou demander une réinitialisation au superadmin |
 | Téléphone perdu (double authentification) | Utiliser un code de secours, ou demander au superadmin « Réinit. 2FA » |
+| « Votre compte vient de se connecter sur un autre appareil » | Un compte n'est connecté qu'à un appareil à la fois (ordinateur **ou** téléphone) : se connecter ailleurs ferme l'autre. Si ce n'était pas vous, changez votre mot de passe |
 | Mot de passe oublié | **Mot de passe oublié ?** sur la page de connexion (e-mail), ou demander au superadmin |
 | Une page affiche « Une erreur est survenue » | Noter la **référence** affichée et la transmettre à l'administrateur |

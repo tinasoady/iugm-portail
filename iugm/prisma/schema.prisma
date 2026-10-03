@@ -33,6 +33,10 @@ model User {
   // lib/auth.ts) : posée à chaque changement/réinitialisation de mot de passe
   // pour déconnecter les autres appareils (cookie volé, mot de passe compromis).
   sessionsValidAfter      DateTime?
+  // Identifiant de la SEULE session active du compte : posé à chaque connexion
+  // et porté par le cookie (claim `sid`). Se connecter sur un autre appareil le
+  // remplace, ce qui ferme aussitôt les sessions des autres appareils.
+  currentSessionId        String?
   // Authentification à deux facteurs (TOTP, RFC 6238) — voir lib/two-factor.ts.
   // totpSecret est chiffré (AES-256-GCM, lib/secret-crypto.ts) ; il reste
   // renseigné pendant la configuration, avant que totpEnabled ne passe à true.

@@ -73,6 +73,7 @@ Si le serveur d'envoi est configuré, le portail envoie : le lien « mot de pass
 | Un agent est parti | **Désactiver** puis, après vérification, supprimer son compte |
 | Compte suspect | Désactiver → Réinit. mdp (+ Réinit. 2FA) → journaux sur la période → réactiver |
 | Un agent a perdu son téléphone | Réinit. 2FA, il la reconfigure depuis Mon compte |
+| Un utilisateur se plaint d'être « déconnecté tout seul » | Normal si son compte s'est connecté ailleurs : **un compte = un appareil à la fois**, pour tous les rôles. Si ce n'était pas lui, réinitialisez son mot de passe et consultez les journaux (connexions réussies) |
 | Un étudiant n'a plus son mot de passe provisoire | Comptes étudiants → Réinit. mdp |
 | Page « Une erreur est survenue » signalée | Demander la **référence** affichée ; elle retrouve l'erreur dans les journaux serveur |
 | Le portail semble hors service | `https://<domaine>/api/health` ; voir [`../SUPERVISION.md`](../SUPERVISION.md) |

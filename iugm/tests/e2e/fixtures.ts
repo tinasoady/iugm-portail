@@ -15,6 +15,8 @@ export const ACCOUNTS = {
   // Compte pour le scénario « mot de passe oublié » (adresse e-mail réelle du compte)
   // Agent qui configure son adresse de récupération pendant le scénario dédié
   recoveryUser: { email: "recup@e2e.test", password: PASSWORD, home: "/agent-pedagogique" },
+  // Compte utilisé depuis deux « appareils » (deux contextes de navigateur) à la fois
+  twoDevices: { email: "deux-appareils@e2e.test", password: PASSWORD, home: "/agent-admin" },
   resetUser: { email: "oubli@e2e.test", password: PASSWORD, home: "/agent-admin" },
 } as const;
 

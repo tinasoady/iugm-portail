@@ -11,6 +11,7 @@ qui ne l'est pas**.
 | Mesure | Détail | Code |
 |---|---|---|
 | Session vérifiée en base à chaque requête | Un compte désactivé, supprimé, ou dont le rôle a changé perd son accès **immédiatement**, plus au bout de 8 h. Le rôle est lu en base, pas dans le cookie | `lib/auth.ts` (`resolveSession`) |
+| **Une seule session par compte** | Se connecter sur un second appareil **ferme aussitôt** la session de l'autre (identifiant de session unique en base, `User.currentSessionId`, porté par le cookie). L'appareil fermé le sait dans la minute — ou dès qu'on y revient — et affiche le motif sur la page de connexion. Deux connexions simultanées : une seule survit. Vaut aussi pour les étudiants. Un cookie volé cesse donc de servir dès que la personne se reconnecte | `lib/login.ts`, `lib/auth.ts`, `app/ui/session-watcher.tsx` |
 | Fermeture des autres sessions | Changer ou réinitialiser un mot de passe (ou réinitialiser la 2FA) invalide toutes les sessions antérieures (`User.sessionsValidAfter`) | `app/changer-mot-de-passe`, `lib/password-reset.ts` |
 | Changement de mot de passe obligatoire appliqué partout | Un compte au mot de passe temporaire ne peut rien faire d'autre que le changer : bloqué par le proxy (pages et Server Actions) **et** par `getSession()` | `proxy.ts`, `lib/auth.ts` |
 | Pas d'énumération de comptes | Même message et même durée (comparaison bcrypt factice) pour un e-mail inconnu et un mauvais mot de passe ; « compte désactivé » n'est révélé qu'avec le bon mot de passe ; « mot de passe oublié » répond pareil dans tous les cas | `lib/login.ts` |
@@ -19,6 +20,7 @@ qui ne l'est pas**.
 | Politique de mot de passe | 8 à 72 octets (limite bcrypt), au moins une lettre et un chiffre, ni liste de mots courants, ni identifiant, ni matricule | `lib/password-policy.ts` |
 | Mot de passe oublié | Jeton de 256 bits, **stocké haché**, valable 60 min, usage unique, 3 demandes/h/compte ; le lien est construit depuis `APP_URL`, jamais depuis l'en-tête `Host` ; ne désactive pas la 2FA | `lib/password-reset.ts` |
 | Adresse de récupération (personnel) | Le lien « mot de passe oublié » part vers une adresse **réelle et vérifiée**, distincte de l'identifiant de connexion (qui peut n'être qu'un libellé sans boîte). Enregistrée seulement après ouverture d'un lien envoyé à la NOUVELLE adresse (la confirmation est un bouton, jamais un simple chargement de page, pour résister aux antivirus de messagerie) ; demande protégée par le mot de passe actuel ; l'ancienne adresse est prévenue de tout remplacement ou retrait ; adresses masquées dans le journal | `lib/recovery-email.ts` |
+| Jetons dans les liens d'e-mail | Les pages `/reinitialiser-mot-de-passe` et `/confirmer-adresse` retirent le jeton de la barre d'adresse dès l'affichage (ni capture d'écran, ni historique), ne sont ni mises en cache, ni indexées, et n'envoient aucun référent | `app/ui/strip-url-query.tsx`, `next.config.ts` |
 | Cookies | `HttpOnly`, `SameSite=Lax`, `Secure` en production ; cookie 2FA limité au chemin `/login` et à 5 min | `lib/auth.ts` |
 | Déconnexion automatique | 20 min d'inactivité (avertissement à 19) ; efface au passage le cache hors ligne lisible du poste | `app/ui/idle-logout.tsx`, `lib/offline/clear.ts` |
 
@@ -52,12 +54,13 @@ qui ne l'est pas**.
 2. **Blocage par IP dépendant de `X-Forwarded-For`.** Fiable sur Vercel ; sur un serveur auto-hébergé, le reverse proxy doit écraser cet en-tête (voir [`DEPLOIEMENT.md`](DEPLOIEMENT.md) § 6).
 3. **`'unsafe-inline'` dans la CSP** (scripts et styles), nécessaire au script d'amorçage du thème et à l'hydratation sans nonce. Compensé par l'absence totale de HTML brut issu de saisies (React échappe tout ; les e-mails échappent aussi le contenu des communiqués).
 4. **La 2FA n'est pas obligatoire.** Elle est proposée au personnel, et un rappel s'affiche au superadmin tant qu'il ne l'a pas activée. L'imposer est possible mais bloquerait un agent qui n'a pas de téléphone adapté ; décision laissée à l'établissement.
-5. **Pas de récupération sans adresse.** Un compte du personnel sans adresse de récupération valide ET dont l'identifiant n'est pas une vraie boîte ne peut pas se réinitialiser seul : un autre superadmin le fait depuis Permissions (d'où l'intérêt d'avoir au moins deux superadmins, et de faire renseigner l'adresse de récupération à chacun).
-6. **Pas de SMS.** Les notifications partent par e-mail, à l'adresse personnelle du dossier ; un étudiant sans adresse n'est pas notifié (et ne peut pas utiliser « mot de passe oublié »).
-7. **Données hors ligne.** Les saisies en attente de synchronisation restent dans le navigateur (volontairement : les supprimer à la déconnexion ferait perdre des dossiers). Sur un poste partagé, synchroniser avant de partir.
-8. **Fichiers de l'utilisateur** : le contenu réel de chaque image (photo, logo) est vérifié par sa signature (PNG, JPEG, WebP), pas sur le type déclaré par le navigateur ; un logo SVG contenant un script, un gestionnaire d'événement ou une référence externe est refusé. Il n'y a pas d'analyse antivirus.
-9. **Dépendances** : voir [`DEPLOIEMENT.md`](DEPLOIEMENT.md) § 7 pour les alertes `npm audit` restantes.
-10. **Aucun test d'intrusion externe** n'a été réalisé. Ce document décrit des contrôles vérifiés par tests automatisés, pas une certification.
+5. **Un seul appareil à la fois, pour tous.** Choix voulu : un agent qui utilise son ordinateur ET son téléphone est déconnecté de l'un quand il ouvre l'autre. Conséquence à connaître : quelqu'un qui connaît un mot de passe peut, en se connectant, déconnecter le propriétaire ; celui-ci le voit (« votre compte vient de se connecter sur un autre appareil ») et doit alors changer son mot de passe. Le blocage anti-bruteforce et la 2FA limitent ce scénario.
+6. **Pas de récupération sans adresse.** Un compte du personnel sans adresse de récupération valide ET dont l'identifiant n'est pas une vraie boîte ne peut pas se réinitialiser seul : un autre superadmin le fait depuis Permissions (d'où l'intérêt d'avoir au moins deux superadmins, et de faire renseigner l'adresse de récupération à chacun).
+7. **Pas de SMS.** Les notifications partent par e-mail, à l'adresse personnelle du dossier ; un étudiant sans adresse n'est pas notifié (et ne peut pas utiliser « mot de passe oublié »).
+8. **Données hors ligne.** Les saisies en attente de synchronisation restent dans le navigateur (volontairement : les supprimer à la déconnexion ferait perdre des dossiers). Sur un poste partagé, synchroniser avant de partir.
+9. **Fichiers de l'utilisateur** : le contenu réel de chaque image (photo, logo) est vérifié par sa signature (PNG, JPEG, WebP), pas sur le type déclaré par le navigateur ; un logo SVG contenant un script, un gestionnaire d'événement ou une référence externe est refusé. Il n'y a pas d'analyse antivirus.
+10. **Dépendances** : voir [`DEPLOIEMENT.md`](DEPLOIEMENT.md) § 7 pour les alertes `npm audit` restantes.
+11. **Aucun test d'intrusion externe** n'a été réalisé. Ce document décrit des contrôles vérifiés par tests automatisés, pas une certification.
 
 ## 3. Procédures
 
