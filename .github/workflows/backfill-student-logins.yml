@@ -1,0 +1,50 @@
+name: Rattrapage des identifiants étudiants
+
+# À lancer à la main, UNE FOIS, après le déploiement de la connexion par nom
+# d'utilisateur : donne à chaque compte étudiant existant son identifiant
+# « prenom.nom » et garde l'ancien (« …@student.iugm.edu ») valide en alias.
+# Sans risque à relancer (idempotent). N'écrit que des totaux dans le journal,
+# jamais d'identifiant ni de nom.
+#
+# Lancer d'abord avec « simulation » (par défaut) pour compter, puis sans.
+# Voir iugm/docs/DEPLOIEMENT.md.
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Simulation seulement (n'écrit rien)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backfill-student-logins
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: ./iugm
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: iugm/package-lock.json
+
+      - run: npm ci
+
+      - run: npx prisma generate
+
+      - name: Rattrapage
+        env:
+          DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+        run: npx tsx scripts/backfill-student-logins.ts ${{ inputs.dry_run && '--dry-run' || '' }}
