@@ -382,7 +382,7 @@ export async function AppShell({
         <main
           id="contenu"
           tabIndex={-1}
-          className="mx-auto w-full max-w-6xl flex-1 outline-none space-y-6 px-4 py-6 sm:space-y-8 sm:py-8">
+          className="mx-auto w-full max-w-[120rem] flex-1 outline-none space-y-5 px-4 py-5 sm:space-y-6 sm:px-5 sm:py-6">
           {/* Sans adresse e-mail vérifiée, « mot de passe oublié » ne peut rien envoyer */}
           {account && !account.recoveryEmail && active !== "/profil" && active !== "/changer-mot-de-passe" && (
             <div

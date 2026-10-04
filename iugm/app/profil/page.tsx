@@ -65,7 +65,7 @@ export default async function ProfilPage() {
 
   return (
     <AppShell email={session.email} role={session.role} title="Mon compte" active="/profil">
-      <div className="grid gap-8 lg:grid-cols-2">
+      <div className="grid items-start gap-5 lg:grid-cols-2">
         {/* Photo de profil */}
         <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-zinc-900">
           <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
@@ -98,8 +98,10 @@ export default async function ProfilPage() {
         </section>
       </div>
 
+      {/* Sécurité du compte : mot de passe, e-mail, 2FA côte à côte */}
+      <div className="grid items-start gap-5 lg:grid-cols-2 2xl:grid-cols-3">
       {/* Mot de passe */}
-      <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm lg:max-w-xl dark:border-white/10 dark:bg-zinc-900">
+      <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-zinc-900">
         <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
           Changer mon mot de passe
         </h2>
@@ -107,7 +109,7 @@ export default async function ProfilPage() {
       </section>
 
       {/* Adresse e-mail vérifiée : tous les rôles (réinitialisation du mot de passe) */}
-      <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm lg:max-w-xl dark:border-white/10 dark:bg-zinc-900">
+      <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-zinc-900">
         <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">Adresse e-mail</h2>
         <RecoveryEmailCard
           login={user.email}
@@ -119,7 +121,7 @@ export default async function ProfilPage() {
 
       {/* Double authentification : réservée au personnel (pas aux étudiants) */}
       {canUseTwoFactor(user.role) && (
-        <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm lg:max-w-xl dark:border-white/10 dark:bg-zinc-900">
+        <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-zinc-900">
           <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
             Double authentification
           </h2>
@@ -129,6 +131,7 @@ export default async function ProfilPage() {
           />
         </section>
       )}
+      </div>
     </AppShell>
   );
 }
