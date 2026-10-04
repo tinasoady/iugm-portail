@@ -130,7 +130,7 @@ export function InscriptionEntry({
       candidateYear && !years.includes(candidateYear) ? [candidateYear, ...years] : years;
 
     return (
-      <div className="mx-auto w-full max-w-4xl">
+      <div className="mx-auto w-full max-w-6xl">
         <button
           type="button"
           onClick={() => {
@@ -154,8 +154,8 @@ export function InscriptionEntry({
   }
 
   return (
-    <div className="mx-auto w-full max-w-4xl">
-      <div className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm sm:p-8 dark:border-white/10 dark:bg-zinc-900">
+    <div className="mx-auto w-full max-w-6xl">
+      <div className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm sm:p-6 dark:border-white/10 dark:bg-zinc-900">
         <h2 className="mb-1 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
           Rechercher un étudiant dans la base de données
         </h2>

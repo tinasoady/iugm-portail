@@ -248,7 +248,7 @@ export function InscriptionWizard({
   }
 
   return (
-    <div className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm sm:p-8 dark:border-white/10 dark:bg-zinc-900">
+    <div className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm sm:p-6 dark:border-white/10 dark:bg-zinc-900">
       {preselectionId && (
         <p className="mb-6 flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300">
           <FaCheck size={12} className="shrink-0" /> Dossier pré-rempli depuis la présélection — vérifiez chaque champ et les pièces avant de

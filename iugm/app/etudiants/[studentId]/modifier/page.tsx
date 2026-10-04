@@ -42,7 +42,7 @@ export default async function ModifierEtudiantPage({
       title={`Modifier le dossier — ${student.fullName}`}
       active="/etudiants"
     >
-      <div className="mx-auto w-full max-w-3xl">
+      <div className="mx-auto w-full max-w-6xl">
         <EditStudentForm
           studentId={student.id}
           matricule={student.matricule}

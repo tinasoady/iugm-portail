@@ -131,7 +131,7 @@ export default async function StudentProfilePage({
         </div>
       </section>
 
-      <div className="grid gap-8 lg:grid-cols-2">
+      <div className="grid gap-5 lg:grid-cols-2">
         {/* État civil */}
         <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-zinc-900">
           <h3 className="mb-3 text-base font-semibold text-zinc-900 dark:text-zinc-50">
