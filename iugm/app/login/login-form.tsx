@@ -97,7 +97,8 @@ export function LoginForm() {
       </p>
 
       <p className="text-xs text-zinc-500 dark:text-zinc-400">
-        Aucun compte d&apos;inscription ici : les identifiants sont attribués par l&apos;université (personnel : sur invitation, en ouvrant d&apos;abord le lien reçu par e-mail pour choisir votre mot de passe ; étudiants : sur le reçu d&apos;inscription).
+        Pour toute question ou problème de connexion, contactez le service scolarité de votre
+        établissement.
       </p>
     </form>
   );
