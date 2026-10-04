@@ -12,7 +12,7 @@ export type ForgotPasswordState = { error?: string; success?: string };
 // Même réponse que le compte existe ou non : on ne révèle jamais quels
 // identifiants sont enregistrés.
 const GENERIC_SUCCESS =
-  "Si un compte correspond à cet identifiant et possède une adresse e-mail vérifiée, un lien de réinitialisation vient d'être envoyé. Pensez à vérifier vos courriers indésirables.";
+  "Si un compte correspond à cette adresse et possède une adresse e-mail vérifiée, un lien de réinitialisation vient d'être envoyé. Pensez à vérifier vos courriers indésirables.";
 
 const MAX_REQUESTS_PER_WINDOW = 5;
 
@@ -21,7 +21,7 @@ export async function requestPasswordResetAction(
   formData: FormData,
 ): Promise<ForgotPasswordState> {
   const identifier = String(formData.get("username") ?? "").trim();
-  if (!identifier) return { error: "Saisissez votre identifiant." };
+  if (!identifier) return { error: "Saisissez l'adresse e-mail de votre compte." };
   if (identifier.length > 254) return { error: "Identifiant invalide." };
 
   // Propriété globale (non liée au compte) : l'annoncer ne révèle rien

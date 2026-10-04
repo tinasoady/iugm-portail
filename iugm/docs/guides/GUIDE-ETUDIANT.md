@@ -57,7 +57,7 @@ Le menu **Mon compte** permet de :
 ## 6. J'ai oublié mon mot de passe
 
 1. Sur la page de connexion, cliquez sur **Mot de passe oublié ?**.
-2. Saisissez votre **identifiant de connexion** (celui de votre reçu).
+2. Saisissez l'**adresse e-mail** que vous avez ajoutée et confirmée dans Mon compte.
 3. Un lien est envoyé à **l'adresse e-mail que vous avez ajoutée et confirmée** dans Mon compte. Il est valable **60 minutes** et ne fonctionne **qu'une fois**.
 4. Cliquez sur le lien, choisissez un nouveau mot de passe, puis reconnectez-vous.
 

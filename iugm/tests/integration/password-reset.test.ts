@@ -119,6 +119,34 @@ describe("demande de réinitialisation", () => {
     expect(sent[0].to).toBe("jean@gmail.test");
   });
 
+  it("accepte l'adresse e-mail vérifiée du compte (casse et espaces ignorés)", async () => {
+    await createStaff();
+    expect(await requestPasswordReset("  Agent@IUGM.test ", ORIGIN)).toEqual({ sent: true });
+    expect(sent).toHaveLength(1);
+    expect(sent[0].to).toBe("agent@iugm.test");
+    expect(sent[0].text).not.toContain("nom d'utilisateur"); // un seul compte : inutile de le rappeler
+  });
+
+  it("une adresse partagée par deux comptes envoie un lien à chacun, avec le nom d'utilisateur", async () => {
+    await createStaff("parent.un", "famille@gmail.test");
+    await createStaff("parent.deux", "famille@gmail.test");
+    expect(await requestPasswordReset("famille@gmail.test", ORIGIN)).toEqual({ sent: true });
+    expect(sent).toHaveLength(2);
+    expect(sent.map((m) => m.to)).toEqual(["famille@gmail.test", "famille@gmail.test"]);
+    expect(sent[0].text).toContain("parent.un");
+    expect(sent[1].text).toContain("parent.deux");
+    expect(await prisma.passwordResetToken.count()).toBe(2);
+  });
+
+  it("une adresse non vérifiée (saisie seulement dans le dossier) ne correspond à aucun compte", async () => {
+    await createStudentAccount(null, "non-verifiee@gmail.test");
+    expect(await requestPasswordReset("non-verifiee@gmail.test", ORIGIN)).toEqual({
+      sent: false,
+      reason: "unknown-account",
+    });
+    expect(sent).toHaveLength(0);
+  });
+
   it("accepte l'ancien identifiant d'un étudiant (alias legacyLogin)", async () => {
     const user = await createStudentAccount("jean@gmail.test");
     await prisma.user.update({ where: { id: user.id }, data: { legacyLogin: "fi2026-1@student.iugm.edu" } });

@@ -41,7 +41,7 @@ test.describe("changement de mot de passe obligatoire", () => {
 test.describe("mot de passe oublié", () => {
   test("la demande répond pareil pour un compte inconnu", async ({ page }) => {
     await page.goto("/mot-de-passe-oublie");
-    await page.locator("#username").fill("inconnu");
+    await page.locator("#username").fill("inconnu@e2e.test");
     await page.getByRole("button", { name: "Envoyer le lien" }).click();
     await expect(page.getByText(/Si un compte correspond/)).toBeVisible();
   });

@@ -48,12 +48,13 @@ function footerText(brand: Branding): string {
 
 export function passwordResetEmail(
   brand: Branding,
-  params: { fullName?: string | null; resetUrl: string; validForMinutes: number },
+  params: { fullName?: string | null; username?: string | null; resetUrl: string; validForMinutes: number },
 ): EmailContent {
   const greeting = params.fullName ? `Bonjour ${params.fullName},` : "Bonjour,";
+  const account = params.username ? ` (nom d'utilisateur : ${params.username})` : "";
   const lines = [
     greeting,
-    `Une demande de réinitialisation du mot de passe de votre compte du portail ${brand.institutionAcronym} a été faite.`,
+    `Une demande de réinitialisation du mot de passe de votre compte${account} du portail ${brand.institutionAcronym} a été faite.`,
     `Ce lien est valable ${params.validForMinutes} minutes et ne peut servir qu'une fois.`,
     "Si vous n'êtes pas à l'origine de cette demande, ignorez ce message : votre mot de passe reste inchangé.",
   ];

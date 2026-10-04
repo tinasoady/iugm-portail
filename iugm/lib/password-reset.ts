@@ -44,28 +44,65 @@ export function recipientFor(user: { recoveryEmail?: string | null }): string | 
   return isValidEmailAddress(user.recoveryEmail) ? user.recoveryEmail : null;
 }
 
+type ResetTarget = {
+  id: string;
+  email: string;
+  fullName: string | null;
+  active: boolean;
+  pendingActivation: boolean;
+  recoveryEmail: string | null;
+};
+
+const TARGET_SELECT = {
+  id: true,
+  email: true,
+  fullName: true,
+  active: true,
+  pendingActivation: true,
+  recoveryEmail: true,
+} as const;
+
+// Comptes visés par une demande. La saisie normale est l'ADRESSE E-MAIL vérifiée du
+// compte ; on accepte aussi l'identifiant de connexion (nom d'utilisateur, « prenom.nom »
+// ou ancien identifiant étudiant) pour qui ne se souvient que de lui. Plusieurs comptes
+// peuvent partager une même adresse (frères et sœurs, par exemple) : chacun reçoit son lien.
+async function findTargets(input: string): Promise<ResetTarget[]> {
+  return prisma.user.findMany({
+    where: {
+      OR: [
+        { email: input },
+        { legacyLogin: input },
+        { recoveryEmail: { equals: input, mode: "insensitive" } },
+      ],
+    },
+    orderBy: { createdAt: "asc" },
+    take: 10, // borne : une adresse partagée par des dizaines de comptes n'a pas de sens
+    select: TARGET_SELECT,
+  });
+}
+
 // À appeler HORS du chemin de réponse (voir after() dans l'action) : le temps
 // de traitement ne doit pas révéler si le compte existe.
 export async function requestPasswordReset(
-  rawIdentifier: string,
+  rawInput: string,
   origin: string | null,
 ): Promise<ResetRequestOutcome> {
-  const identifier = normalizeLogin(rawIdentifier);
-  if (!identifier) return { sent: false, reason: "unknown-account" };
+  const input = normalizeLogin(rawInput);
+  if (!input) return { sent: false, reason: "unknown-account" };
 
-  // Nom d'utilisateur / « prenom.nom », ou ancien identifiant d'un compte étudiant renommé
-  const user = await prisma.user.findFirst({
-    where: { OR: [{ email: identifier }, { legacyLogin: identifier }] },
-    select: {
-      id: true,
-      email: true,
-      fullName: true,
-      active: true,
-      pendingActivation: true,
-      recoveryEmail: true,
-    },
-  });
-  if (!user) return { sent: false, reason: "unknown-account" };
+  const targets = await findTargets(input);
+  if (targets.length === 0) return { sent: false, reason: "unknown-account" };
+
+  const outcomes: ResetRequestOutcome[] = [];
+  for (const user of targets) outcomes.push(await sendResetLink(user, origin, targets.length > 1));
+  return outcomes.find((o) => o.sent) ?? outcomes[0];
+}
+
+async function sendResetLink(
+  user: ResetTarget,
+  origin: string | null,
+  shared: boolean,
+): Promise<ResetRequestOutcome> {
   // Un compte invité mais pas activé n'a rien à réinitialiser : son lien d'invitation
   // (ou son renvoi par le superadmin) est le seul chemin.
   if (!user.active || user.pendingActivation) return { sent: false, reason: "inactive" };
@@ -118,6 +155,9 @@ export async function requestPasswordReset(
     },
     {
       fullName: user.fullName,
+      // Le nom d'utilisateur n'est rappelé que si l'adresse est partagée : il faut alors
+      // savoir quel lien correspond à quel compte
+      username: shared ? user.email : null,
       resetUrl: `${origin}/reinitialiser-mot-de-passe?token=${encodeURIComponent(token)}`,
       validForMinutes: RESET_TOKEN_VALID_MINUTES,
     },
