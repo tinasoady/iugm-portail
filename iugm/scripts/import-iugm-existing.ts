@@ -7,9 +7,9 @@
 // nécessaire pour un fichier de cette taille — voir parseExistingRecordsFromFile).
 //
 // Usage :
-//   npx tsx scripts/import-iugm-existing.ts <chemin-du-fichier.xlsx> <annee> [email-superadmin]
+//   npx tsx scripts/import-iugm-existing.ts <chemin-du-fichier.xlsx> <annee> [identifiant-superadmin]
 // Exemple :
-//   npx tsx scripts/import-iugm-existing.ts "../BASE IUGM Mahajanga 2025-2026.xlsx" 2025-2026 admin@iugm.edu
+//   npx tsx scripts/import-iugm-existing.ts "../BASE IUGM Mahajanga 2025-2026.xlsx" 2025-2026 admin
 //
 // Sans risque de double import : un ré-import remplace les fiches non
 // utilisées de la même année (les dossiers déjà créés/utilisés restent
@@ -23,7 +23,7 @@ async function main() {
   const [, , filePathArg, academicYear, actorEmail] = process.argv;
   if (!filePathArg || !academicYear) {
     console.error(
-      "Usage: npx tsx scripts/import-iugm-existing.ts <chemin-du-fichier.xlsx> <annee 2025-2026> [email-superadmin]",
+      "Usage: npx tsx scripts/import-iugm-existing.ts <chemin-du-fichier.xlsx> <annee 2025-2026> [identifiant-superadmin]",
     );
     process.exit(1);
   }

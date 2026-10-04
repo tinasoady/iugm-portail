@@ -28,10 +28,10 @@ function twoFactorCookieOptions() {
 // Connexion via Server Action : en cas d'échec, l'erreur est retournée au
 // formulaire et affichée sous les champs — aucune nouvelle page n'est chargée.
 export async function loginAction(_prev: LoginState, formData: FormData): Promise<LoginState> {
-  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const identifier = String(formData.get("username") ?? "");
   const password = String(formData.get("password") ?? "");
 
-  const result = await authenticateUser(email, password);
+  const result = await authenticateUser(identifier, password);
   if (!result.ok) {
     return { error: result.error };
   }

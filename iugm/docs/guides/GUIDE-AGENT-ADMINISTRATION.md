@@ -12,10 +12,10 @@ les paiements, réinscrire, suivre l'écolage, éditer des états, communiquer.
 
 ## 1. Se connecter en sécurité
 
-- Connexion par e-mail et mot de passe. Un compte nouvellement créé vous impose de changer le mot de passe provisoire dès la première connexion.
+- Votre compte est créé par le superadmin, qui vous envoie une **invitation par e-mail**. Ouvrez le lien (valable 72 h), **choisissez votre mot de passe** : votre compte est activé. Vous vous connectez ensuite avec votre **nom d'utilisateur** (rappelé dans l'e-mail) et ce mot de passe. Lien expiré ? Demandez au superadmin de vous le renvoyer.
 - **Activez la double authentification** (menu **Mon compte** → *Double authentification*) : vous aurez besoin d'une application d'authentification sur votre téléphone (Google Authenticator, Microsoft Authenticator, Authy...). Scannez le QR code, saisissez le code à 6 chiffres, puis **notez vos codes de secours** (ils ne s'affichent qu'une fois).
 - Déconnexion automatique après 20 minutes d'inactivité.
-- **Renseignez votre adresse de récupération** (menu **Mon compte** → *Adresse de récupération*) : une vraie boîte mail, car votre identifiant de connexion n'en est peut-être pas une. Sans elle, si vous oubliez votre mot de passe, le lien de réinitialisation ne vous parviendrait pas. Le portail envoie d'abord un message de confirmation à cette adresse ; elle ne devient active qu'après avoir cliqué sur le lien reçu.
+- L'adresse qui a reçu l'invitation est automatiquement **vérifiée** : c'est elle qui recevra le lien « mot de passe oublié ». Vous pouvez la changer dans **Mon compte** → *Adresse e-mail* (un message de confirmation part vers la nouvelle adresse ; elle ne devient active qu'après avoir cliqué sur le lien reçu).
 
 ## 2. Le parcours d'un dossier
 

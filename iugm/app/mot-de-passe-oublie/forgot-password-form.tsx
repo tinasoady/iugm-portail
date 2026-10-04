@@ -15,14 +15,17 @@ export function ForgotPasswordForm() {
       <div>
         <label
           className="block text-sm font-medium text-zinc-700 dark:text-zinc-200"
-          htmlFor="email"
+          htmlFor="username"
         >
-          Identifiant de connexion (email)
+          Identifiant
         </label>
         <input
-          id="email"
-          name="email"
-          type="email"
+          id="username"
+          name="username"
+          type="text"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           autoComplete="username"
           required
           className="mt-1 w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-zinc-900 outline-none focus:ring-2 focus:ring-indigo-500/40 dark:border-white/10 dark:bg-zinc-950 dark:text-zinc-50"
@@ -56,8 +59,8 @@ export function ForgotPasswordForm() {
       </button>
 
       <p className="text-xs text-zinc-500 dark:text-zinc-400">
-        Étudiant : le lien est envoyé à l&apos;adresse e-mail personnelle de votre dossier. Sans
-        adresse enregistrée, adressez-vous à l&apos;administration.
+        Le lien est envoyé à l&apos;adresse e-mail vérifiée de votre compte. Si vous n&apos;en avez
+        pas encore ajouté (ou si vous ne recevez rien), adressez-vous à l&apos;administration.
       </p>
     </form>
   );

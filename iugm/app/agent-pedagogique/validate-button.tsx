@@ -21,7 +21,7 @@ export function ValidatePedagoButton({ studentId }: { studentId: string }) {
             <p className="flex items-center gap-1.5 font-semibold">
               <FaCheckCircle size={13} /> Réinscription validée
             </p>
-            <p className="mt-1 font-mono">Compte existant : {state.credentials.email}</p>
+            <p className="mt-1 font-mono">Compte existant : {state.credentials.login}</p>
             <p className="mt-1 text-green-700 dark:text-green-400">
               L&apos;étudiant conserve son email et son mot de passe habituels.
             </p>
@@ -31,7 +31,7 @@ export function ValidatePedagoButton({ studentId }: { studentId: string }) {
             <p className="flex items-center gap-1.5 font-semibold">
               <FaCheckCircle size={13} /> Compte étudiant créé — à transmettre :
             </p>
-            <p className="mt-1 font-mono">Email : {state.credentials.email}</p>
+            <p className="mt-1 font-mono">Identifiant : {state.credentials.login}</p>
             <p className="font-mono">Mot de passe : {state.credentials.password}</p>
             <p className="mt-1 text-green-700 dark:text-green-400">
               Notez ces identifiants maintenant : le mot de passe ne sera plus affiché.

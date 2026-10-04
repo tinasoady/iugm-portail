@@ -77,7 +77,7 @@ export async function sendWelcomeAnnouncementOnFirstLogin(userId: string): Promi
   await createAnnouncement(
     {
       title: "Bienvenue à l'IUGM Mahajanga !",
-      body: `Bienvenue ${student.fullName} ! Votre compte étudiant (matricule ${student.matricule}) est maintenant actif. Pensez à vérifier vos informations dans « Mon profil ». Bonne année universitaire !`,
+      body: `Bienvenue ${student.fullName} ! Votre compte étudiant (matricule ${student.matricule}) est maintenant actif. Pensez à vérifier vos informations dans « Mon profil », et à ajouter votre adresse e-mail dans « Mon compte » : elle vous permettra de réinitialiser vous-même votre mot de passe si vous l'oubliez. Bonne année universitaire !`,
       studentId: student.id,
       kind: "WELCOME",
       sourceAcademicYear: student.academicYear,

@@ -39,7 +39,7 @@ const PASSWORD = "Motdepasse-2026";
 async function createStaff(overrides: { email?: string; role?: "SUPERADMIN" | "AGENT_ADMINISTRATION" | "ETUDIANT"; recoveryEmail?: string | null } = {}) {
   return prisma.user.create({
     data: {
-      email: overrides.email ?? "admin@iugm.edu",
+      email: overrides.email ?? "admin",
       fullName: "Admin Test",
       passwordHash: await bcrypt.hash(PASSWORD, 4),
       role: overrides.role ?? "SUPERADMIN",
@@ -107,10 +107,14 @@ describe("demande de vérification", () => {
     expect(sent).toHaveLength(0);
   });
 
-  it("est réservée au personnel", async () => {
-    const student = await createStaff({ email: "etu@etudiant.iugm", role: "ETUDIANT" });
-    expect(await request(student.id)).toMatchObject({ ok: false });
-    expect(sent).toHaveLength(0);
+  it("est ouverte aux étudiants : ils ajoutent leur propre adresse après leur première connexion", async () => {
+    const student = await createStaff({ email: "jean.rakoto", role: "ETUDIANT" });
+    expect(await request(student.id)).toMatchObject({ ok: true });
+    expect(sent).toHaveLength(1);
+    expect((await confirmRecoveryEmail(tokenFromLastMail())).ok).toBe(true);
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: student.id } })).recoveryEmail).toBe(
+      "jtinasoady@gmail.com",
+    );
   });
 
   it("refuse quand l'envoi n'est pas configuré ou que l'adresse du portail est inconnue", async () => {
@@ -235,25 +239,21 @@ describe("retrait", () => {
 describe("effet sur « mot de passe oublié »", () => {
   it("le lien part vers l'adresse de récupération, pas vers l'identifiant sans boîte", async () => {
     await createStaff({ recoveryEmail: "vraie-boite@gmail.com" });
-    expect(await requestPasswordReset("admin@iugm.edu", ORIGIN)).toEqual({ sent: true });
+    expect(await requestPasswordReset("admin", ORIGIN)).toEqual({ sent: true });
     expect(sent).toHaveLength(1);
     expect(sent[0].to).toBe("vraie-boite@gmail.com");
   });
 
-  it("sans adresse de récupération, repli sur l'identifiant (comportement antérieur)", async () => {
+  it("sans adresse vérifiée, rien n'est envoyé (plus de repli sur l'identifiant)", async () => {
     await createStaff();
-    expect(await requestPasswordReset("admin@iugm.edu", ORIGIN)).toEqual({ sent: true });
-    expect(sent[0].to).toBe("admin@iugm.edu");
+    expect(await requestPasswordReset("admin", ORIGIN)).toEqual({ sent: false, reason: "no-address" });
+    expect(sent).toHaveLength(0);
   });
 
-  it("recipientFor : priorité à la récupération pour le personnel, jamais pour un étudiant", () => {
-    const base = { email: "login@iugm.edu", studentFile: null };
-    expect(recipientFor({ ...base, role: "SUPERADMIN", recoveryEmail: "r@gmail.com" })).toBe("r@gmail.com");
-    expect(recipientFor({ ...base, role: "SUPERADMIN", recoveryEmail: "pas-valide" })).toBe("login@iugm.edu");
-    expect(recipientFor({ ...base, role: "SUPERADMIN" })).toBe("login@iugm.edu");
-    expect(
-      recipientFor({ ...base, role: "ETUDIANT", recoveryEmail: "r@gmail.com", studentFile: { personalEmail: "perso@gmail.com" } }),
-    ).toBe("perso@gmail.com");
-    expect(recipientFor({ ...base, role: "ETUDIANT", recoveryEmail: "r@gmail.com" })).toBeNull();
+  it("recipientFor : uniquement l'adresse vérifiée, pour tous les rôles", () => {
+    expect(recipientFor({ recoveryEmail: "r@gmail.com" })).toBe("r@gmail.com");
+    expect(recipientFor({ recoveryEmail: "pas-valide" })).toBeNull();
+    expect(recipientFor({ recoveryEmail: null })).toBeNull();
+    expect(recipientFor({})).toBeNull();
   });
 });

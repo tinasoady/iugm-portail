@@ -17,20 +17,20 @@ test.describe("accès et connexion", () => {
   });
 
   test("un mauvais mot de passe affiche une erreur générique sans quitter la page", async ({ page }) => {
-    await login(page, ACCOUNTS.superadmin.email, "mauvais-motdepasse-1");
-    await expect(alertOf(page)).toHaveText(/Email ou mot de passe incorrect/);
+    await login(page, ACCOUNTS.superadmin.username, "mauvais-motdepasse-1");
+    await expect(alertOf(page)).toHaveText(/Identifiant ou mot de passe incorrect/);
     await expect(page).toHaveURL(/\/login$/);
   });
 
-  test("un email inconnu reçoit exactement le même message", async ({ page }) => {
-    await login(page, "personne@e2e.test", PASSWORD);
-    await expect(alertOf(page)).toHaveText(/Email ou mot de passe incorrect/);
+  test("un identifiant inconnu reçoit exactement le même message", async ({ page }) => {
+    await login(page, "personne", PASSWORD);
+    await expect(alertOf(page)).toHaveText(/Identifiant ou mot de passe incorrect/);
   });
 
   for (const key of ["superadmin", "agentAdmin", "agentPedago"] as const) {
     test(`${key} arrive sur son espace et peut se déconnecter`, async ({ page }) => {
       const account = ACCOUNTS[key];
-      await login(page, account.email, account.password);
+      await login(page, account.username, account.password);
       await expect(page).toHaveURL(new RegExp(`${account.home}$`));
 
       // Menu du compte : <details> ouvert par son résumé, puis déconnexion
@@ -45,7 +45,7 @@ test.describe("accès et connexion", () => {
   }
 
   test("un agent ne peut pas ouvrir l'espace d'administration", async ({ page }) => {
-    await login(page, ACCOUNTS.agentAdmin.email, ACCOUNTS.agentAdmin.password);
+    await login(page, ACCOUNTS.agentAdmin.username, ACCOUNTS.agentAdmin.password);
     await expect(page).toHaveURL(/\/agent-admin$/);
     await page.goto("/admin/permissions");
     await expect(page).not.toHaveURL(/\/admin\/permissions/);

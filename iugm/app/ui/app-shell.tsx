@@ -202,7 +202,7 @@ export async function AppShell({
   // agents + formation affectée (secrétaire de formation, cantonnée à sa filière)
   const account = await prisma.user.findUnique({
     where: { email },
-    select: { id: true, permissions: true, photo: true, formation: true },
+    select: { id: true, permissions: true, photo: true, formation: true, recoveryEmail: true },
   });
   const permissions = account?.permissions ?? [];
   const nav = NAV_ITEMS.filter(
@@ -383,6 +383,26 @@ export async function AppShell({
           id="contenu"
           tabIndex={-1}
           className="mx-auto w-full max-w-6xl flex-1 outline-none space-y-6 px-4 py-6 sm:space-y-8 sm:py-8">
+          {/* Sans adresse e-mail vérifiée, « mot de passe oublié » ne peut rien envoyer */}
+          {account && !account.recoveryEmail && active !== "/profil" && active !== "/changer-mot-de-passe" && (
+            <div
+              role="note"
+              className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300"
+            >
+              <p>
+                <strong>Ajoutez votre adresse e-mail.</strong>{" "}
+                {role === "ETUDIANT"
+                  ? "Elle vous permettra de réinitialiser vous-même votre mot de passe si vous l'oubliez (recommandé)."
+                  : "Elle est nécessaire pour réinitialiser votre mot de passe si vous l'oubliez."}
+              </p>
+              <Link
+                href="/profil"
+                className="rounded-lg bg-amber-700 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-amber-600"
+              >
+                Ajouter mon adresse
+              </Link>
+            </div>
+          )}
           {children}
         </main>
         <Footer institutionName={settings.institutionAcronym} />

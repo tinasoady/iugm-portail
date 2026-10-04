@@ -8,7 +8,7 @@ const NEW_PASSWORD = "Nouveau-motdepasse-2027";
 
 test.describe("changement de mot de passe obligatoire", () => {
   test("un mot de passe temporaire cantonne l'utilisateur à la page de changement", async ({ page }) => {
-    await login(page, ACCOUNTS.mustChange.email, ACCOUNTS.mustChange.password);
+    await login(page, ACCOUNTS.mustChange.username, ACCOUNTS.mustChange.password);
     await expect(page).toHaveURL(/\/changer-mot-de-passe$/);
 
     // Impossible de contourner en saisissant une autre adresse
@@ -33,7 +33,7 @@ test.describe("changement de mot de passe obligatoire", () => {
 
     // ...et l'ancien mot de passe ne fonctionne plus
     await page.context().clearCookies();
-    await login(page, ACCOUNTS.mustChange.email, PASSWORD);
+    await login(page, ACCOUNTS.mustChange.username, PASSWORD);
     await expect(alertOf(page)).toHaveText(/incorrect/);
   });
 });
@@ -41,7 +41,7 @@ test.describe("changement de mot de passe obligatoire", () => {
 test.describe("mot de passe oublié", () => {
   test("la demande répond pareil pour un compte inconnu", async ({ page }) => {
     await page.goto("/mot-de-passe-oublie");
-    await page.locator("#email").fill("inconnu@e2e.test");
+    await page.locator("#username").fill("inconnu");
     await page.getByRole("button", { name: "Envoyer le lien" }).click();
     await expect(page.getByText(/Si un compte correspond/)).toBeVisible();
   });
@@ -50,7 +50,7 @@ test.describe("mot de passe oublié", () => {
     // Le lien réel est écrit dans la console du serveur (MAIL_DRIVER=log) ; on
     // fabrique ici le même jeton en base pour pouvoir le suivre.
     const { prisma } = await import("../../lib/prisma");
-    const user = await prisma.user.findUniqueOrThrow({ where: { email: ACCOUNTS.resetUser.email } });
+    const user = await prisma.user.findUniqueOrThrow({ where: { email: ACCOUNTS.resetUser.username } });
     const token = randomBytes(32).toString("base64url");
     await prisma.passwordResetToken.create({
       data: {
@@ -71,7 +71,7 @@ test.describe("mot de passe oublié", () => {
     await expect(page).toHaveURL(/\/login\?reinitialise=1$/);
     await expect(page.getByRole("status")).toHaveText(/Mot de passe modifié/);
 
-    await login(page, ACCOUNTS.resetUser.email, NEW_PASSWORD);
+    await login(page, ACCOUNTS.resetUser.username, NEW_PASSWORD);
     await expect(page).toHaveURL(/\/agent-admin$/);
 
     // Le même lien ne fonctionne plus

@@ -10,8 +10,8 @@ test.describe.serial("adresse de récupération", () => {
   test("la demande exige le bon mot de passe, puis annonce l'envoi sans activer l'adresse", async ({ page }) => {
     await signIn(page, ACCOUNTS.recoveryUser);
     await page.goto("/profil");
-    await expect(page.getByRole("heading", { name: "Adresse de récupération" })).toBeVisible();
-    await expect(page.getByText(/aucune — le lien serait envoyé à votre identifiant/)).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Adresse e-mail" })).toBeVisible();
+    await expect(page.getByText(/aucune — vous ne pourriez pas réinitialiser votre mot de passe par e-mail/)).toBeVisible();
 
     // Mauvais mot de passe : refusé
     await page.locator("#recovery-email").fill(RECOVERY_ADDRESS);
@@ -24,7 +24,7 @@ test.describe.serial("adresse de récupération", () => {
     await page.locator("#recovery-password").fill(PASSWORD);
     await page.getByRole("button", { name: "Envoyer le message de confirmation" }).click();
     await expect(page.getByRole("status")).toContainText("v***e@e2e.test");
-    await expect(page.getByText(/aucune — le lien serait envoyé à votre identifiant/)).toBeVisible();
+    await expect(page.getByText(/aucune — vous ne pourriez pas réinitialiser votre mot de passe par e-mail/)).toBeVisible();
   });
 
   test("le lien ne confirme rien au chargement, seulement au clic, une seule fois, sans session", async ({
@@ -34,7 +34,7 @@ test.describe.serial("adresse de récupération", () => {
     // Le vrai lien est écrit dans la console du serveur (MAIL_DRIVER=log) ; on fabrique
     // ici le même jeton en base pour pouvoir le suivre.
     const { prisma } = await import("../../lib/prisma");
-    const user = await prisma.user.findUniqueOrThrow({ where: { email: ACCOUNTS.recoveryUser.email } });
+    const user = await prisma.user.findUniqueOrThrow({ where: { email: ACCOUNTS.recoveryUser.username } });
     const token = randomBytes(32).toString("base64url");
     await prisma.recoveryEmailToken.create({
       data: {
@@ -74,7 +74,7 @@ test.describe.serial("adresse de récupération", () => {
     await page.locator("#recovery-remove-password").fill(PASSWORD);
     await page.getByRole("button", { name: "Retirer", exact: true }).click();
     await expect(page.getByRole("status")).toHaveText(/retirée/);
-    await expect(page.getByText(/aucune — le lien serait envoyé à votre identifiant/)).toBeVisible();
+    await expect(page.getByText(/aucune — vous ne pourriez pas réinitialiser votre mot de passe par e-mail/)).toBeVisible();
   });
 
   test("un jeton inventé est refusé, la page est publique", async ({ page }) => {

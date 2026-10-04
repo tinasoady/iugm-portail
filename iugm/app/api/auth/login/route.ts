@@ -13,10 +13,10 @@ import {
 export async function POST(req: Request) {
   try {
     const formData = await req.formData();
-    const email = String(formData.get("email") ?? "").trim().toLowerCase();
+    const identifier = String(formData.get("username") ?? "");
     const password = String(formData.get("password") ?? "");
 
-    const result = await authenticateUser(email, password);
+    const result = await authenticateUser(identifier, password);
     if (!result.ok) {
       return NextResponse.json({ error: result.error }, { status: result.status });
     }

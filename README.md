@@ -168,7 +168,7 @@ npx prisma migrate dev
 npm run seed
 ```
 
-Crée le compte `admin@iugm.edu` avec un **mot de passe aléatoire affiché une seule fois** dans le terminal ; le changement est imposé à la première connexion.
+Crée le compte `admin` (l'identifiant de connexion est un **nom d'utilisateur**, pas une adresse e-mail) avec un **mot de passe aléatoire affiché une seule fois** dans le terminal ; le changement est imposé à la première connexion. Les autres comptes du personnel se créent ensuite **par invitation** depuis le tableau de bord (lien d'activation envoyé par e-mail : l'envoi d'e-mails doit donc être configuré).
 
 ### 5. Lancer le serveur de développement
 
@@ -330,7 +330,7 @@ BLOB_READ_WRITE_TOKEN="<vercel blob token>"
 docker compose up -d          # start PostgreSQL
 npx prisma generate
 npx prisma migrate dev
-npm run seed                  # creates admin@iugm.edu with a random one-time password
+npm run seed                  # creates the `admin` superadmin with a random one-time password
 npm run dev                   # http://localhost:3000
 ```
 

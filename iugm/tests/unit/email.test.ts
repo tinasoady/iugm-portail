@@ -9,6 +9,7 @@ import {
 } from "@/lib/mailer";
 import {
   escapeHtml,
+  invitationEmail,
   passwordResetEmail,
   studentNotificationEmail,
   type Branding,
@@ -98,6 +99,23 @@ describe("modèles d'e-mails", () => {
     expect(mail.text).toContain("60 minutes");
     expect(mail.text).toMatch(/ignorez ce message/);
     expect(mail.html).toContain('href="https://portail.test/reinitialiser-mot-de-passe?token=abc"');
+  });
+
+  it("l'invitation contient le nom d'utilisateur, le lien, la durée, et jamais de mot de passe", () => {
+    const mail = invitationEmail(BRAND, {
+      fullName: "Marie <b>Agent</b>",
+      username: "marie.agent",
+      roleLabel: "Agent pédagogique",
+      activateUrl: "https://portail.test/activer-compte?token=abc",
+      validForHours: 72,
+    });
+    expect(mail.subject).toContain("IUGM");
+    expect(mail.text).toContain("marie.agent");
+    expect(mail.text).toContain("https://portail.test/activer-compte?token=abc");
+    expect(mail.text).toContain("72 heures");
+    expect(mail.text).toMatch(/choisissez votre mot de passe/);
+    expect(mail.html).toContain('href="https://portail.test/activer-compte?token=abc"');
+    expect(mail.html).not.toContain("<b>Agent</b>");
   });
 
   it("échappe le contenu saisi par un agent dans un communiqué (pas d'injection HTML)", () => {

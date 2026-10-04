@@ -7,6 +7,7 @@ import { sendMail, isMailConfigured, isValidEmailAddress } from "./mailer";
 import { passwordResetEmail } from "./email-templates";
 import { getSettings } from "./settings";
 import { validatePasswordStrength } from "./password-policy";
+import { normalizeLogin } from "./identifiers";
 
 // ---------------------------------------------------------------------------
 // « Mot de passe oublié » : lien à usage unique envoyé par e-mail.
@@ -34,22 +35,13 @@ export type ResetRequestOutcome =
   | { sent: true }
   | { sent: false; reason: "unknown-account" | "inactive" | "no-address" | "throttled" | "no-origin" | "not-configured" | "send-failed" };
 
-// Adresse où envoyer le lien : pour le personnel, l'adresse de RÉCUPÉRATION
-// vérifiée si le compte en a une (l'identifiant de connexion peut n'être qu'un
-// libellé sans boîte, ex. admin@iugm.edu), sinon l'identifiant lui-même ; pour
-// un étudiant, dont l'identifiant est généré par le portail (pas une vraie
-// boîte), l'adresse personnelle de son dossier.
-export function recipientFor(user: {
-  email: string;
-  role: string;
-  recoveryEmail?: string | null;
-  studentFile: { personalEmail: string | null } | null;
-}): string | null {
-  if (user.role === "ETUDIANT") {
-    return isValidEmailAddress(user.studentFile?.personalEmail) ? user.studentFile.personalEmail : null;
-  }
-  if (isValidEmailAddress(user.recoveryEmail)) return user.recoveryEmail;
-  return isValidEmailAddress(user.email) ? user.email : null;
+// Adresse où envoyer le lien : UNIQUEMENT l'adresse e-mail VÉRIFIÉE du compte, pour
+// tous les rôles. L'identifiant de connexion n'est plus une adresse, et l'adresse
+// saisie par un agent dans le dossier d'un étudiant n'a jamais été confirmée : une
+// faute de frappe y enverrait un lien de réinitialisation à un inconnu, donc la clé
+// du compte. Sans adresse vérifiée, la personne s'adresse à l'administration.
+export function recipientFor(user: { recoveryEmail?: string | null }): string | null {
+  return isValidEmailAddress(user.recoveryEmail) ? user.recoveryEmail : null;
 }
 
 // À appeler HORS du chemin de réponse (voir after() dans l'action) : le temps
@@ -58,23 +50,25 @@ export async function requestPasswordReset(
   rawIdentifier: string,
   origin: string | null,
 ): Promise<ResetRequestOutcome> {
-  const identifier = rawIdentifier.trim().toLowerCase();
+  const identifier = normalizeLogin(rawIdentifier);
   if (!identifier) return { sent: false, reason: "unknown-account" };
 
-  const user = await prisma.user.findUnique({
-    where: { email: identifier },
+  // Nom d'utilisateur / « prenom.nom », ou ancien identifiant d'un compte étudiant renommé
+  const user = await prisma.user.findFirst({
+    where: { OR: [{ email: identifier }, { legacyLogin: identifier }] },
     select: {
       id: true,
       email: true,
       fullName: true,
-      role: true,
       active: true,
+      pendingActivation: true,
       recoveryEmail: true,
-      studentFile: { select: { personalEmail: true } },
     },
   });
   if (!user) return { sent: false, reason: "unknown-account" };
-  if (!user.active) return { sent: false, reason: "inactive" };
+  // Un compte invité mais pas activé n'a rien à réinitialiser : son lien d'invitation
+  // (ou son renvoi par le superadmin) est le seul chemin.
+  if (!user.active || user.pendingActivation) return { sent: false, reason: "inactive" };
 
   const recipient = recipientFor(user);
   if (!recipient) {

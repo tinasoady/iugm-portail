@@ -30,7 +30,7 @@ export type ValidateState = {
   error?: string;
   // Identifiants générés, affichés une seule fois pour être transmis à l'étudiant.
   // password null = réinscription : le compte existant est conservé.
-  credentials?: { email: string; password: string | null };
+  credentials?: { login: string; password: string | null };
 };
 
 export async function validatePedagoAction(
@@ -48,7 +48,7 @@ export async function validatePedagoAction(
   }
 
   try {
-    const { student, email, password } = await validatePedagoInscription(studentId, session.sub);
+    const { student, login, password } = await validatePedagoInscription(studentId, session.sub);
     // Pas de revalidatePath ici, volontairement : le dossier quitte la liste « à
     // valider » dès qu'il est inscrit, et avec lui le panneau qui affiche UNE
     // SEULE FOIS le mot de passe initial. La liste est rafraîchie par l'agent,
@@ -59,7 +59,7 @@ export async function validatePedagoAction(
         password === null
           ? `Réinscription validée pour ${student.fullName}. Compte existant conservé.`
           : `Inscription validée pour ${student.fullName}. Compte étudiant créé.`,
-      credentials: { email, password },
+      credentials: { login, password },
     };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Erreur lors de la validation." };

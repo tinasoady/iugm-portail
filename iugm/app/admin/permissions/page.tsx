@@ -11,7 +11,9 @@ import { FORMATIONS } from "@/lib/formations";
 import { AppShell } from "@/app/ui/app-shell";
 import { ShowMore } from "@/app/ui/show-more";
 import { LIST_PAGE_SIZE, hasMore, moreHref, parseListLimit } from "@/lib/pagination";
+import { pendingInvitationInfo } from "@/lib/invitations";
 import { PermissionActions } from "./permission-row";
+import { InvitationPanel } from "./invitation-panel";
 import { TaskPermissionsForm, DeleteUserButton } from "./task-permissions-form";
 
 const ROLE_LABELS: Record<string, string> = {
@@ -71,6 +73,7 @@ export default async function PermissionsPage({
         mustChangePassword: true,
         totpEnabled: true,
         recoveryEmail: true,
+        pendingActivation: true,
         jobTitle: true,
         permissions: true,
         formation: true,
@@ -92,6 +95,9 @@ export default async function PermissionsPage({
     }),
     prisma.user.count({ where: studentWhere }),
   ]);
+
+  const invitations = await pendingInvitationInfo(agents.filter((a) => a.pendingActivation).map((a) => a.id));
+  const dateFormat = new Intl.DateTimeFormat("fr-FR", { dateStyle: "short", timeStyle: "short", timeZone: "Indian/Antananarivo" });
 
   return (
     <AppShell
@@ -146,7 +152,11 @@ export default async function PermissionsPage({
                       <FaLock size={10} /> {user.formation}
                     </span>
                   )}
-                  {user.active ? (
+                  {user.pendingActivation ? (
+                    <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                      ● En attente d&apos;activation
+                    </span>
+                  ) : user.active ? (
                     <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
                       ● Actif
                     </span>
@@ -155,12 +165,12 @@ export default async function PermissionsPage({
                       ● Désactivé
                     </span>
                   )}
-                  {!user.recoveryEmail && (
+                  {!user.pendingActivation && !user.recoveryEmail && (
                     <span
                       className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-300"
-                      title="Aucune adresse de récupération confirmée : le lien « mot de passe oublié » est envoyé à l'identifiant de connexion, qui n'est peut-être pas une vraie boîte mail"
+                      title="Aucune adresse e-mail vérifiée : cette personne ne pourrait pas réinitialiser son mot de passe par e-mail"
                     >
-                      Sans adresse de récupération
+                      Sans adresse e-mail
                     </span>
                   )}
                   {user.totpEnabled && (
@@ -178,16 +188,33 @@ export default async function PermissionsPage({
 
               {/* Gestion du compte */}
               <div className="space-y-2">
-                <PermissionActions
-                  userId={user.id}
-                  role={user.role}
-                  active={user.active}
-                  isSelf={user.id === session.sub}
-                  email={user.email}
-                  totpEnabled={user.totpEnabled}
-                />
-                {user.id !== session.sub && (
-                  <DeleteUserButton userId={user.id} email={user.email} />
+                {user.pendingActivation ? (
+                  (() => {
+                    const invitation = invitations.get(user.id);
+                    return (
+                      <InvitationPanel
+                        userId={user.id}
+                        username={user.email}
+                        maskedEmail={invitation?.maskedEmail ?? "—"}
+                        expiresLabel={invitation ? dateFormat.format(invitation.expiresAt) : "—"}
+                        expired={invitation?.expired ?? true}
+                      />
+                    );
+                  })()
+                ) : (
+                  <>
+                    <PermissionActions
+                      userId={user.id}
+                      role={user.role}
+                      active={user.active}
+                      isSelf={user.id === session.sub}
+                      email={user.email}
+                      totpEnabled={user.totpEnabled}
+                    />
+                    {user.id !== session.sub && (
+                      <DeleteUserButton userId={user.id} email={user.email} />
+                    )}
+                  </>
                 )}
               </div>
             </div>

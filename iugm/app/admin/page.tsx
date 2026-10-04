@@ -12,7 +12,8 @@ import { ShowMore } from "@/app/ui/show-more";
 import { LIST_PAGE_SIZE, hasMore, moreHref, parseListLimit } from "@/lib/pagination";
 import { LineChart } from "@/app/ui/line-chart";
 import { IconShield, IconFolder, IconCap, IconUsers } from "@/app/ui/icons";
-import { CreateUserForm } from "./create-user-form";
+import { InviteUserForm } from "./invite-user-form";
+import { getMailStatus } from "@/lib/mailer";
 import { MonthRangeSelector } from "./month-range-selector";
 
 
@@ -137,26 +138,6 @@ export default async function AdminPage({
         </div>
       )}
 
-      {/* Sans adresse de récupération, un mot de passe oublié ne peut pas être réinitialisé par e-mail */}
-      {me && !me.recoveryEmail && (
-        <div
-          role="note"
-          className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300"
-        >
-          <p>
-            <strong>Adresse de récupération manquante :</strong> si vous oubliez votre mot de passe,
-            le lien serait envoyé à votre identifiant de connexion, qui n&apos;est peut-être pas une
-            vraie boîte mail.
-          </p>
-          <Link
-            href="/profil"
-            className="rounded-lg bg-amber-700 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-amber-600"
-          >
-            Renseigner une adresse
-          </Link>
-        </div>
-      )}
-
       {/* Cartes statistiques — cliquables : accès rapide à la liste filtrée
           par rôle, juste en-dessous (section "Utilisateurs") */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -254,9 +235,9 @@ export default async function AdminPage({
         {/* Création d'utilisateur */}
         <section className="h-fit rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-zinc-900">
           <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-            Créer un utilisateur
+            Inviter un membre du personnel
           </h2>
-          <CreateUserForm />
+          <InviteUserForm mailReady={getMailStatus().mode !== "none"} />
         </section>
 
         {/* Liste des utilisateurs */}

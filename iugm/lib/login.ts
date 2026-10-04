@@ -11,6 +11,7 @@ import { logAction } from "./audit";
 import { getClientIp, checkLoginRateLimit, recordLoginAttempt } from "./rate-limit";
 import { sendWelcomeAnnouncementOnFirstLogin } from "./announcements";
 import { verifyTwoFactorLogin } from "./two-factor";
+import { normalizeLogin } from "./identifiers";
 
 export type LoginResult =
   | { ok: true; kind: "session"; token: string; destination: string }
@@ -26,7 +27,7 @@ export const HOME_BY_ROLE: Record<string, string> = {
   ETUDIANT: "/mon-profil",
 };
 
-const GENERIC_CREDENTIALS_ERROR = "Email ou mot de passe incorrect.";
+const GENERIC_CREDENTIALS_ERROR = "Identifiant ou mot de passe incorrect.";
 
 // Hash bcrypt (coût 10) d'une valeur sans importance : comparé quand le compte
 // n'existe pas, pour que la durée de la réponse ne révèle pas si un email est
@@ -35,18 +36,21 @@ const DUMMY_PASSWORD_HASH = "$2b$10$kTA1qS950F2FbFsggUcSo.BbxspQlDpIKbekqmLvmIqJ
 
 // Authentifie un utilisateur : vérifie identifiants et compte actif,
 // journalise le résultat, retourne le jeton et la destination selon le rôle.
-export async function authenticateUser(email: string, password: string): Promise<LoginResult> {
-  if (!email || !password) {
-    return { ok: false, status: 400, error: "Email et mot de passe obligatoires." };
+// `identifier` : le nom d'utilisateur (personnel), le « prenom.nom » d'un étudiant,
+// ou l'ancien identifiant d'un compte étudiant renommé (reçus déjà imprimés).
+export async function authenticateUser(identifier: string, password: string): Promise<LoginResult> {
+  const login = normalizeLogin(identifier);
+  if (!login || !password) {
+    return { ok: false, status: 400, error: "Identifiant et mot de passe obligatoires." };
   }
 
   const ip = await getClientIp();
 
   // Anti-bruteforce : on refuse AVANT de toucher au mot de passe (pas de
   // comparaison bcrypt inutile, pas de différence de timing exploitable).
-  const rateLimit = await checkLoginRateLimit(email, ip);
+  const rateLimit = await checkLoginRateLimit(login, ip);
   if (rateLimit.limited) {
-    await logAction("LOGIN_RATE_LIMITED", `Blocage anti-bruteforce pour ${email}`);
+    await logAction("LOGIN_RATE_LIMITED", `Blocage anti-bruteforce pour ${login}`);
     return {
       ok: false,
       status: 429,
@@ -54,8 +58,8 @@ export async function authenticateUser(email: string, password: string): Promise
     };
   }
 
-  const user = await prisma.user.findUnique({
-    where: { email },
+  const user = await prisma.user.findFirst({
+    where: { OR: [{ email: login }, { legacyLogin: login }] },
     select: {
       id: true,
       email: true,
@@ -63,6 +67,7 @@ export async function authenticateUser(email: string, password: string): Promise
       passwordHash: true,
       mustChangePassword: true,
       active: true,
+      pendingActivation: true,
       totpEnabled: true,
     },
   });
@@ -71,22 +76,32 @@ export async function authenticateUser(email: string, password: string): Promise
   const passwordOk = await bcrypt.compare(password, user?.passwordHash ?? DUMMY_PASSWORD_HASH);
 
   if (!user) {
-    await recordLoginAttempt(email, ip, false);
-    await logAction("LOGIN_FAILED", `Email inconnu : ${email}`);
+    await recordLoginAttempt(login, ip, false);
+    await logAction("LOGIN_FAILED", `Identifiant inconnu : ${login}`);
+    return { ok: false, status: 401, error: GENERIC_CREDENTIALS_ERROR };
+  }
+
+  // Compte invité mais pas encore activé : son mot de passe n'est connu de personne,
+  // et le dire ici permettrait de lister les invitations en cours. Réponse
+  // identique à un mauvais mot de passe ; la page de connexion renvoie vers le
+  // lien d'invitation reçu par e-mail.
+  if (user.pendingActivation) {
+    await recordLoginAttempt(login, ip, false);
+    await logAction("LOGIN_FAILED", `Compte non activé : ${login}`, user.id);
     return { ok: false, status: 401, error: GENERIC_CREDENTIALS_ERROR };
   }
 
   if (!passwordOk) {
-    await recordLoginAttempt(email, ip, false);
-    await logAction("LOGIN_FAILED", `Mot de passe erroné pour ${email}`, user.id);
+    await recordLoginAttempt(login, ip, false);
+    await logAction("LOGIN_FAILED", `Mot de passe erroné pour ${login}`, user.id);
     return { ok: false, status: 401, error: GENERIC_CREDENTIALS_ERROR };
   }
 
   // Le statut du compte n'est révélé qu'à qui connaît le bon mot de passe :
   // sinon n'importe qui pourrait lister les comptes désactivés.
   if (!user.active) {
-    await recordLoginAttempt(email, ip, false);
-    await logAction("LOGIN_FAILED", `Compte désactivé : ${email}`, user.id);
+    await recordLoginAttempt(login, ip, false);
+    await logAction("LOGIN_FAILED", `Compte désactivé : ${login}`, user.id);
     return { ok: false, status: 403, error: "Compte désactivé. Contactez l'administration." };
   }
 
@@ -106,7 +121,7 @@ export async function authenticateUser(email: string, password: string): Promise
     };
   }
 
-  await recordLoginAttempt(email, ip, true);
+  await recordLoginAttempt(login, ip, true);
   const token = await openSession(user);
   await logAction("LOGIN_SUCCESS", `Connexion de ${user.email}`, user.id);
   await runFirstLoginHooks(user.id, user.role);

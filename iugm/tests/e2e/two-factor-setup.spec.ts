@@ -57,7 +57,7 @@ test.describe("configuration de la double authentification", () => {
     // Connexion suivante : mot de passe puis code (pas de temporisation : on prend le pas suivant, toléré)
     await context.clearCookies();
     await page.goto("/login");
-    await page.locator("#email").fill(account.email);
+    await page.locator("#username").fill(account.username);
     await page.locator("#password").fill(account.password);
     await page.getByRole("button", { name: "Se connecter" }).click();
     await expect(page).toHaveURL(/\/login\/verification$/);

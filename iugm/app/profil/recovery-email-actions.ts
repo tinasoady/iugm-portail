@@ -6,7 +6,6 @@ import { getSession } from "@/lib/auth";
 import { checkActionRateLimit } from "@/lib/rate-limit";
 import { getTrustedAppOrigin } from "@/lib/url";
 import {
-  canUseRecoveryEmail,
   maskEmail,
   removeRecoveryEmail,
   requestRecoveryEmail,
@@ -22,9 +21,6 @@ const MAX_ATTEMPTS = 5;
 async function guard() {
   const session = await getSession();
   if (!session) return { error: "Session expirée : reconnectez-vous." } as const;
-  if (!canUseRecoveryEmail(session.role)) {
-    return { error: "L'adresse de récupération est réservée au personnel." } as const;
-  }
   const limit = checkActionRateLimit(`recovery-email:${session.sub}`, MAX_ATTEMPTS);
   if (limit.limited) {
     return { error: `Trop d'essais. Réessayez dans ${limit.retryAfterMinutes} minutes.` } as const;

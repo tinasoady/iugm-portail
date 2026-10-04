@@ -56,11 +56,11 @@ describe("authenticateUser", () => {
     expect(result).toEqual({
       ok: false,
       status: 401,
-      error: "Email ou mot de passe incorrect.",
+      error: "Identifiant ou mot de passe incorrect.",
     });
   });
 
-  it("répond de la même façon pour un email inconnu (pas d'énumération de comptes)", async () => {
+  it("répond de la même façon pour un identifiant inconnu (pas d'énumération de comptes)", async () => {
     await createLoginUser();
     const unknown = await authenticateUser("inconnu@test.local", PASSWORD);
     const wrong = await authenticateUser("agent@test.local", "mauvais-mot-de-passe-1");
@@ -84,9 +84,29 @@ describe("authenticateUser", () => {
     expect(verifySessionToken(result.token)?.mcp).toBe(true);
   });
 
-  it("exige email et mot de passe", async () => {
+  it("exige identifiant et mot de passe", async () => {
     expect(await authenticateUser("", PASSWORD)).toMatchObject({ ok: false, status: 400 });
     expect(await authenticateUser("agent@test.local", "")).toMatchObject({ ok: false, status: 400 });
+  });
+
+  it("se connecte avec un nom d'utilisateur, sans tenir compte de la casse ni des espaces", async () => {
+    await createLoginUser({ email: "marie.agent" });
+    expect(await authenticateUser("  Marie.Agent ", PASSWORD)).toMatchObject({ ok: true, kind: "session" });
+  });
+
+  it("accepte l'ancien identifiant d'un étudiant (alias legacyLogin) comme le nouveau", async () => {
+    const user = await createLoginUser({ email: "jean.rakoto", role: "ETUDIANT" });
+    await prisma.user.update({ where: { id: user.id }, data: { legacyLogin: "fi2026-1@student.iugm.edu" } });
+    expect(await authenticateUser("jean.rakoto", PASSWORD)).toMatchObject({ ok: true, kind: "session" });
+    expect(await authenticateUser("FI2026-1@student.iugm.edu", PASSWORD)).toMatchObject({ ok: true, kind: "session" });
+  });
+
+  it("traite un compte en attente d'activation comme un identifiant inconnu (pas d'énumération des invitations)", async () => {
+    const user = await createLoginUser({ email: "nouveau.agent" });
+    await prisma.user.update({ where: { id: user.id }, data: { pendingActivation: true } });
+    const unknown = await authenticateUser("inconnu.agent", PASSWORD);
+    expect(await authenticateUser("nouveau.agent", PASSWORD)).toEqual(unknown);
+    expect(unknown).toMatchObject({ ok: false, status: 401 });
   });
 
   it("bloque après 5 échecs, même avec le bon mot de passe ensuite", async () => {

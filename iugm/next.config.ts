@@ -90,6 +90,7 @@ const nextConfig: NextConfig = {
       },
       { source: "/reinitialiser-mot-de-passe", headers: tokenPageHeaders },
       { source: "/confirmer-adresse", headers: tokenPageHeaders },
+      { source: "/activer-compte", headers: tokenPageHeaders },
     ];
   },
 };

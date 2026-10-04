@@ -16,15 +16,18 @@ export function LoginForm() {
       <div>
         <label
           className="block text-sm font-medium text-zinc-700 dark:text-zinc-200"
-          htmlFor="email"
+          htmlFor="username"
         >
-          Email
+          Identifiant
         </label>
         <input
-          id="email"
-          name="email"
-          type="email"
+          id="username"
+          name="username"
+          type="text"
           autoComplete="username"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           required
           className={`mt-1 w-full rounded-xl border bg-white px-3 py-2 text-zinc-900 outline-none focus:ring-2 focus:ring-indigo-500/40 dark:bg-zinc-950 dark:text-zinc-50 ${
             state.error
@@ -94,7 +97,7 @@ export function LoginForm() {
       </p>
 
       <p className="text-xs text-zinc-500 dark:text-zinc-400">
-        Aucun compte d&apos;inscription ici : les logins sont attribués par l&apos;université.
+        Aucun compte d&apos;inscription ici : les identifiants sont attribués par l&apos;université (personnel : sur invitation, en ouvrant d&apos;abord le lien reçu par e-mail pour choisir votre mot de passe ; étudiants : sur le reçu d&apos;inscription).
       </p>
     </form>
   );

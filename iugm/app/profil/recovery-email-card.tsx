@@ -44,11 +44,17 @@ function Feedback({ state }: { state: RecoveryEmailState }) {
 }
 
 export function RecoveryEmailCard({
-  loginEmail,
+  login,
   maskedRecovery,
+  isStudent,
+  suggestedEmail,
 }: {
-  loginEmail: string;
+  login: string;
   maskedRecovery: string | null;
+  isStudent: boolean;
+  // Adresse déjà présente dans le dossier de l'étudiant : proposée, mais jamais
+  // utilisée sans être vérifiée par un lien.
+  suggestedEmail?: string | null;
 }) {
   const [requestState, requestAction, requestPending] = useActionState(
     requestRecoveryEmailAction,
@@ -62,9 +68,10 @@ export function RecoveryEmailCard({
   return (
     <div className="space-y-4">
       <p className="text-sm text-zinc-600 dark:text-zinc-400">
-        Si vous oubliez votre mot de passe, le lien de réinitialisation est envoyé à une adresse e-mail
-        que vous contrôlez. Votre identifiant de connexion (<strong>{loginEmail}</strong>) n&apos;est
-        peut-être pas une vraie boîte mail : indiquez ici une adresse réelle.
+        Votre identifiant de connexion est <strong>{login}</strong> : ce n&apos;est pas une adresse
+        e-mail. {isStudent
+          ? "Ajoutez votre adresse e-mail pour pouvoir réinitialiser vous-même votre mot de passe si vous l'oubliez ; sans elle, il faudra vous adresser à l'administration."
+          : "Cette adresse reçoit le lien de réinitialisation si vous oubliez votre mot de passe."}
       </p>
 
       <p className="text-sm">
@@ -73,7 +80,7 @@ export function RecoveryEmailCard({
           <strong className="text-emerald-700 dark:text-emerald-400">{maskedRecovery} (confirmée)</strong>
         ) : (
           <strong className="text-amber-700 dark:text-amber-400">
-            aucune — le lien serait envoyé à votre identifiant
+            aucune — vous ne pourriez pas réinitialiser votre mot de passe par e-mail
           </strong>
         )}
       </p>
@@ -81,7 +88,7 @@ export function RecoveryEmailCard({
       <form action={requestAction} className="space-y-3">
         <div>
           <label className={labelClass} htmlFor="recovery-email">
-            {maskedRecovery ? "Nouvelle adresse de récupération" : "Adresse de récupération"}
+            {maskedRecovery ? "Nouvelle adresse e-mail" : "Adresse e-mail"}
           </label>
           <input
             id="recovery-email"
@@ -89,8 +96,15 @@ export function RecoveryEmailCard({
             type="email"
             required
             autoComplete="email"
+            defaultValue={maskedRecovery ? "" : (suggestedEmail ?? "")}
             className={inputClass}
           />
+          {!maskedRecovery && suggestedEmail && (
+            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+              Adresse trouvée dans votre dossier : confirmez-la en saisissant votre mot de passe, un
+              message de vérification y sera envoyé.
+            </p>
+          )}
         </div>
         <div>
           <label className={labelClass} htmlFor="recovery-password">
@@ -122,7 +136,7 @@ export function RecoveryEmailCard({
           onSubmit={(e) => {
             if (
               !window.confirm(
-                "Retirer l'adresse de récupération ? Les réinitialisations repartiront vers votre identifiant de connexion.",
+                "Retirer l'adresse e-mail ? Vous ne pourrez plus réinitialiser votre mot de passe par e-mail.",
               )
             ) {
               e.preventDefault();
@@ -130,7 +144,7 @@ export function RecoveryEmailCard({
           }}
         >
           <label className={labelClass} htmlFor="recovery-remove-password">
-            Retirer l&apos;adresse de récupération
+            Retirer l&apos;adresse e-mail
           </label>
           <input
             id="recovery-remove-password"

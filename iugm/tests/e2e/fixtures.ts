@@ -4,20 +4,19 @@ import type { Page } from "@playwright/test";
 export const PASSWORD = "E2e-motdepasse-2026";
 
 export const ACCOUNTS = {
-  superadmin: { email: "root@e2e.test", password: PASSWORD, home: "/admin" },
-  agentAdmin: { email: "agent-admin@e2e.test", password: PASSWORD, home: "/agent-admin" },
-  agentPedago: { email: "agent-pedago@e2e.test", password: PASSWORD, home: "/agent-pedagogique" },
-  twoFactor: { email: "tfa@e2e.test", password: PASSWORD, home: "/admin" },
+  superadmin: { username: "root", password: PASSWORD, home: "/admin" },
+  agentAdmin: { username: "agent.admin", password: PASSWORD, home: "/agent-admin" },
+  agentPedago: { username: "agent.pedago", password: PASSWORD, home: "/agent-pedagogique" },
+  twoFactor: { username: "tfa", password: PASSWORD, home: "/admin" },
   // Superadmin SANS 2FA, qui la configure pendant le scénario de configuration
-  setupTwoFactor: { email: "setup-tfa@e2e.test", password: PASSWORD, home: "/admin" },
+  setupTwoFactor: { username: "setup.tfa", password: PASSWORD, home: "/admin" },
   // Compte étudiant dont le mot de passe est temporaire (changement obligatoire)
-  mustChange: { email: "etudiant-temp@e2e.test", password: PASSWORD, home: "/mon-profil" },
-  // Compte pour le scénario « mot de passe oublié » (adresse e-mail réelle du compte)
-  // Agent qui configure son adresse de récupération pendant le scénario dédié
-  recoveryUser: { email: "recup@e2e.test", password: PASSWORD, home: "/agent-pedagogique" },
+  mustChange: { username: "etudiant.temp", password: PASSWORD, home: "/mon-profil" },
+  // Agent qui ajoute son adresse e-mail vérifiée pendant le scénario dédié
+  recoveryUser: { username: "recup", password: PASSWORD, home: "/agent-pedagogique" },
   // Compte utilisé depuis deux « appareils » (deux contextes de navigateur) à la fois
-  twoDevices: { email: "deux-appareils@e2e.test", password: PASSWORD, home: "/agent-admin" },
-  resetUser: { email: "oubli@e2e.test", password: PASSWORD, home: "/agent-admin" },
+  twoDevices: { username: "deux.appareils", password: PASSWORD, home: "/agent-admin" },
+  resetUser: { username: "oubli", password: PASSWORD, home: "/agent-admin" },
 } as const;
 
 // Secret TOTP du compte à double authentification (base32, 160 bits)
@@ -33,14 +32,14 @@ export function alertOf(page: Page) {
 // Connexion complète : attend d'être arrivé dans l'espace du compte. Sans cette
 // attente, une navigation immédiate (page.goto) interromprait la redirection
 // avant que le cookie de session ne soit posé.
-export async function signIn(page: Page, account: { email: string; password: string; home: string }) {
-  await login(page, account.email, account.password);
+export async function signIn(page: Page, account: { username: string; password: string; home: string }) {
+  await login(page, account.username, account.password);
   await page.waitForURL(`**${account.home}`);
 }
 
-export async function login(page: Page, email: string, password: string) {
+export async function login(page: Page, username: string, password: string) {
   await page.goto("/login");
-  await page.locator("#email").fill(email);
+  await page.locator("#username").fill(username);
   await page.locator("#password").fill(password);
   await page.getByRole("button", { name: "Se connecter" }).click();
 }

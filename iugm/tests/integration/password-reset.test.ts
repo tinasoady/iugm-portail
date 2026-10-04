@@ -35,10 +35,12 @@ const ORIGIN = "https://portail.test";
 const OLD_PASSWORD = "Ancien-motdepasse1";
 const NEW_PASSWORD = "Nouveau-motdepasse2";
 
-async function createStaff(email = "agent@iugm.test") {
+// Identifiant de connexion = nom d'utilisateur ; l'adresse e-mail vérifiée est à part
+async function createStaff(username = "agent.test", recoveryEmail: string | null = "agent@iugm.test") {
   return prisma.user.create({
     data: {
-      email,
+      email: username,
+      recoveryEmail,
       fullName: "Agent Test",
       passwordHash: await bcrypt.hash(OLD_PASSWORD, 4),
       role: "AGENT_ADMINISTRATION",
@@ -46,10 +48,11 @@ async function createStaff(email = "agent@iugm.test") {
   });
 }
 
-async function createStudentAccount(personalEmail: string | null) {
+async function createStudentAccount(recoveryEmail: string | null, personalEmail: string | null = null) {
   const user = await prisma.user.create({
     data: {
-      email: "jean.rakoto@etudiant.iugm",
+      email: "jean.rakoto",
+      recoveryEmail,
       fullName: "RAKOTO Jean",
       passwordHash: await bcrypt.hash(OLD_PASSWORD, 4),
       role: "ETUDIANT",
@@ -79,7 +82,7 @@ function tokenFromLastMail(): string {
 describe("demande de réinitialisation", () => {
   it("envoie un lien au personnel, stocke seulement l'empreinte du jeton", async () => {
     const user = await createStaff();
-    expect(await requestPasswordReset("Agent@IUGM.test ", ORIGIN)).toEqual({ sent: true });
+    expect(await requestPasswordReset("Agent.Test ", ORIGIN)).toEqual({ sent: true });
 
     expect(sent).toHaveLength(1);
     expect(sent[0].to).toBe("agent@iugm.test");
@@ -96,13 +99,13 @@ describe("demande de réinitialisation", () => {
   });
 
   it("n'envoie rien pour un compte inconnu ni pour un compte désactivé", async () => {
-    expect(await requestPasswordReset("inconnu@iugm.test", ORIGIN)).toEqual({
+    expect(await requestPasswordReset("inconnu", ORIGIN)).toEqual({
       sent: false,
       reason: "unknown-account",
     });
     const user = await createStaff();
     await prisma.user.update({ where: { id: user.id }, data: { active: false } });
-    expect(await requestPasswordReset("agent@iugm.test", ORIGIN)).toEqual({
+    expect(await requestPasswordReset("agent.test", ORIGIN)).toEqual({
       sent: false,
       reason: "inactive",
     });
@@ -110,24 +113,38 @@ describe("demande de réinitialisation", () => {
     expect(await prisma.passwordResetToken.count()).toBe(0);
   });
 
-  it("envoie à l'adresse personnelle de l'étudiant, pas à son identifiant de connexion", async () => {
+  it("envoie à l'adresse vérifiée de l'étudiant, par son identifiant « prenom.nom »", async () => {
     await createStudentAccount("jean@gmail.test");
-    expect(await requestPasswordReset("jean.rakoto@etudiant.iugm", ORIGIN)).toEqual({ sent: true });
+    expect(await requestPasswordReset("jean.rakoto", ORIGIN)).toEqual({ sent: true });
     expect(sent[0].to).toBe("jean@gmail.test");
   });
 
-  it("n'envoie rien à un étudiant sans adresse personnelle", async () => {
-    await createStudentAccount(null);
-    expect(await requestPasswordReset("jean.rakoto@etudiant.iugm", ORIGIN)).toEqual({
+  it("accepte l'ancien identifiant d'un étudiant (alias legacyLogin)", async () => {
+    const user = await createStudentAccount("jean@gmail.test");
+    await prisma.user.update({ where: { id: user.id }, data: { legacyLogin: "fi2026-1@student.iugm.edu" } });
+    expect(await requestPasswordReset("FI2026-1@student.iugm.edu", ORIGIN)).toEqual({ sent: true });
+    expect(sent[0].to).toBe("jean@gmail.test");
+  });
+
+  it("n'envoie rien à un étudiant sans adresse vérifiée, même avec une adresse non vérifiée au dossier", async () => {
+    await createStudentAccount(null, "non-verifiee@gmail.test");
+    expect(await requestPasswordReset("jean.rakoto", ORIGIN)).toEqual({
       sent: false,
       reason: "no-address",
     });
     expect(sent).toHaveLength(0);
   });
 
+  it("n'envoie rien pour un compte en attente d'activation", async () => {
+    const user = await createStaff();
+    await prisma.user.update({ where: { id: user.id }, data: { pendingActivation: true } });
+    expect(await requestPasswordReset("agent.test", ORIGIN)).toEqual({ sent: false, reason: "inactive" });
+    expect(sent).toHaveLength(0);
+  });
+
   it("refuse d'écrire un lien sans origine de confiance", async () => {
     await createStaff();
-    expect(await requestPasswordReset("agent@iugm.test", null)).toEqual({
+    expect(await requestPasswordReset("agent.test", null)).toEqual({
       sent: false,
       reason: "no-origin",
     });
@@ -138,7 +155,7 @@ describe("demande de réinitialisation", () => {
   it("ne fait rien si l'envoi d'e-mails n'est pas configuré", async () => {
     await createStaff();
     mailConfigured = false;
-    expect(await requestPasswordReset("agent@iugm.test", ORIGIN)).toEqual({
+    expect(await requestPasswordReset("agent.test", ORIGIN)).toEqual({
       sent: false,
       reason: "not-configured",
     });
@@ -147,9 +164,9 @@ describe("demande de réinitialisation", () => {
   it("limite à 3 demandes par heure", async () => {
     await createStaff();
     for (let i = 0; i < 3; i++) {
-      expect(await requestPasswordReset("agent@iugm.test", ORIGIN)).toEqual({ sent: true });
+      expect(await requestPasswordReset("agent.test", ORIGIN)).toEqual({ sent: true });
     }
-    expect(await requestPasswordReset("agent@iugm.test", ORIGIN)).toEqual({
+    expect(await requestPasswordReset("agent.test", ORIGIN)).toEqual({
       sent: false,
       reason: "throttled",
     });
@@ -158,9 +175,9 @@ describe("demande de réinitialisation", () => {
 
   it("une nouvelle demande annule le lien précédent", async () => {
     await createStaff();
-    await requestPasswordReset("agent@iugm.test", ORIGIN);
+    await requestPasswordReset("agent.test", ORIGIN);
     const first = tokenFromLastMail();
-    await requestPasswordReset("agent@iugm.test", ORIGIN);
+    await requestPasswordReset("agent.test", ORIGIN);
     const second = tokenFromLastMail();
 
     expect(first).not.toBe(second);
@@ -171,7 +188,7 @@ describe("demande de réinitialisation", () => {
   it("supprime le jeton si l'e-mail n'a pas pu partir", async () => {
     await createStaff();
     sendResult = { ok: false, error: "SMTP indisponible" };
-    expect(await requestPasswordReset("agent@iugm.test", ORIGIN)).toEqual({
+    expect(await requestPasswordReset("agent.test", ORIGIN)).toEqual({
       sent: false,
       reason: "send-failed",
     });
@@ -181,7 +198,7 @@ describe("demande de réinitialisation", () => {
 });
 
 describe("réinitialisation avec le lien", () => {
-  async function requestAndGetToken(email = "agent@iugm.test") {
+  async function requestAndGetToken(email = "agent.test") {
     await requestPasswordReset(email, ORIGIN);
     return tokenFromLastMail();
   }
@@ -252,7 +269,7 @@ describe("réinitialisation avec le lien", () => {
 
   it("efface le mot de passe initial imprimé d'un étudiant", async () => {
     const user = await createStudentAccount("jean@gmail.test");
-    const token = await requestAndGetToken("jean.rakoto@etudiant.iugm");
+    const token = await requestAndGetToken("jean.rakoto");
     expect((await resetPasswordWithToken(token, NEW_PASSWORD)).ok).toBe(true);
 
     const student = await prisma.student.findFirstOrThrow({ where: { accountId: user.id } });
@@ -262,7 +279,7 @@ describe("réinitialisation avec le lien", () => {
 
   it("refuse le matricule comme mot de passe d'un étudiant", async () => {
     await createStudentAccount("jean@gmail.test");
-    const token = await requestAndGetToken("jean.rakoto@etudiant.iugm");
+    const token = await requestAndGetToken("jean.rakoto");
     expect(await resetPasswordWithToken(token, "FI2026-1")).toMatchObject({ ok: false });
   });
 

@@ -5,7 +5,7 @@ import { alertOf, ACCOUNTS, TFA_RECOVERY_CODE, TFA_SECRET, login } from "./fixtu
 
 test.describe("double authentification", () => {
   test("le mot de passe seul n'ouvre pas la session", async ({ page }) => {
-    await login(page, ACCOUNTS.twoFactor.email, ACCOUNTS.twoFactor.password);
+    await login(page, ACCOUNTS.twoFactor.username, ACCOUNTS.twoFactor.password);
     await expect(page).toHaveURL(/\/login\/verification$/);
 
     // Tant que le code n'est pas validé, l'espace reste fermé
@@ -14,7 +14,7 @@ test.describe("double authentification", () => {
   });
 
   test("un mauvais code est refusé", async ({ page }) => {
-    await login(page, ACCOUNTS.twoFactor.email, ACCOUNTS.twoFactor.password);
+    await login(page, ACCOUNTS.twoFactor.username, ACCOUNTS.twoFactor.password);
     await page.locator("#code").fill("000000");
     await page.getByRole("button", { name: "Valider" }).click();
     await expect(alertOf(page)).toHaveText(/Code incorrect/);
@@ -22,20 +22,20 @@ test.describe("double authentification", () => {
   });
 
   test("un code TOTP valide ouvre la session", async ({ page }) => {
-    await login(page, ACCOUNTS.twoFactor.email, ACCOUNTS.twoFactor.password);
+    await login(page, ACCOUNTS.twoFactor.username, ACCOUNTS.twoFactor.password);
     await page.locator("#code").fill(totpAt(TFA_SECRET, Date.now()));
     await page.getByRole("button", { name: "Valider" }).click();
     await expect(page).toHaveURL(/\/admin$/);
   });
 
   test("un code de secours fonctionne une seule fois", async ({ page, context }) => {
-    await login(page, ACCOUNTS.twoFactor.email, ACCOUNTS.twoFactor.password);
+    await login(page, ACCOUNTS.twoFactor.username, ACCOUNTS.twoFactor.password);
     await page.locator("#code").fill(TFA_RECOVERY_CODE);
     await page.getByRole("button", { name: "Valider" }).click();
     await expect(page).toHaveURL(/\/admin$/);
 
     await context.clearCookies();
-    await login(page, ACCOUNTS.twoFactor.email, ACCOUNTS.twoFactor.password);
+    await login(page, ACCOUNTS.twoFactor.username, ACCOUNTS.twoFactor.password);
     await page.locator("#code").fill(TFA_RECOVERY_CODE);
     await page.getByRole("button", { name: "Valider" }).click();
     await expect(alertOf(page)).toHaveText(/Code incorrect/);

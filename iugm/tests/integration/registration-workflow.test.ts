@@ -50,16 +50,17 @@ describe("workflow d'inscription", () => {
     expect(afterAdmin.status).toBe("ADMIN_VALIDEE");
 
     const pedagoActor = await createActor("AGENT_PEDAGOGIQUE");
-    const { student: finalStudent, email, password } = await validatePedagoInscription(
+    const { student: finalStudent, login, password } = await validatePedagoInscription(
       student.id,
       pedagoActor.id,
     );
     expect(finalStudent.status).toBe("INSCRIT");
     expect(finalStudent.pedagoValidatedAt).not.toBeNull();
-    expect(email).toMatch(/@student\.iugm\.edu$/);
+    // Identifiant « prenom.nom » : plus d'adresse e-mail, plus de domaine
+    expect(login).toBe("jean.rakoto");
     expect(password).toMatch(new RegExp(`^${student.matricule}-`));
 
-    const account = await prisma.user.findUnique({ where: { email } });
+    const account = await prisma.user.findUnique({ where: { email: login } });
     expect(account).not.toBeNull();
     expect(account?.role).toBe("ETUDIANT");
     expect(account?.mustChangePassword).toBe(true);

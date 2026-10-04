@@ -20,7 +20,7 @@ const SESSION_CLOSED_MESSAGES: Record<string, string> = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ reinitialise?: string; raison?: string }>;
+  searchParams: Promise<{ reinitialise?: string; raison?: string; active?: string }>;
 }) {
   const [settings, params] = await Promise.all([getSettings(), searchParams]);
 
@@ -57,6 +57,15 @@ export default async function LoginPage({
             className="mb-4 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
           >
             {SESSION_CLOSED_MESSAGES[params.raison]}
+          </p>
+        )}
+
+        {params.active === "1" && (
+          <p
+            role="status"
+            className="mb-4 rounded-xl bg-green-50 px-3 py-2 text-sm text-green-700 dark:bg-green-950 dark:text-green-300"
+          >
+            Compte activé. Connectez-vous avec votre nom d&apos;utilisateur et le mot de passe que vous venez de choisir.
           </p>
         )}
 

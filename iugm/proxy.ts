@@ -13,6 +13,7 @@ const PUBLIC_PREFIXES = [
   "/mot-de-passe-oublie",
   "/reinitialiser-mot-de-passe",
   "/confirmer-adresse",
+  "/activer-compte",
   "/api/health",
   // Répond 401 + motif au contrôle périodique du navigateur (voir la route)
   "/api/session/status",

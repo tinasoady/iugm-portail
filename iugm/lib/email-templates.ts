@@ -67,6 +67,36 @@ export function passwordResetEmail(
   };
 }
 
+// --- Invitation d'un compte du personnel -----------------------------------
+
+export function invitationEmail(
+  brand: Branding,
+  params: {
+    fullName?: string | null;
+    username: string;
+    roleLabel: string;
+    activateUrl: string;
+    validForHours: number;
+  },
+): EmailContent {
+  const greeting = params.fullName ? `Bonjour ${params.fullName},` : "Bonjour,";
+  const lines = [
+    greeting,
+    `Un compte du portail ${brand.institutionAcronym} vient de vous être créé avec le rôle « ${params.roleLabel} ».`,
+    `Votre nom d'utilisateur : ${params.username}`,
+    `Pour l'activer, ouvrez le lien ci-dessous et choisissez votre mot de passe. Il est valable ${params.validForHours} heures et ne peut servir qu'une fois. Personne d'autre ne connaît votre mot de passe.`,
+    "Si vous n'attendiez pas ce message, ignorez-le : le compte restera inutilisable.",
+  ];
+  return {
+    subject: `Activez votre compte — ${brand.institutionAcronym}`,
+    text: `${lines.join("\n\n")}\n\n${params.activateUrl}${footerText(brand)}`,
+    html: layout(brand, "Activer votre compte", paragraphs(lines), {
+      label: "Activer mon compte",
+      url: params.activateUrl,
+    }),
+  };
+}
+
 // --- Adresse de récupération ------------------------------------------------
 
 export function recoveryEmailConfirmationEmail(

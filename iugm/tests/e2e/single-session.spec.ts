@@ -6,7 +6,7 @@ import { ACCOUNTS, login } from "./fixtures";
 async function connectedDevice(browser: Browser, baseURL: string) {
   const context = await browser.newContext({ baseURL });
   const page = await context.newPage();
-  await login(page, ACCOUNTS.twoDevices.email, ACCOUNTS.twoDevices.password);
+  await login(page, ACCOUNTS.twoDevices.username, ACCOUNTS.twoDevices.password);
   await page.waitForURL(`**${ACCOUNTS.twoDevices.home}`);
   return { context, page };
 }
@@ -50,7 +50,7 @@ test.describe("un compte, un seul appareil connecté", () => {
     expect((await deviceA.page.request.get("/api/session/status")).status()).toBe(401);
 
     // A se reconnecte : c'est maintenant B qui est fermé
-    await login(deviceA.page, ACCOUNTS.twoDevices.email, ACCOUNTS.twoDevices.password);
+    await login(deviceA.page, ACCOUNTS.twoDevices.username, ACCOUNTS.twoDevices.password);
     await deviceA.page.waitForURL(`**${ACCOUNTS.twoDevices.home}`);
     expect((await deviceA.page.request.get("/api/session/status")).status()).toBe(200);
     expect((await deviceB.page.request.get("/api/session/status")).status()).toBe(401);

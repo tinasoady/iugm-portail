@@ -51,7 +51,7 @@ export default async function ReceiptPage({
   ];
 
   const credentials: Array<[string, string]> = [
-    ["Adresse email", student.account?.email ?? "—"],
+    ["Identifiant de connexion", student.account?.email ?? "—"],
     ["Mot de passe initial", decryptSecret(student.initialPassword) ?? "—"],
   ];
 

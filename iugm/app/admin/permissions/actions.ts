@@ -11,6 +11,10 @@ import { TASKS, tasksForRole, type TaskKey } from "@/lib/permissions";
 import { encryptSecret } from "@/lib/secret-crypto";
 import { FORMATIONS } from "@/lib/formations";
 import { disableTwoFactor } from "@/lib/two-factor";
+import { checkActionRateLimit } from "@/lib/rate-limit";
+import { getTrustedAppOrigin } from "@/lib/url";
+import { resendInvitation, cancelInvitation } from "@/lib/invitations";
+import { maskEmail } from "@/lib/recovery-email";
 
 export type PermissionState = {
   success?: string;
@@ -83,6 +87,9 @@ export async function toggleActiveAction(
 
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) return { error: "Utilisateur introuvable." };
+  if (user.pendingActivation) {
+    return { error: "Ce compte n'est pas encore activé : renvoyez ou annulez l'invitation." };
+  }
   if (user.active && user.role === "SUPERADMIN" && (await isLastActiveSuperadmin(userId))) {
     return { error: "Impossible : c'est le dernier superadmin actif." };
   }
@@ -112,6 +119,11 @@ export async function resetPasswordAction(
     include: { studentFile: { select: { id: true, matricule: true } } },
   });
   if (!user) return { error: "Utilisateur introuvable." };
+  if (user.pendingActivation) {
+    return {
+      error: "Ce compte n'est pas encore activé : la personne choisira son mot de passe via le lien d'invitation (vous pouvez le renvoyer).",
+    };
+  }
 
   // Étudiant : matricule + suffixe aléatoire (même format qu'à l'inscription,
   // jamais le matricule seul) ; personnel : mot de passe temporaire aléatoire.
@@ -215,6 +227,52 @@ export async function updateTasksAction(
   );
   revalidatePath("/admin/permissions");
   return { success: `Permissions de ${user.email} enregistrées (${permissions.length} tâche(s)).` };
+}
+
+// Renvoi du lien d'activation d'un compte du personnel pas encore activé
+export async function resendInvitationAction(
+  _prev: PermissionState,
+  formData: FormData,
+): Promise<PermissionState> {
+  const session = await requireSuperadmin();
+  if (!session) return { error: "Accès refusé." };
+
+  const userId = String(formData.get("userId") ?? "");
+  if (!userId) return { error: "Utilisateur manquant." };
+
+  const limit = checkActionRateLimit(`invite:${session.sub}`, 15);
+  if (limit.limited) {
+    return { error: `Trop d'invitations récentes. Réessayez dans ${limit.retryAfterMinutes} minutes.` };
+  }
+
+  const result = await resendInvitation({
+    actorId: session.sub,
+    userId,
+    email: String(formData.get("email") ?? "") || undefined,
+    origin: await getTrustedAppOrigin().catch(() => null),
+  });
+  if (!result.ok) return { error: result.hint ? `${result.error} ${result.hint}` : result.error };
+
+  revalidatePath("/admin/permissions");
+  return { success: `Invitation renvoyée à ${maskEmail(result.sentTo)} (valable 72 h ; le lien précédent ne fonctionne plus).` };
+}
+
+// Annulation d'une invitation : supprime le compte jamais activé
+export async function cancelInvitationAction(
+  _prev: PermissionState,
+  formData: FormData,
+): Promise<PermissionState> {
+  const session = await requireSuperadmin();
+  if (!session) return { error: "Accès refusé." };
+
+  const userId = String(formData.get("userId") ?? "");
+  if (!userId) return { error: "Utilisateur manquant." };
+
+  const result = await cancelInvitation(session.sub, userId);
+  if (!result.ok) return { error: result.error };
+
+  revalidatePath("/admin/permissions");
+  return { success: "Invitation annulée." };
 }
 
 // Suppression définitive d'un compte utilisateur

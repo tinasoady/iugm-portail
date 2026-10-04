@@ -29,7 +29,7 @@ export default async function globalSetup() {
 
   const root = await prisma.user.create({
     data: {
-      email: ACCOUNTS.superadmin.email,
+      email: ACCOUNTS.superadmin.username,
       fullName: "Super Admin E2E",
       passwordHash,
       role: "SUPERADMIN",
@@ -45,7 +45,7 @@ export default async function globalSetup() {
   ] as const) {
     await prisma.user.create({
       data: {
-        email: ACCOUNTS[key].email,
+        email: ACCOUNTS[key].username,
         fullName: `Agent ${key}`,
         passwordHash,
         role,
@@ -56,7 +56,7 @@ export default async function globalSetup() {
 
   await prisma.user.create({
     data: {
-      email: ACCOUNTS.setupTwoFactor.email,
+      email: ACCOUNTS.setupTwoFactor.username,
       fullName: "Super Admin Config 2FA",
       passwordHash,
       role: "SUPERADMIN",
@@ -67,7 +67,7 @@ export default async function globalSetup() {
   // Compte avec double authentification déjà activée (secret et code de secours connus)
   await prisma.user.create({
     data: {
-      email: ACCOUNTS.twoFactor.email,
+      email: ACCOUNTS.twoFactor.username,
       fullName: "Super Admin 2FA",
       passwordHash,
       role: "SUPERADMIN",
@@ -79,7 +79,7 @@ export default async function globalSetup() {
 
   await prisma.user.create({
     data: {
-      email: ACCOUNTS.mustChange.email,
+      email: ACCOUNTS.mustChange.username,
       fullName: "Etudiant Temporaire",
       passwordHash,
       role: "ETUDIANT",

@@ -5,7 +5,7 @@ import { getSession } from "@/lib/auth";
 import { AppShell } from "@/app/ui/app-shell";
 import { ChangePasswordForm } from "@/app/changer-mot-de-passe/change-password-form";
 import { canUseTwoFactor } from "@/lib/two-factor";
-import { canUseRecoveryEmail, maskEmail } from "@/lib/recovery-email";
+import { maskEmail } from "@/lib/recovery-email";
 import { PhotoForm, InfoForm } from "./profile-forms";
 import { TwoFactorCard } from "./two-factor-card";
 import { RecoveryEmailCard } from "./recovery-email-card";
@@ -55,6 +55,7 @@ export default async function ProfilPage() {
       totpEnabled: true,
       recoveryCodes: true,
       recoveryEmail: true,
+      studentFile: { select: { personalEmail: true } },
       createdAt: true,
     },
   });
@@ -83,7 +84,7 @@ export default async function ProfilPage() {
           </h2>
           <InfoForm fullName={user.fullName} />
           <div className="mt-5 border-t border-black/5 pt-3 dark:border-white/10">
-            <InfoRow label="Email (identifiant)" value={user.email} />
+            <InfoRow label="Identifiant de connexion" value={user.email} />
             <InfoRow label="Rôle" value={ROLE_LABELS[user.role] ?? user.role} />
             <InfoRow label="Fonction" value={user.jobTitle} />
             <InfoRow
@@ -105,18 +106,16 @@ export default async function ProfilPage() {
         <ChangePasswordForm />
       </section>
 
-      {/* Adresse de récupération : réservée au personnel (l'étudiant a l'adresse personnelle de son dossier) */}
-      {canUseRecoveryEmail(user.role) && (
-        <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm lg:max-w-xl dark:border-white/10 dark:bg-zinc-900">
-          <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-            Adresse de récupération
-          </h2>
-          <RecoveryEmailCard
-            loginEmail={user.email}
-            maskedRecovery={user.recoveryEmail ? maskEmail(user.recoveryEmail) : null}
-          />
-        </section>
-      )}
+      {/* Adresse e-mail vérifiée : tous les rôles (réinitialisation du mot de passe) */}
+      <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm lg:max-w-xl dark:border-white/10 dark:bg-zinc-900">
+        <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">Adresse e-mail</h2>
+        <RecoveryEmailCard
+          login={user.email}
+          maskedRecovery={user.recoveryEmail ? maskEmail(user.recoveryEmail) : null}
+          isStudent={user.role === "ETUDIANT"}
+          suggestedEmail={user.studentFile?.personalEmail}
+        />
+      </section>
 
       {/* Double authentification : réservée au personnel (pas aux étudiants) */}
       {canUseTwoFactor(user.role) && (

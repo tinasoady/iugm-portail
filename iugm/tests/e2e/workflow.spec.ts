@@ -6,11 +6,11 @@ import { ACCOUNTS, login } from "./fixtures";
 // connexion de l'étudiant : c'est le scénario qui, s'il casse, bloque la
 // rentrée. Les étapes s'enchaînent sur le même dossier (workers = 1).
 test.describe.serial("parcours d'inscription d'un étudiant", () => {
-  let studentEmail = "";
+  let studentLogin = "";
   let studentPassword = "";
 
   test("l'agent d'administration vérifie le paiement puis valide l'inscription", async ({ page }) => {
-    await login(page, ACCOUNTS.agentAdmin.email, ACCOUNTS.agentAdmin.password);
+    await login(page, ACCOUNTS.agentAdmin.username, ACCOUNTS.agentAdmin.password);
     await expect(page).toHaveURL(/\/agent-admin$/);
 
     const row = page.getByRole("row", { name: /RAKOTO Parcours/ });
@@ -33,7 +33,7 @@ test.describe.serial("parcours d'inscription d'un étudiant", () => {
   });
 
   test("l'agent pédagogique valide et obtient les identifiants de l'étudiant", async ({ page }) => {
-    await login(page, ACCOUNTS.agentPedago.email, ACCOUNTS.agentPedago.password);
+    await login(page, ACCOUNTS.agentPedago.username, ACCOUNTS.agentPedago.password);
     await expect(page).toHaveURL(/\/agent-pedagogique$/);
 
     const row = page.getByRole("row", { name: /RAKOTO Parcours/ }).first();
@@ -41,17 +41,17 @@ test.describe.serial("parcours d'inscription d'un étudiant", () => {
     await expect(row.getByText("Compte étudiant créé")).toBeVisible();
 
     const text = (await row.innerText()).replace(/\s+/g, " ");
-    studentEmail = /Email : (\S+)/.exec(text)?.[1] ?? "";
+    studentLogin = /Identifiant : (\S+)/.exec(text)?.[1] ?? "";
     studentPassword = /Mot de passe : (\S+)/.exec(text)?.[1] ?? "";
-    expect(studentEmail).toMatch(/@/);
+    expect(studentLogin).toBe("parcours.rakoto"); // prenom.nom, plus d'adresse e-mail
     expect(studentPassword).toMatch(/^FI2026-\d+-/); // matricule + suffixe aléatoire
   });
 
   test("l'étudiant se connecte, est forcé de changer son mot de passe, puis accède à son profil", async ({
     page,
   }) => {
-    expect(studentEmail).not.toBe("");
-    await login(page, studentEmail, studentPassword);
+    expect(studentLogin).not.toBe("");
+    await login(page, studentLogin, studentPassword);
     await expect(page).toHaveURL(/\/changer-mot-de-passe$/);
 
     const chosen = "Etudiant-nouveau-2026";
@@ -61,6 +61,8 @@ test.describe.serial("parcours d'inscription d'un étudiant", () => {
     await page.getByRole("button", { name: "Changer mon mot de passe" }).click();
     await expect(page).toHaveURL(/\/mon-profil$/);
     await expect(page.getByText("RAKOTO Parcours").first()).toBeVisible();
+    // Première connexion : on l'invite à ajouter une adresse e-mail
+    await expect(page.getByRole("link", { name: "Ajouter mon adresse" })).toBeVisible();
 
     // Un étudiant n'a accès à aucun espace de gestion
     await page.goto("/agent-admin");

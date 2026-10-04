@@ -51,7 +51,11 @@ export type AuditAction =
   | "NOTIFICATION_FAILED"
   | "RECOVERY_EMAIL_REQUESTED"
   | "RECOVERY_EMAIL_CONFIRMED"
-  | "RECOVERY_EMAIL_REMOVED";
+  | "RECOVERY_EMAIL_REMOVED"
+  | "USER_INVITED"
+  | "INVITATION_RESENT"
+  | "INVITATION_CANCELLED"
+  | "USER_ACTIVATED";
 
 export async function logAction(action: AuditAction, details?: string, actorId?: string | null) {
   try {

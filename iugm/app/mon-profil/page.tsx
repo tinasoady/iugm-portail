@@ -154,7 +154,7 @@ export default async function MonProfilPage() {
               <InfoRow label="Adresse" value={student.address} />
               <InfoRow label="Téléphone" value={student.phone} />
               <InfoRow label="Email personnel" value={student.personalEmail} />
-              <InfoRow label="Email institutionnel" value={user.email} />
+              <InfoRow label="Identifiant de connexion" value={user.email} />
             </section>
 
             {/* Cursus */}

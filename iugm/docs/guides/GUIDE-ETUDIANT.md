@@ -8,12 +8,15 @@ consulter votre dossier, vos résultats et les communiqués, et protéger votre 
 Vos identifiants vous sont remis par l'administration à la fin de votre
 inscription (reçu d'inscription) :
 
-- **Identifiant** : une adresse du type `prenom.nom@…` (ce n'est pas une vraie boîte mail, c'est uniquement votre identifiant de connexion) ;
+- **Identifiant** : votre nom d'utilisateur, de la forme `prenom.nom` (par exemple `jean.rakoto` ; `jean.rakoto2` s'il y a un homonyme). Ce n'est pas une adresse e-mail ;
 - **Mot de passe provisoire** : votre numéro matricule suivi de quelques caractères.
 
 1. Ouvrez le portail et saisissez ces deux informations, puis **Se connecter**.
 2. Le portail vous demande aussitôt de **choisir votre propre mot de passe**. C'est obligatoire : tant que ce n'est pas fait, vous ne pouvez rien consulter d'autre.
 3. Saisissez le mot de passe provisoire dans « Mot de passe actuel », puis votre nouveau mot de passe deux fois.
+4. **Ajoutez votre adresse e-mail** : un bandeau vous y invite à chaque page tant que ce n'est pas fait (menu **Mon compte** → *Adresse e-mail*). Elle servira à réinitialiser vous-même votre mot de passe si vous l'oubliez. Un message de confirmation y est envoyé ; elle n'est enregistrée qu'après avoir cliqué sur le lien reçu.
+
+_Si vous aviez déjà un compte avant ce changement, votre ancien identifiant (celui de votre reçu) continue de fonctionner, à côté du nouveau `prenom.nom`._
 
 **Un bon mot de passe** : au moins 8 caractères, avec au moins une lettre **et** un chiffre ; il ne doit être ni votre matricule, ni votre identifiant, ni un mot trop courant (« password », « 12345678 »...). Une phrase simple à retenir fonctionne très bien.
 
@@ -48,16 +51,17 @@ Le menu **Mon compte** permet de :
 
 - changer votre **photo** (PNG, JPEG ou WebP, 1 Mo maximum) ;
 - modifier votre nom affiché ;
+- **ajouter, changer ou retirer votre adresse e-mail** (nécessaire pour « Mot de passe oublié ») ;
 - **changer votre mot de passe** à tout moment. Après un changement, les autres appareils où vous étiez connecté sont déconnectés.
 
 ## 6. J'ai oublié mon mot de passe
 
 1. Sur la page de connexion, cliquez sur **Mot de passe oublié ?**.
 2. Saisissez votre **identifiant de connexion** (celui de votre reçu).
-3. Un lien est envoyé à **l'adresse e-mail personnelle de votre dossier**. Il est valable **60 minutes** et ne fonctionne **qu'une fois**.
+3. Un lien est envoyé à **l'adresse e-mail que vous avez ajoutée et confirmée** dans Mon compte. Il est valable **60 minutes** et ne fonctionne **qu'une fois**.
 4. Cliquez sur le lien, choisissez un nouveau mot de passe, puis reconnectez-vous.
 
-Le portail répond de la même façon que le compte existe ou non (c'est voulu, pour protéger les comptes). Si vous ne recevez rien : vérifiez vos courriers indésirables, puis présentez-vous à l'administration — surtout si votre dossier n'a pas d'adresse e-mail, auquel cas le lien ne peut pas vous être envoyé.
+Le portail répond de la même façon que le compte existe ou non (c'est voulu, pour protéger les comptes). Si vous ne recevez rien : vérifiez vos courriers indésirables, puis présentez-vous à l'administration — surtout si vous n'avez pas encore ajouté d'adresse e-mail, auquel cas le lien ne peut pas vous être envoyé (l'administration peut alors vous donner un nouveau mot de passe provisoire).
 
 ## 7. Votre compte est bloqué
 

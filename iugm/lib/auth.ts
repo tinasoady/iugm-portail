@@ -158,9 +158,10 @@ export async function evaluateSession(
       mustChangePassword: true,
       sessionsValidAfter: true,
       currentSessionId: true,
+      pendingActivation: true,
     },
   });
-  if (!user || !user.active) return { ok: false, reason: "disabled" };
+  if (!user || !user.active || user.pendingActivation) return { ok: false, reason: "disabled" };
 
   // Session unique : seule la session ouverte en dernier est valable. Un compte
   // sans identifiant enregistré (jamais reconnecté depuis cette fonctionnalité)

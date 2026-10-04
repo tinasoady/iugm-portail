@@ -1,26 +1,29 @@
 "use server";
 
-import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 
-import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { logAction } from "@/lib/audit";
-import { tasksForRole } from "@/lib/permissions";
-import { validatePasswordStrength } from "@/lib/password-policy";
+import { checkActionRateLimit } from "@/lib/rate-limit";
+import { getTrustedAppOrigin } from "@/lib/url";
+import { inviteStaffMember } from "@/lib/invitations";
+import { maskEmail } from "@/lib/recovery-email";
 
-const ROLES = ["SUPERADMIN", "AGENT_ADMINISTRATION", "AGENT_PEDAGOGIQUE", "ETUDIANT"] as const;
-type RoleValue = (typeof ROLES)[number];
-
-export type CreateUserState = {
+export type InviteUserState = {
   success?: string;
   error?: string;
+  hint?: string;
 };
 
-export async function createUser(
-  _prevState: CreateUserState,
+// Quelques invitations par tranche de 5 min : assez pour une rentrée, pas pour
+// servir de machine à envoyer du courrier.
+const MAX_INVITATIONS_PER_WINDOW = 15;
+
+// Création d'un compte du PERSONNEL (agent ou superadmin) par invitation : le
+// superadmin ne choisit aucun mot de passe. Voir lib/invitations.ts.
+export async function inviteUserAction(
+  _prevState: InviteUserState,
   formData: FormData,
-): Promise<CreateUserState> {
+): Promise<InviteUserState> {
   // Toute Server Action est appelable par requête POST directe :
   // on revérifie systématiquement l'authentification et le rôle.
   const session = await getSession();
@@ -28,44 +31,24 @@ export async function createUser(
     return { error: "Accès refusé : réservé au Superadmin." };
   }
 
-  const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  const fullName = String(formData.get("fullName") ?? "").trim();
-  const role = String(formData.get("role") ?? "");
-  const password = String(formData.get("password") ?? "");
-
-  if (!email || !fullName || !role || !password) {
-    return { error: "Tous les champs sont obligatoires." };
-  }
-  if (!ROLES.includes(role as RoleValue)) {
-    return { error: "Rôle invalide." };
-  }
-  const weakness = validatePasswordStrength(password, { email });
-  if (weakness) return { error: weakness };
-
-  const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) {
-    return { error: `Un compte existe déjà avec l'email ${email}.` };
+  const limit = checkActionRateLimit(`invite:${session.sub}`, MAX_INVITATIONS_PER_WINDOW);
+  if (limit.limited) {
+    return { error: `Trop d'invitations récentes. Réessayez dans ${limit.retryAfterMinutes} minutes.` };
   }
 
-  const passwordHash = await bcrypt.hash(password, 10);
-
-  const user = await prisma.user.create({
-    data: {
-      email,
-      fullName,
-      role: role as RoleValue,
-      passwordHash,
-      // Le superadmin connaît ce mot de passe : l'intéressé doit en choisir un
-      // personnel dès sa première connexion.
-      mustChangePassword: true,
-      // Un nouvel agent reçoit toutes les tâches de son rôle par défaut ;
-      // le superadmin peut ensuite les restreindre depuis la page Permissions
-      permissions: tasksForRole(role),
-    },
+  const result = await inviteStaffMember({
+    actorId: session.sub,
+    username: String(formData.get("username") ?? ""),
+    fullName: String(formData.get("fullName") ?? ""),
+    email: String(formData.get("email") ?? ""),
+    role: String(formData.get("role") ?? ""),
+    origin: await getTrustedAppOrigin().catch(() => null),
   });
-
-  await logAction("USER_CREATED", `Compte ${user.email} créé avec le rôle ${user.role}`, session.sub);
+  if (!result.ok) return { error: result.error, hint: result.hint };
 
   revalidatePath("/admin");
-  return { success: `Compte ${user.email} (${user.role}) créé avec succès.` };
+  revalidatePath("/admin/permissions");
+  return {
+    success: `Invitation envoyée à ${maskEmail(result.sentTo)}. Le compte sera utilisable dès que la personne aura ouvert le lien (valable 72 h) et choisi son mot de passe.`,
+  };
 }

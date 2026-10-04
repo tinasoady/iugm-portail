@@ -17,12 +17,13 @@ import {
 import { getSettings } from "./settings";
 
 // ---------------------------------------------------------------------------
-// Adresse de RÉCUPÉRATION du personnel.
+// Adresse e-mail VÉRIFIÉE d'un compte (personnel ou étudiant).
 //
-// Pourquoi : l'identifiant de connexion d'un agent peut n'être qu'un libellé
-// sans boîte mail (ex. admin@iugm.edu) ; le lien « mot de passe oublié »
-// n'arriverait alors jamais. Chaque compte peut donc déclarer une vraie adresse
-// de récupération, distincte de l'identifiant.
+// L'identifiant de connexion n'est plus une adresse e-mail : l'adresse réelle est
+// un champ à part, qui reçoit le lien « mot de passe oublié ». Le personnel la
+// fournit à son invitation (voir lib/invitations.ts) ; les étudiants l'ajoutent
+// depuis Mon compte après leur première connexion. Ce module sert à la CHANGER
+// (ou à l'ajouter) ensuite, avec la même vérification.
 //
 // Sécurité :
 //  - on ne l'enregistre qu'APRÈS vérification : un lien est envoyé à la nouvelle
@@ -36,11 +37,6 @@ import { getSettings } from "./settings";
 
 export const RECOVERY_TOKEN_VALID_HOURS = 24;
 const MAX_REQUESTS_PER_HOUR = 5;
-
-// Le personnel seulement : un étudiant a l'adresse personnelle de son dossier.
-export function canUseRecoveryEmail(role: string): boolean {
-  return role !== "ETUDIANT";
-}
 
 function hashToken(token: string): string {
   return crypto.createHash("sha256").update(token).digest("hex");
@@ -77,12 +73,9 @@ export async function requestRecoveryEmail(params: {
 }): Promise<RequestResult> {
   const user = await prisma.user.findUnique({
     where: { id: params.userId },
-    select: { fullName: true, role: true, active: true, passwordHash: true, recoveryEmail: true },
+    select: { fullName: true, active: true, passwordHash: true, recoveryEmail: true },
   });
   if (!user || !user.active) return { ok: false, error: "Compte introuvable." };
-  if (!canUseRecoveryEmail(user.role)) {
-    return { ok: false, error: "L'adresse de récupération est réservée au personnel." };
-  }
 
   if (!params.password || !(await bcrypt.compare(params.password, user.passwordHash))) {
     return { ok: false, error: "Mot de passe incorrect." };

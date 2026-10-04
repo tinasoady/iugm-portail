@@ -174,7 +174,7 @@ export default async function StudentProfilePage({
           <InfoRow label="Adresse" value={student.address} />
           <InfoRow label="Téléphone" value={student.phone} />
           <InfoRow label="Email personnel" value={student.personalEmail} />
-          <InfoRow label="Email institutionnel" value={student.account?.email} />
+          <InfoRow label="Identifiant de connexion" value={student.account?.email} />
           {canPrintReceipt && (
             <InfoRow label="Mot de passe initial" value={decryptSecret(student.initialPassword)} />
           )}

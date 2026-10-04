@@ -9,7 +9,8 @@ import { generatePassword } from "../lib/students";
 async function main() {
   console.log("⏳ Début du peuplement de la base de données...");
 
-  const email = "admin@iugm.edu";
+  // Identifiant de connexion (nom d'utilisateur, pas une adresse e-mail)
+  const email = "admin";
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
     console.log(`ℹ️ Compte Superadmin déjà présent : ${email} (mot de passe inchangé)`);
@@ -33,9 +34,10 @@ async function main() {
     },
   });
 
-  console.log(`✅ Compte Superadmin créé : ${superadmin.email}`);
+  console.log(`✅ Compte Superadmin créé — identifiant : ${superadmin.email}`);
   console.log(`🔑 Mot de passe initial (à usage unique, ne sera plus jamais affiché) : ${initialPassword}`);
   console.log(`   Changement obligatoire à la première connexion.`);
+  console.log(`   Ajoutez ensuite une adresse e-mail vérifiée dans « Mon compte » (réinitialisation du mot de passe).`);
 }
 
 main()

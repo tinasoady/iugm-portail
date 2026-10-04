@@ -103,6 +103,8 @@ Migration `20261003100000_recovery_email` (adresse de récupération) : une colo
 
 Migration `20261003120000_single_session` (session unique par compte) : une colonne nullable. **Effet au déploiement** : les sessions déjà ouvertes restent valables jusqu'à la prochaine connexion de chaque compte ; dès qu'un compte se reconnecte, son identifiant de session est enregistré et seule cette session reste valable.
 
+Migration `20261004100000_login_names` (connexion par nom d'utilisateur) : deux colonnes (`legacyLogin`, `pendingActivation`), une table (`ActivationToken`) et un rattrapage SQL idempotent des **comptes du personnel** : leur nouvel identifiant est la partie de l'ancienne adresse avant le « @ », nettoyée (minuscules, `a-z 0-9 . - _`) et numérotée en cas de doublon (`admin@iugm.edu` devient `admin`). **Effet au déploiement** : le personnel se connecte désormais avec ce nom d'utilisateur ; les mots de passe ne changent pas. Les **comptes étudiants** ne sont pas touchés par la migration : après le déploiement, lancer **une fois** `npx tsx scripts/backfill-student-logins.ts` (ajouter `--dry-run` pour compter d'abord) ; chacun reçoit son `prenom.nom` et garde l'ancien identifiant en alias.
+
 Les migrations sont écrites pour s'appliquer sur une base en service : colonnes
 ajoutées avec une valeur par défaut, aucune suppression de données.
 

@@ -15,8 +15,7 @@ import {
 import { nextLevel } from "./level-shared";
 import { createAnnouncement } from "./announcements";
 import { encryptSecret } from "./secret-crypto";
-
-export const STUDENT_EMAIL_DOMAIN = "student.iugm.edu";
+import { availableStudentLogin } from "./identifiers";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -60,28 +59,6 @@ async function createWithGeneratedMatricule<T>(
     }
   }
   throw new Error("Impossible de générer un matricule unique après plusieurs tentatives, réessayez.");
-}
-
-// Normalise un nom pour en faire un identifiant email : "RAKOTO Jean" -> "rakoto"
-function emailLocalPart(fullName: string): string {
-  const base = fullName
-    .trim()
-    .split(/\s+/)[0]
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "") // retire les accents
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, "");
-  return base || "etudiant";
-}
-
-// Trouve un email pro libre : rakoto@..., puis rakoto2@..., rakoto3@...
-async function availableStudentEmail(fullName: string): Promise<string> {
-  const local = emailLocalPart(fullName);
-  for (let i = 1; ; i++) {
-    const email = i === 1 ? `${local}@${STUDENT_EMAIL_DOMAIN}` : `${local}${i}@${STUDENT_EMAIL_DOMAIN}`;
-    const exists = await prisma.user.findUnique({ where: { email } });
-    if (!exists) return email;
-  }
 }
 
 // Mot de passe initial lisible, sans caractères ambigus (0/O, 1/l/I)
@@ -678,10 +655,11 @@ export async function validatePedagoInscription(studentId: string, actorId: stri
       `Réinscription pédagogique validée pour ${student.fullName} (${student.matricule}, ${student.academicYear ?? "année inconnue"}) — compte existant conservé`,
       actorId,
     );
-    return { student: updatedStudent, email: account?.email ?? "", password: null as string | null };
+    return { student: updatedStudent, login: account?.email ?? "", password: null as string | null };
   }
 
-  const email = await availableStudentEmail(student.fullName);
+  // Identifiant de connexion « prenom.nom » (jean.rakoto, jean.rakoto2 en cas d'homonyme)
+  const login = await availableStudentLogin(student);
   // Mot de passe initial : matricule + suffixe aléatoire (le matricule seul
   // serait prévisible, puisqu'il est déjà affiché en clair partout)
   const password = generateInitialPassword(student.matricule);
@@ -694,7 +672,7 @@ export async function validatePedagoInscription(studentId: string, actorId: stri
     const acc = await tx.user.create({
       // Mot de passe initial imprimé sur papier : changement forcé à la première connexion
       data: {
-        email,
+        email: login,
         fullName: student.fullName,
         role: "ETUDIANT",
         passwordHash,
@@ -724,7 +702,7 @@ export async function validatePedagoInscription(studentId: string, actorId: stri
     `Inscription pédagogique validée pour ${student.fullName} (${student.matricule})`,
     actorId,
   );
-  await logAction("USER_CREATED", `Compte étudiant ${email} créé automatiquement`, actorId);
+  await logAction("USER_CREATED", `Compte étudiant ${login} créé automatiquement`, actorId);
 
   // Le communiqué de bienvenue est envoyé à la toute première connexion de
   // l'étudiant (voir sendWelcomeAnnouncementOnFirstLogin, lib/announcements.ts
@@ -733,7 +711,7 @@ export async function validatePedagoInscription(studentId: string, actorId: stri
   // message n'a de sens qu'une fois qu'il est vraiment entré dans le portail.
 
   // Le mot de passe en clair n'est retourné qu'une seule fois, pour être transmis à l'étudiant
-  return { student: updatedStudent, email, password: password as string | null };
+  return { student: updatedStudent, login, password: password as string | null };
 }
 
 // ---------------------------------------------------------------------------

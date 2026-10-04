@@ -10,29 +10,30 @@ sécurité) sont dans [`../`](../) : `DEPLOIEMENT.md`, `SAUVEGARDE.md`,
 
 Un compte superadmin ouvre tous les accès. Dès la première connexion :
 
-1. changez le mot de passe provisoire (imposé) ;
+1. changez le mot de passe provisoire (imposé) si votre compte vient du script d'installation ; un compte créé par invitation n'a pas de mot de passe provisoire : vous avez choisi le vôtre en activant votre compte ;
 2. **activez la double authentification** : **Mon compte** → *Double authentification* → *Activer*. Scannez le QR code avec une application d'authentification, saisissez le code à 6 chiffres, puis **conservez les 8 codes de secours** (affichés une seule fois, usage unique, à ranger loin du mot de passe). Un bandeau sur le tableau de bord vous le rappelle tant que ce n'est pas fait ;
-3. renseignez votre **adresse de récupération** (**Mon compte** → *Adresse de récupération*) : une vraie boîte mail, distincte de votre identifiant de connexion qui n'en est peut-être pas une. Le portail envoie un message de confirmation à cette adresse ; elle ne devient active qu'après avoir cliqué sur le lien reçu. Un rappel s'affiche sur le tableau de bord tant que ce n'est pas fait ;
-4. gardez au moins **deux** superadmins actifs : le portail refuse de désactiver ou supprimer le dernier. Dans **Permissions**, une pastille « Sans adresse de récupération » signale les comptes qui n'en ont pas.
+3. vérifiez votre **adresse e-mail** (**Mon compte** → *Adresse e-mail*) : une vraie boîte mail qui recevra le lien « mot de passe oublié ». Le portail envoie un message de confirmation à cette adresse ; elle ne devient active qu'après avoir cliqué sur le lien reçu. Un bandeau s'affiche sur toutes les pages tant que ce n'est pas fait ;
+4. gardez au moins **deux** superadmins actifs : le portail refuse de désactiver ou supprimer le dernier. Dans **Permissions**, une pastille « Sans adresse e-mail » signale les comptes qui n'en ont pas.
 
 ## 2. Tableau de bord
 
 - Quatre cartes (une par type de compte). **Cliquer sur une carte** filtre la liste des utilisateurs en dessous ; *Voir tous les utilisateurs* retire le filtre.
 - Le graphique montre l'évolution des inscriptions (dossiers enregistrés, reçus vérifiés, inscriptions finalisées) pour l'année et le niveau choisis dans la barre du haut.
 - La liste des utilisateurs affiche **20 lignes**, **Voir plus** en ajoute 20.
-- **Créer un utilisateur** : nom, e-mail, rôle, mot de passe provisoire (8 caractères minimum avec une lettre et un chiffre). La personne **devra le changer** à sa première connexion. Un nouvel agent reçoit toutes les tâches de son rôle ; vous pouvez ensuite les restreindre.
+- **Inviter un membre du personnel** : nom complet, **nom d'utilisateur** (3 à 32 caractères : lettres minuscules sans accent, chiffres, `.`, `-`, `_` ; il ne pourra plus être modifié), **adresse e-mail** (obligatoire) et rôle. Le portail envoie à cette adresse un lien d'activation, valable **72 h** et utilisable une seule fois ; la personne y choisit **elle-même son mot de passe** (vous n'en connaissez aucun) et se connecte ensuite avec son nom d'utilisateur. Un nouvel agent reçoit toutes les tâches de son rôle ; vous pouvez ensuite les restreindre. Le formulaire est désactivé tant que l'envoi d'e-mails n'est pas configuré (**Paramètres**) ; si le message ne peut pas partir, le compte n'est pas créé.
 
 ## 3. Permissions
 
 Menu **Permissions**. Pour chaque agent :
 
 - **Rôle**, **fonction** (poste), **formation** affectée (vide = toutes) et **tâches autorisées** (cases à cocher). Une tâche non cochée est refusée par le serveur, même par appel direct.
+- **Compte en attente d'activation** (pastille orange) : l'invitation n'a pas encore été ouverte. **Renvoyer l'invitation** (éventuellement à une autre adresse en cas de faute de frappe ; le lien précédent cesse de fonctionner) ou **Annuler l'invitation** (supprime le compte). Les autres actions sont masquées tant que le compte n'est pas activé.
 - **Désactiver / Réactiver** : coupe l'accès **immédiatement**, y compris les sessions déjà ouvertes.
 - **Réinit. mdp** : génère un mot de passe provisoire affiché **une seule fois**, impose son changement, ferme les sessions ouvertes.
 - **Réinit. 2FA** (visible si l'agent a la double authentification) : à utiliser s'il a perdu son téléphone **et** ses codes de secours. Ses sessions sont fermées.
 - **Supprimer** un compte (impossible pour le dernier superadmin, ni pour un compte lié à un dossier étudiant : supprimez alors le dossier).
 
-La section **Comptes étudiants** liste les comptes (recherche par nom, identifiant ou matricule ; **Voir plus**). Pour un étudiant : *Réinit. mdp* génère de nouveau un mot de passe provisoire du type matricule + suffixe.
+La section **Comptes étudiants** liste les comptes (recherche par nom, identifiant ou matricule ; **Voir plus**). Pour un étudiant : *Réinit. mdp* génère de nouveau un mot de passe provisoire du type matricule + suffixe. L'identifiant d'un étudiant est de la forme `prenom.nom` (`prenom.nom2` en cas d'homonyme).
 
 ## 4. Paramètres de l'établissement
 

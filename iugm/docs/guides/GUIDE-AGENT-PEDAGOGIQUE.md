@@ -7,7 +7,7 @@ matière, la conduite et les communiqués.
 > résultats, notes, conduite, communiqués, matières). Si vous êtes affecté à
 > une **formation**, vous ne voyez que les dossiers de cette formation.
 > Activez la **double authentification** depuis **Mon compte**.
-> Renseignez aussi votre **adresse de récupération** (**Mon compte**) : une vraie boîte mail qui recevra le lien « mot de passe oublié », votre identifiant de connexion n'en étant peut-être pas une.
+> Votre compte est créé par invitation : ouvrez le lien reçu par e-mail pour choisir votre mot de passe, puis connectez-vous avec votre **nom d'utilisateur**. L'adresse qui a reçu l'invitation est vérifiée et recevra le lien « mot de passe oublié » (modifiable dans **Mon compte** → *Adresse e-mail*).
 
 ## 1. Valider une inscription pédagogique
 
@@ -15,7 +15,7 @@ Menu **Pédagogie** → section **Inscriptions à valider** : dossiers dont
 l'agent d'administration a déjà validé l'inscription.
 
 1. Cliquez **Valider l'inscription pédagogique** sur la ligne du dossier.
-2. Le portail **crée le compte de l'étudiant** et affiche, **une seule fois**, son identifiant et son **mot de passe provisoire**.
+2. Le portail **crée le compte de l'étudiant** et affiche, **une seule fois**, son **identifiant** (de la forme `prenom.nom`) et son **mot de passe provisoire**.
 3. **Notez-les immédiatement** (ou imprimez le **reçu d'inscription**, qui les contient) pour les remettre à l'étudiant en main propre. Le mot de passe provisoire n'est jamais envoyé par e-mail.
 4. Quand c'est fait, cliquez **J'ai noté les identifiants — actualiser la liste** : la ligne quitte alors la liste à valider.
 

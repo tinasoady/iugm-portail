@@ -17,7 +17,21 @@ enum Role {
 // Table centrale pour la gestion de l'authentification et des profils
 model User {
   id                      String                  @id @default(cuid())
+  // IDENTIFIANT DE CONNEXION, unique, en minuscules. Le champ s'appelle encore
+  // `email` pour des raisons historiques, mais ce n'est PLUS une adresse e-mail :
+  //  - personnel : le nom d'utilisateur choisi à la création (ex. « admin ») ;
+  //  - étudiant  : « prenom.nom » (ex. « jean.rakoto »), ou, pour les comptes
+  //    créés avant ce changement, l'ancien « rakoto@student.iugm.edu ».
+  // L'adresse e-mail réelle et VÉRIFIÉE d'un compte est `recoveryEmail`.
   email                   String                  @unique
+  // Ancien identifiant d'un compte étudiant renommé en « prenom.nom » : reste
+  // accepté à la connexion pour que les reçus déjà imprimés restent valables.
+  legacyLogin             String?                 @unique
+  // Compte créé par invitation et pas encore activé : sans mot de passe utilisable,
+  // il ne peut pas se connecter tant que la personne n'a pas ouvert le lien reçu
+  // par e-mail et choisi son mot de passe (voir ActivationToken).
+  pendingActivation       Boolean                 @default(false)
+  activationTokens        ActivationToken[]
   passwordHash            String
   // Force le changement de mot de passe à la prochaine connexion
   // (vrai pour les comptes étudiants créés avec le matricule comme mot de passe)
@@ -47,10 +61,10 @@ model User {
   // Codes de secours à usage unique (empreintes SHA-256, jamais en clair)
   recoveryCodes           String[]                @default([])
   passwordResetTokens     PasswordResetToken[]
-  // Adresse de RÉCUPÉRATION (vraie boîte mail), distincte de l'identifiant de
-  // connexion qui peut n'être qu'un libellé sans boîte (ex. admin@iugm.edu).
-  // Reçoit le lien « mot de passe oublié ». Renseignée UNIQUEMENT après
-  // vérification (voir RecoveryEmailToken), jamais saisie directement.
+  // Adresse e-mail RÉELLE et VÉRIFIÉE du compte (distincte de l'identifiant de
+  // connexion). Reçoit le lien « mot de passe oublié ». Renseignée UNIQUEMENT après
+  // vérification : par l'activation du compte (personnel, voir ActivationToken) ou
+  // par la confirmation d'un lien (voir RecoveryEmailToken), jamais saisie directement.
   recoveryEmail           String?
   recoveryEmailTokens     RecoveryEmailToken[]
   // Fonction / poste (ex : Secrétaire, Chef de scolarité, Responsable finance...)
@@ -533,6 +547,24 @@ model PasswordResetToken {
   id        String    @id @default(cuid())
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// Invitation d'un compte du personnel : le lien est envoyé à l'adresse indiquée par
+// le superadmin ; l'ouvrir prouve que la personne en a la boîte. À l'activation,
+// elle choisit son mot de passe, l'adresse devient celle (vérifiée) du compte et le
+// compte est activé. Seule l'empreinte SHA-256 du jeton est stockée.
+model ActivationToken {
+  id        String    @id @default(cuid())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  email     String
   tokenHash String    @unique
   expiresAt DateTime
   usedAt    DateTime?
