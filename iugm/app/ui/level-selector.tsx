@@ -16,6 +16,7 @@ export function LevelSelector({ selected }: { selected: string | null }) {
 
   return (
     <select
+      name="niveau-consulte"
       aria-label="Niveau consulté"
       title="Niveau consulté — filtre les données et statistiques de tout le site"
       value={selected ?? ALL_LEVELS_VALUE}

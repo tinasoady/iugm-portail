@@ -22,6 +22,7 @@ export function AcademicYearSelector({
 
   return (
     <select
+      name="annee-consultee"
       aria-label="Année universitaire consultée"
       title="Année universitaire consultée — filtre les données et statistiques de tout le site"
       value={selected ?? ALL_YEARS_VALUE}
