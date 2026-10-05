@@ -9,6 +9,7 @@ import {
 } from "./actions";
 import type { PreselectionSearchResult } from "@/lib/preselection";
 import { refreshCandidateCache, searchCachedCandidates, getCachedCandidate } from "@/lib/offline/candidates";
+import { isOnline, probeServer } from "@/lib/offline/connectivity";
 import { InscriptionWizard } from "./wizard";
 
 // Point d'entrée de la page Inscription : l'agent cherche d'abord le
@@ -47,7 +48,7 @@ export function InscriptionEntry({
   // lib/offline/candidates.ts et docs/OFFLINE_SYNC.md). Au montage, puis à
   // chaque retour réseau — jamais hors ligne, ça n'aurait aucun sens.
   const refreshCache = useCallback(() => {
-    if (!navigator.onLine) return;
+    if (!isOnline()) return;
     getPreselectionCacheAction(years)
       .then(refreshCandidateCache)
       .catch(() => {
@@ -77,9 +78,18 @@ export function InscriptionEntry({
     setSearching(true);
     debounceRef.current = setTimeout(async () => {
       try {
-        const r = navigator.onLine
-          ? await searchPreselectionAction(q)
-          : await searchCachedCandidates(q);
+        let r: unknown;
+        if (isOnline()) {
+          try {
+            r = await searchPreselectionAction(q);
+          } catch (error) {
+            // Serveur injoignable malgré un navigateur « en ligne » : cache local
+            if (await probeServer()) throw error;
+            r = await searchCachedCandidates(q);
+          }
+        } else {
+          r = await searchCachedCandidates(q);
+        }
         setResults(r as PreselectionSearchResult[]);
       } finally {
         setSearching(false);
@@ -98,7 +108,7 @@ export function InscriptionEntry({
     setLoadingId(candidate.id);
     setPrefillError(null);
     try {
-      if (!navigator.onLine) {
+      const openFromCache = async () => {
         const cached = await getCachedCandidate(candidate.id);
         if (!cached) {
           setPrefillError("Fiche non disponible hors ligne (cache pas encore chargé pour cette fiche).");
@@ -106,9 +116,18 @@ export function InscriptionEntry({
         }
         setSelected({ id: candidate.id, values: cached.values });
         setMode("form");
-        return;
+      };
+      if (!isOnline()) return await openFromCache();
+
+      let prefill: Awaited<ReturnType<typeof getPreselectionPrefillAction>>;
+      try {
+        prefill = await getPreselectionPrefillAction(candidate.id);
+      } catch (e) {
+        // Serveur injoignable malgré un navigateur « en ligne » : cache local
+        if (await probeServer()) throw e;
+        return await openFromCache();
       }
-      const { values, error } = await getPreselectionPrefillAction(candidate.id);
+      const { values, error } = prefill;
       if (error) {
         setPrefillError(error);
         return;

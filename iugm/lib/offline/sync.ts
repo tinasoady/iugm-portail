@@ -1,6 +1,12 @@
 "use client";
 
 import { offlineDb, type MutationType } from "./db";
+import {
+  getReachableSnapshot,
+  isOnline,
+  probeServer,
+  subscribeReachability,
+} from "./connectivity";
 
 // Ajoute une saisie à la file locale ; ne bloque jamais l'agent. La
 // synchronisation réelle a lieu plus tard, au retour du réseau (voir
@@ -12,6 +18,30 @@ export async function queueMutation(
   const id = crypto.randomUUID();
   await offlineDb.mutations.add({ id, type, payload, queuedAt: Date.now(), status: "pending" });
   return id;
+}
+
+// Valeurs d'un formulaire sous forme de file locale (champs texte uniquement,
+// sans les champs techniques ajoutés par React pour les Server Actions)
+export function formDataToPayload(formData: FormData): Record<string, string> {
+  const payload: Record<string, string> = {};
+  for (const [key, value] of formData.entries()) {
+    if (typeof value === "string" && !key.startsWith("$ACTION")) payload[key] = value;
+  }
+  return payload;
+}
+
+// Exécute une Server Action ; si elle échoue parce que le serveur est
+// injoignable (alors que le navigateur se croyait en ligne), met la saisie en
+// file locale à la place. Une vraie erreur serveur (serveur joignable) est
+// relancée telle quelle. Renvoie vrai si la saisie a été mise en file.
+export async function queueIfUnreachable(
+  error: unknown,
+  type: MutationType,
+  payload: Record<string, string>,
+): Promise<boolean> {
+  if (await probeServer()) throw error;
+  await queueMutation(type, payload);
+  return true;
 }
 
 // Nombre de saisies hors ligne pas encore confirmées par le serveur
@@ -117,10 +147,15 @@ export function startOfflineSync(onDone?: () => void): void {
   listenerAttached = true;
 
   const run = () => {
-    if (!navigator.onLine) return;
+    if (!isOnline()) return;
     syncPendingMutations().then(() => onDone?.());
   };
   window.addEventListener("online", run);
+  // Le navigateur peut ne jamais émettre « online » (il se croyait connecté
+  // pendant toute la coupure) : on repart aussi dès que le serveur répond de nouveau.
+  subscribeReachability(() => {
+    if (getReachableSnapshot()) run();
+  });
   run();
   setInterval(run, RETRY_POLL_MS);
 }

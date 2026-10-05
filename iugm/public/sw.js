@@ -62,6 +62,60 @@ function isScopedNavigation(url) {
   return url.origin === self.location.origin && PAGE_SCOPE.some((p) => url.pathname === p || url.pathname.startsWith(`${p}/`));
 }
 
+// Prépare le filet de secours des pages autorisées dès que l'agent est en
+// ligne. Sans cela, une page n'entrait dans le cache que si elle avait été
+// chargée en entier (rechargement, adresse tapée) : or un clic dans le menu
+// est une navigation interne qui ne passe pas par ici, et couper le réseau
+// avant d'avoir rechargé la page d'inscription donnait une page blanche.
+// Une réponse redirigée (session expirée, tâche non autorisée → /login ou
+// /agent-admin) n'est jamais mise en cache.
+//
+// Le HTML seul ne suffit pas : la page hors ligne a aussi besoin des fichiers
+// JavaScript/CSS propres à sa route, que le navigateur ne télécharge qu'à la
+// première visite de cette route. Sans eux, la page cachée s'ouvrait puis
+// plantait au chargement (ChunkLoadError → écran « Une erreur est survenue »).
+// On les repère dans le HTML et on les met dans STATIC_CACHE.
+const STATIC_URL_PATTERN =
+  /\/_next\/static\/[A-Za-z0-9_\-./%~]+\.(?:js|css|woff2?)(?:\?[A-Za-z0-9_=&.%-]+)?/g;
+
+async function cacheStaticAssetsOf(html) {
+  const urls = new Set(html.match(STATIC_URL_PATTERN) || []);
+  const cache = await caches.open(STATIC_CACHE);
+  await Promise.all(
+    [...urls].map(async (url) => {
+      try {
+        const request = new Request(url, { credentials: "same-origin" });
+        if (await cache.match(request, { ignoreSearch: true })) return;
+        const response = await fetch(request);
+        if (response.ok) await cache.put(request, response);
+      } catch {
+        // Fichier indisponible : la page restera ouverte sans lui, au pire
+      }
+    }),
+  );
+}
+
+self.addEventListener("message", (event) => {
+  if (!event.data || event.data.type !== "warm-pages") return;
+  event.waitUntil(
+    caches.open(PAGE_CACHE).then((cache) =>
+      Promise.all(
+        PAGE_SCOPE.map(async (path) => {
+          try {
+            const response = await fetch(path, { credentials: "same-origin", cache: "no-store" });
+            if (!response.ok || response.redirected) return;
+            const html = await response.clone().text();
+            await cache.put(path, response);
+            await cacheStaticAssetsOf(html);
+          } catch {
+            // Réseau coupé ou page refusée : on réessaiera au prochain passage en ligne
+          }
+        }),
+      ),
+    ),
+  );
+});
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return; // jamais de cache pour les mutations (POST)
@@ -76,7 +130,9 @@ self.addEventListener("fetch", (event) => {
   if (isStaticAsset(url)) {
     event.respondWith(
       caches.open(STATIC_CACHE).then(async (cache) => {
-        const cached = await cache.match(request);
+        // ignoreSearch : sur Vercel, les fichiers portent un ?dpl=… propre au
+        // déploiement ; leur nom est de toute façon unique par contenu
+        const cached = await cache.match(request, { ignoreSearch: true });
         if (cached) return cached;
         const response = await fetch(request);
         if (response.ok) cache.put(request, response.clone());
@@ -94,7 +150,7 @@ self.addEventListener("fetch", (event) => {
           if (response.ok) cache.put(request, response.clone());
           return response;
         } catch {
-          const cached = await cache.match(request);
+          const cached = await cache.match(request, { ignoreVary: true });
           if (cached) return cached;
           throw new Error("Page indisponible hors ligne (jamais visitée en ligne).");
         }

@@ -3,7 +3,8 @@
 import { useActionState, useState } from "react";
 
 import { recordEcolagePaymentAction, type ActionState } from "../actions";
-import { queueMutation } from "@/lib/offline/sync";
+import { isOnline } from "@/lib/offline/connectivity";
+import { formDataToPayload, queueIfUnreachable, queueMutation } from "@/lib/offline/sync";
 
 const initialState: ActionState = {};
 
@@ -20,13 +21,25 @@ const initialState: ActionState = {};
 // (dossier et montant dû connus), donc la soumission peut être mise en file
 // locale exactement comme pour une inscription.
 export function Tranche2Form({ studentId, amountDue }: { studentId: string; amountDue: number }) {
-  const [state, formAction, pending] = useActionState(recordEcolagePaymentAction, initialState);
   const [queued, setQueued] = useState(false);
+  const [state, formAction, pending] = useActionState(
+    async (prev: ActionState, formData: FormData): Promise<ActionState> => {
+      try {
+        return await recordEcolagePaymentAction(prev, formData);
+      } catch (error) {
+        // Navigateur « en ligne » mais serveur injoignable : file locale
+        await queueIfUnreachable(error, "ecolage_payment", formDataToPayload(formData));
+        setQueued(true);
+        return prev;
+      }
+    },
+    initialState,
+  );
   const [receiptNumber, setReceiptNumber] = useState("");
   const [amount, setAmount] = useState(String(amountDue));
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    if (navigator.onLine) return;
+    if (isOnline()) return;
     e.preventDefault();
     queueMutation("ecolage_payment", {
       studentId,

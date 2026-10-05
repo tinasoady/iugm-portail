@@ -186,6 +186,42 @@ Les routes `/api/*` ne sont jamais interceptées : un `fetch` qui échoue
 naturellement (pas de réseau) est exactement ce qu'attend la logique hors
 ligne décrite plus haut.
 
+### Préparation des pages (`warm-pages`)
+
+Une page n'entrait auparavant dans le cache que si elle avait été chargée en
+entier (rechargement, adresse tapée). Or un clic dans le menu est une
+navigation interne, qui n'y passe pas. Couper le réseau avant d'avoir rechargé
+la page d'inscription donnait donc, au mieux une page blanche, au pire l'écran
+« Une erreur est survenue ». Pire : même une page présente dans le cache
+plantait (`ChunkLoadError`) si les fichiers JavaScript propres à sa route
+n'avaient jamais été téléchargés.
+
+`OfflineSyncStatus` (personnel d'administration uniquement) envoie donc au
+service worker un message `warm-pages`, au plus toutes les 10 minutes
+(`lib/offline/warm.ts`). Le service worker télécharge alors les trois pages de
+`PAGE_SCOPE`, puis les fichiers `/_next/static/…` qu'elles référencent, et les
+met en cache. Une réponse redirigée (session expirée, tâche non autorisée)
+n'est jamais conservée.
+
+## Détection du réseau (`lib/offline/connectivity.ts`)
+
+`navigator.onLine` ne signale que la présence d'une interface réseau : il reste
+à `true` sur un poste avec Docker, un VPN ou une carte virtuelle, même en mode
+avion ou Wi-Fi sans Internet. Se fier à lui seul faisait que le bandeau
+« Hors ligne » ne s'affichait jamais, et qu'une saisie validée sans réseau
+partait en Server Action, échouait, et finissait sur l'écran d'erreur.
+
+L'état « en ligne » est donc `navigator.onLine` **et** serveur joignable :
+- une sonde `HEAD /api/ping` (route publique sans base de données) toutes les
+  10 s tant que l'onglet est visible, et à chaque retour sur l'onglet ;
+- tout échec réel d'une Server Action (`queueIfUnreachable`) : si la sonde
+  confirme que le serveur ne répond pas, la saisie part en file locale au lieu
+  de l'écran d'erreur ; une vraie erreur serveur est relancée telle quelle ;
+- au retour du serveur, la synchronisation repart d'elle-même (le navigateur
+  n'émet aucun événement `online` s'il ne s'est jamais cru hors ligne).
+
+Scénarios vérifiés dans `tests/e2e/offline.spec.ts`.
+
 `public/manifest.json` rend l'app installable (icône, lancement en plein
 écran) — un critère noté explicitement par l'audit PWA de Lighthouse.
 

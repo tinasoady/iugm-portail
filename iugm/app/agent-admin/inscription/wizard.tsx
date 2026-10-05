@@ -4,7 +4,8 @@ import { useActionState, useRef, useState } from "react";
 import { FaCheck, FaCheckCircle, FaCloudUploadAlt, FaTimes } from "react-icons/fa";
 import { registerInscriptionAction, type InscriptionState } from "./actions";
 import { MALAGASY_PHONE_PATTERN_SOURCE } from "@/lib/phone";
-import { queueMutation } from "@/lib/offline/sync";
+import { isOnline } from "@/lib/offline/connectivity";
+import { formDataToPayload, queueIfUnreachable, queueMutation } from "@/lib/offline/sync";
 
 const PHONE_TITLE = "10 chiffres, commençant par 032, 033, 034, 037 ou 038";
 
@@ -159,18 +160,31 @@ export function InscriptionWizard({
   // lib/formations.ts) — recalculée à chaque changement de niveau.
   const currentLevel = values.level || "L1";
   const formRef = useRef<HTMLFormElement>(null);
-  const [state, formAction, pending] = useActionState(registerInscriptionAction, initialState);
   // Dossier mis en file d'attente locale faute de réseau (voir lib/offline/) :
   // pas de matricule à ce stade, il sera attribué par le serveur à la
   // synchronisation — voir docs/OFFLINE_SYNC.md.
   const [queued, setQueued] = useState(false);
+  const [state, formAction, pending] = useActionState(
+    async (prev: InscriptionState, formData: FormData): Promise<InscriptionState> => {
+      try {
+        return await registerInscriptionAction(prev, formData);
+      } catch (error) {
+        // Le navigateur se croyait en ligne mais le serveur est injoignable :
+        // la saisie part en file locale plutôt que sur l'écran d'erreur.
+        await queueIfUnreachable(error, "inscription", formDataToPayload(formData));
+        setQueued(true);
+        return prev;
+      }
+    },
+    initialState,
+  );
 
   // Intercepte la soumission avant le déclenchement de la Server Action :
   // hors ligne, `registerInscriptionAction` ne peut de toute façon pas
   // aboutir (pas de réseau), donc on met le dossier en file locale à la place
   // et on empêche la soumission normale (equivalent à un <form action> classique).
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    if (navigator.onLine) return;
+    if (isOnline()) return;
     e.preventDefault();
     queueMutation("inscription", { ...values, preselectionId: preselectionId ?? "" }).then(() =>
       setQueued(true),

@@ -15,6 +15,8 @@ const PUBLIC_PREFIXES = [
   "/confirmer-adresse",
   "/activer-compte",
   "/api/health",
+  // Sonde de joignabilité du navigateur (aucune donnée, voir la route)
+  "/api/ping",
   // Répond 401 + motif au contrôle périodique du navigateur (voir la route)
   "/api/session/status",
 ];

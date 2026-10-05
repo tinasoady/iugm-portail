@@ -312,7 +312,7 @@ export async function AppShell({
 
       {/* Contenu */}
       <div className="flex min-h-screen flex-col md:pl-64">
-        <OfflineSyncStatus />
+        <OfflineSyncStatus warmPages={role === "SUPERADMIN" || role === "AGENT_ADMINISTRATION"} />
         {/* Barre supérieure */}
         <header className="sticky top-0 z-30 border-b border-black/5 bg-white/80 backdrop-blur dark:border-white/10 dark:bg-zinc-950/80">
           <div className="flex items-center justify-between gap-3 px-4 py-3">

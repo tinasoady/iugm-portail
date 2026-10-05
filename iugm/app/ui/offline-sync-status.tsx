@@ -3,7 +3,13 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { FaCloudUploadAlt, FaWifi } from "react-icons/fa";
 
+import {
+  getReachableSnapshot,
+  startConnectivityMonitor,
+  subscribeReachability,
+} from "@/lib/offline/connectivity";
 import { pendingMutationCount, startOfflineSync } from "@/lib/offline/sync";
+import { warmOfflinePages } from "@/lib/offline/warm";
 
 const POLL_MS = 5000;
 
@@ -15,15 +21,21 @@ const POLL_MS = 5000;
 // suppose toujours "en ligne", donc un client réellement hors ligne dès le
 // premier rendu afficherait un DOM différent de celui du serveur : exactement
 // l'erreur observée en testant la fonctionnalité — voir git blame).
+//
+// « En ligne » ne se limite pas à navigator.onLine, qui reste vrai sur un
+// poste avec carte réseau virtuelle (Docker, VPN) même sans Internet : on y
+// ajoute la joignabilité réelle du serveur (voir lib/offline/connectivity.ts).
 function subscribeOnline(callback: () => void) {
   window.addEventListener("online", callback);
   window.addEventListener("offline", callback);
+  const unsubscribeReachability = subscribeReachability(callback);
   return () => {
     window.removeEventListener("online", callback);
     window.removeEventListener("offline", callback);
+    unsubscribeReachability();
   };
 }
-const getOnlineSnapshot = () => navigator.onLine;
+const getOnlineSnapshot = () => navigator.onLine && getReachableSnapshot();
 const getServerOnlineSnapshot = () => true;
 
 // Bandeau global (monté dans AppShell) : signale l'absence de réseau et le
@@ -31,9 +43,16 @@ const getServerOnlineSnapshot = () => true;
 // pas seulement la page d'inscription, puisque la file peut rester non vide
 // en changeant de page. Invisible dès qu'il n'y a rien à signaler (en ligne,
 // file vide).
-export function OfflineSyncStatus() {
+export function OfflineSyncStatus({ warmPages = false }: { warmPages?: boolean }) {
   const online = useSyncExternalStore(subscribeOnline, getOnlineSnapshot, getServerOnlineSnapshot);
   const [pending, setPending] = useState(0);
+
+  // Personnel d'administration : prépare les pages d'inscription et d'écolage
+  // pour qu'elles s'ouvrent même si le réseau est coupé avant de les avoir
+  // rechargées (voir lib/offline/warm.ts)
+  useEffect(() => {
+    if (warmPages && online) warmOfflinePages();
+  }, [warmPages, online]);
 
   const refreshPending = useCallback(() => {
     pendingMutationCount()
@@ -43,6 +62,7 @@ export function OfflineSyncStatus() {
 
   useEffect(() => {
     refreshPending();
+    startConnectivityMonitor();
 
     // Déclenche/écoute la synchronisation automatique au retour du réseau
     // (voir lib/offline/sync.ts) ; le sondage périodique ci-dessous rafraîchit
