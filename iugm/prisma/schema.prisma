@@ -353,13 +353,10 @@ model AcademicResult {
 }
 
 // Matière du catalogue pédagogique, propre à une filière et un niveau.
-// Le catalogue (nom, filière, niveau) n'est alimenté QUE par le superadmin,
-// depuis Admin > Matières — jamais par les agents. En revanche, le caractère
-// obligatoire ou facultatif de la matière est une décision pédagogique
-// laissée au secrétaire de formation ou à l'agent pédagogique (tâche
-// "matieres", voir lib/permissions.ts), pas au superadmin : `mandatory` est
-// donc modifiable après création, avec sa propre traçabilité
-// (mandatorySetBy/At) distincte de createdBy/At.
+// Le catalogue (nom, filière, niveau, caractère obligatoire ou facultatif)
+// n'est alimenté QUE par le superadmin, depuis Admin > Matières — jamais par
+// les agents. `mandatory` est choisi à l'ajout puis modifiable par lui seul,
+// avec sa propre traçabilité (mandatorySetBy/At) distincte de createdBy/At.
 model Subject {
   id        String  @id @default(cuid())
   name      String

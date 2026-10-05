@@ -45,7 +45,7 @@ Menu **Paramètres** :
 
 ## 5. Catalogue des matières
 
-Menu **Matières (catalogue)** : ajoutez les matières (nom, filière, niveau). Seul le superadmin alimente ce catalogue ; le caractère obligatoire ou facultatif est ensuite décidé par le secrétaire de formation ou l'agent pédagogique.
+Menu **Matières (catalogue)** : ajoutez les matières (nom, filière, niveau) et cochez, pour chacune, **Obligatoire** ou **Facultative**. Seul le superadmin alimente ce catalogue.
 
 ## 6. Base de données (import de présélection)
 

@@ -4,12 +4,7 @@ import { getSession } from "@/lib/auth";
 import { listSubjects } from "@/lib/subjects";
 import { LEVELS } from "@/lib/level-shared";
 import { AppShell } from "@/app/ui/app-shell";
-import { CreateSubjectForm, DeleteSubjectButton } from "./subject-forms";
-
-const MANDATORY_BADGE =
-  "rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300";
-const OPTIONAL_BADGE =
-  "rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300";
+import { CreateSubjectForm, DeleteSubjectButton, MandatoryToggle } from "./subject-forms";
 
 export default async function AdminMatieresPage() {
   const session = await getSession();
@@ -39,10 +34,8 @@ export default async function AdminMatieresPage() {
           Ajouter une matière
         </h2>
         <p className="mb-4 text-xs text-zinc-500 dark:text-zinc-400">
-          Le catalogue (nom, filière, niveau) n&apos;est alimenté que par le superadmin. Le
-          caractère obligatoire ou facultatif d&apos;une matière est ensuite décidé par le
-          secrétaire de formation ou l&apos;agent pédagogique, depuis la page{" "}
-          <span className="font-medium">Matières</span> de leur espace.
+          Le catalogue n&apos;est alimenté que par le superadmin : pour chaque matière, indiquez
+          le nom, la filière, le niveau et si elle est obligatoire ou facultative.
         </p>
         <CreateSubjectForm levels={LEVELS} />
       </section>
@@ -80,9 +73,7 @@ export default async function AdminMatieresPage() {
                           >
                             <span className="flex items-center gap-2">
                               {s.name}
-                              <span className={s.mandatory ? MANDATORY_BADGE : OPTIONAL_BADGE}>
-                                {s.mandatory ? "Obligatoire" : "Facultative"}
-                              </span>
+                              <MandatoryToggle id={s.id} mandatory={s.mandatory} />
                             </span>
                             <DeleteSubjectButton id={s.id} name={s.name} />
                           </li>

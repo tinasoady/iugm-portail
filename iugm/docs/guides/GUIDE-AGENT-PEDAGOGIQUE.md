@@ -51,7 +51,7 @@ Les notes par matière sont **distinctes** de la moyenne générale du semestre 
 
 ## 5. Matières obligatoires ou facultatives
 
-Le catalogue (nom, filière, niveau) est alimenté par le superadmin. Menu **Matières (oblig./facult.)** : vous décidez, pour chaque matière, si elle est obligatoire ou facultative. Votre nom et la date sont conservés.
+Le catalogue (nom, filière, niveau) est alimenté par le superadmin, qui indique aussi, à l'ajout de chaque matière, si elle est obligatoire ou facultative. Cette information est rappelée à côté de chaque matière dans **Notes par matière**.
 
 ## 6. Appréciation de conduite
 

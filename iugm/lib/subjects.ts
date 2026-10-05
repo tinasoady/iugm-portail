@@ -5,17 +5,17 @@ import { logAction } from "./audit";
 
 // ---------------------------------------------------------------------------
 // Catalogue des matières (Subject) : alimenté uniquement par le superadmin
-// (Admin > Matières), par filière et par niveau. Le caractère obligatoire ou
-// facultatif (Subject.mandatory) est en revanche une décision pédagogique
-// laissée au secrétaire de formation ou à l'agent pédagogique (tâche
-// "matieres"), jamais au superadmin — voir setSubjectMandatory ci-dessous et
-// le modèle Subject dans prisma/schema.prisma.
+// (Admin > Matières), par filière et par niveau, y compris le caractère
+// obligatoire ou facultatif (Subject.mandatory), choisi à l'ajout puis
+// modifiable par lui seul — voir setSubjectMandatory ci-dessous et le modèle
+// Subject dans prisma/schema.prisma.
 // ---------------------------------------------------------------------------
 
 export type CreateSubjectInput = {
   name: string;
   formation: string; // libellé lib/formations.ts (licence ou master selon le niveau), ex "Management" — même valeur que Student.mention
   level: string; // L1..M2, voir lib/level-shared.ts
+  mandatory?: boolean; // obligatoire (défaut) ou facultative, choisi à l'ajout
 };
 
 // Superadmin uniquement : ajoute une matière au catalogue d'une filière/niveau.
@@ -28,11 +28,19 @@ export async function createSubject(input: CreateSubjectInput, actorId: string) 
 
   try {
     const subject = await prisma.subject.create({
-      data: { name, formation: input.formation, level: input.level, createdById: actorId },
+      data: {
+        name,
+        formation: input.formation,
+        level: input.level,
+        mandatory: input.mandatory ?? true,
+        createdById: actorId,
+      },
     });
     await logAction(
       "SUBJECT_CREATED",
-      `Matière « ${name} » ajoutée pour ${input.formation} — ${input.level}`,
+      `Matière « ${name} » ajoutée pour ${input.formation} — ${input.level} (${
+        subject.mandatory ? "obligatoire" : "facultative"
+      })`,
       actorId,
     );
     return subject;
@@ -78,9 +86,9 @@ export async function listSubjects(filters: SubjectFilters = {}) {
   });
 }
 
-// Secrétaire de formation ou agent pédagogique (tâche "matieres") : déclare
-// une matière du catalogue obligatoire ou facultative. Ne touche ni au nom,
-// ni à la filière/niveau (réservés au superadmin, voir createSubject).
+// Superadmin uniquement : change le caractère obligatoire/facultatif d'une
+// matière du catalogue. Ne touche ni au nom, ni à la filière/niveau. La
+// permission est vérifiée par l'appelant (app/admin/matieres/actions.ts).
 export async function setSubjectMandatory(id: string, mandatory: boolean, actorId: string) {
   const subject = await prisma.subject.update({
     where: { id },

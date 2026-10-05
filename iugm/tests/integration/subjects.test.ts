@@ -22,9 +22,9 @@ import { createActor, createLevelFinancialInfo, validRegisterInput } from "../se
 // AcademicResult (moyenne générale du semestre, déjà couverte par
 // registration-workflow.test.ts). Couvre le catalogue de matières,
 // la bascule obligatoire/facultatif et l'assignation de notes — la
-// permission (superadmin pour le catalogue, tâches "matieres"/"notes" pour
-// le reste) est vérifiée par l'appelant (app/admin/matieres/actions.ts,
-// app/matieres/actions.ts, app/agent-pedagogique/notes/actions.ts, déjà
+// permission (superadmin pour le catalogue, tâche "notes" pour les notes)
+// est vérifiée par l'appelant (app/admin/matieres/actions.ts,
+// app/agent-pedagogique/notes/actions.ts, déjà
 // couvertes indirectement par permissions.test.ts pour la même logique de
 // garde), pas testée ici directement.
 
@@ -59,6 +59,15 @@ describe("createSubject / listSubjects", () => {
 
     const subjects = await listSubjects({ formation: "Management", level: "L1" });
     expect(subjects.map((s) => s.name)).toEqual(["Algèbre"]);
+  });
+
+  it("enregistre le caractère facultatif choisi à l'ajout", async () => {
+    const actor = await createActor("SUPERADMIN");
+    const subject = await createSubject(
+      { name: "Théâtre", formation: "Management", level: "L1", mandatory: false },
+      actor.id,
+    );
+    expect(subject.mandatory).toBe(false);
   });
 
   it("refuse deux matières identiques pour la même filière et le même niveau", async () => {

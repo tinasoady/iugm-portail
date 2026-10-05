@@ -2,7 +2,12 @@
 
 import { useActionState, useState } from "react";
 import { FaTrash } from "react-icons/fa";
-import { createSubjectAction, deleteSubjectAction, type SubjectState } from "./actions";
+import {
+  createSubjectAction,
+  deleteSubjectAction,
+  setSubjectMandatoryAction,
+  type SubjectState,
+} from "./actions";
 import { formationsForLevel } from "@/lib/formations";
 
 const initialState: SubjectState = {};
@@ -10,9 +15,8 @@ const initialState: SubjectState = {};
 const fieldClass =
   "rounded-xl border border-black/10 bg-white px-3 py-1.5 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-black/20 dark:border-white/10 dark:bg-black dark:text-zinc-50";
 
-// Ajoute une matière au catalogue : nom, filière, niveau. Réservé au
-// superadmin — le caractère obligatoire/facultatif se règle ailleurs
-// (page Matières, accessible au secrétaire et à l'agent pédagogique). Le
+// Ajoute une matière au catalogue : nom, filière, niveau et caractère
+// obligatoire/facultatif (boutons radio). Réservé au superadmin. Le
 // niveau se choisit en premier : la liste de filières proposée en dépend
 // (mentions de licence en L1-L3, spécialisations de master en M1-M2, voir
 // lib/formations.ts).
@@ -65,6 +69,19 @@ export function CreateSubjectForm({ levels }: { levels: readonly string[] }) {
           ))}
         </select>
       </div>
+      <fieldset className="flex flex-col gap-1">
+        <legend className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Caractère</legend>
+        <div className="flex items-center gap-4 py-1.5 text-sm text-zinc-900 dark:text-zinc-50">
+          <label className="flex items-center gap-1.5">
+            <input type="radio" name="mandatory" value="true" defaultChecked required />
+            Obligatoire
+          </label>
+          <label className="flex items-center gap-1.5">
+            <input type="radio" name="mandatory" value="false" />
+            Facultative
+          </label>
+        </div>
+      </fieldset>
       <button
         type="submit"
         disabled={pending}
@@ -79,6 +96,34 @@ export function CreateSubjectForm({ levels }: { levels: readonly string[] }) {
         <p role="status" className="w-full text-xs text-green-600 dark:text-green-400">{state.success}</p>
       )}
     </form>
+  );
+}
+
+// Bascule obligatoire/facultative d'une matière déjà au catalogue : s'enregistre
+// dès qu'on change le choix.
+export function MandatoryToggle({ id, mandatory }: { id: string; mandatory: boolean }) {
+  const [state, formAction, pending] = useActionState(setSubjectMandatoryAction, initialState);
+
+  return (
+    <div>
+      <form
+        action={formAction}
+        onChange={(e) => (e.currentTarget as HTMLFormElement).requestSubmit()}
+      >
+        <input type="hidden" name="id" value={id} />
+        <select
+          aria-label="Obligatoire ou facultative"
+          name="mandatory"
+          defaultValue={String(mandatory)}
+          disabled={pending}
+          className="rounded-lg border border-black/10 bg-white px-2 py-0.5 text-xs text-zinc-900 outline-none focus:ring-2 focus:ring-black/20 dark:border-white/10 dark:bg-black dark:text-zinc-50"
+        >
+          <option value="true">Obligatoire</option>
+          <option value="false">Facultative</option>
+        </select>
+      </form>
+      {state.error && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{state.error}</p>}
+    </div>
   );
 }
 

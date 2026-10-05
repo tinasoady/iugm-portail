@@ -33,7 +33,7 @@ import { ThemeToggle } from "./theme-toggle";
 import { LiveClock } from "./live-clock";
 import { SessionWatcher } from "./session-watcher";
 import { BsClipboardData, BsDatabase } from "react-icons/bs";
-import { FaBook, FaPencilAlt, FaTasks } from "react-icons/fa";
+import { FaBook, FaPencilAlt } from "react-icons/fa";
 
 const ROLE_LABELS: Record<string, string> = {
   SUPERADMIN: "Super administrateur",
@@ -111,13 +111,6 @@ const NAV_ITEMS: NavItem[] = [
     icon: <FaPencilAlt />,
     roles: ["SUPERADMIN", "AGENT_PEDAGOGIQUE"],
     task: "notes",
-  },
-  {
-    href: "/matieres",
-    label: "Matières (oblig./facult.)",
-    icon: <FaTasks />,
-    roles: ["SUPERADMIN", "AGENT_ADMINISTRATION", "AGENT_PEDAGOGIQUE"],
-    task: "matieres",
   },
   {
     href: "/etudiants",
