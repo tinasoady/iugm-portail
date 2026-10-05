@@ -5,6 +5,10 @@
 export const LIST_PAGE_SIZE = 20;
 export const LIST_MAX_LIMIT = 1000;
 
+// Listes d'étudiants : 10 par 10, pour ne pas envahir l'écran. Les tableaux
+// défilent dans leur propre cadre (voir app/ui/scroll-area.ts), la page ne bouge pas.
+export const STUDENT_LIST_PAGE_SIZE = 10;
+
 // Lit le paramètre d'URL et le ramène à un multiple de `pageSize` compris
 // entre `pageSize` et `max` (valeur absente, négative ou absurde = une page).
 export function parseListLimit(

@@ -1043,6 +1043,7 @@ export type InscritsFilters = {
   mention?: string;
   year?: string | null;
   level?: string | null;
+  filiere?: string | null; // formation : mention de licence ou spécialisation de master
 };
 
 const VALID_MENTIONS: MentionValue[] = ["ECHEC", "PASSABLE", "ASSEZ_BIEN", "BIEN", "TRES_BIEN"];
@@ -1055,10 +1056,15 @@ export async function listInscrits(filters: InscritsFilters = {}, formation?: st
     ? (filters.mention as MentionValue)
     : undefined;
 
+  // Périmètre imposé (secrétaire de formation) ET filière choisie : cumulés
+  const formationConditions = [formation, filters.filiere]
+    .filter((f): f is string => !!f)
+    .map((f) => ({ OR: [{ mention: f }, { program: f }] }));
+
   return prisma.student.findMany({
     where: {
       status: "INSCRIT",
-      ...(formation ? { AND: [{ OR: [{ mention: formation }, { program: formation }] }] } : {}),
+      ...(formationConditions.length > 0 ? { AND: formationConditions } : {}),
       ...(filters.year ? { academicYear: filters.year } : {}),
       ...(filters.level ? { level: filters.level } : {}),
       ...(filters.program ? { program: filters.program } : {}),
@@ -1101,10 +1107,8 @@ export type StudentListParams = {
   niveau?: string; // L1, L2, L3, M1, M2
   sort?: string;
   dir?: string; // asc | desc
-  page?: number; // page affichée (1-indexée)
+  limit?: number; // nombre de dossiers à afficher (« Voir plus » par tranches de 10)
 };
-
-export const STUDENT_PAGE_SIZE = 50;
 
 // Forme partagée par listStudents (paginé) ET getAllFilteredStudents (export
 // CSV / vue imprimable) : les deux utilisent le même `include`, donc le même
@@ -1120,8 +1124,6 @@ export type StudentWithAccountAndResults = Prisma.StudentGetPayload<{
 export type StudentListResult = {
   students: StudentWithAccountAndResults[];
   total: number;
-  page: number;
-  totalPages: number;
 };
 
 // Construit les conditions WHERE + le tri communs à l'affichage paginé, à
@@ -1163,23 +1165,22 @@ export function buildStudentQuery(params: StudentListParams, formation?: string 
 }
 
 // `formation` : périmètre imposé côté serveur (secrétaire de formation).
-// Toujours paginé (STUDENT_PAGE_SIZE par page) : sur un grand établissement,
-// charger tous les dossiers en mémoire à chaque affichage ne passe pas à
-// l'échelle. Le classement par blocs (filière/niveau/année...) s'applique à
-// la page courante, pas à l'ensemble des dossiers.
+// Toujours borné (`limit` dossiers, 10 par défaut) : sur un grand
+// établissement, charger tous les dossiers en mémoire à chaque affichage ne
+// passe pas à l'échelle. Le classement par blocs (filière/niveau/année...)
+// s'applique aux dossiers affichés, pas à l'ensemble.
 export async function listStudents(
   params: StudentListParams = {},
   formation?: string | null,
 ): Promise<StudentListResult> {
   const { where, orderBy } = buildStudentQuery(params, formation);
-  const page = Math.max(1, params.page ?? 1);
+  const limit = Math.max(1, params.limit ?? 10);
 
   const [students, total] = await Promise.all([
     prisma.student.findMany({
       where,
       orderBy,
-      skip: (page - 1) * STUDENT_PAGE_SIZE,
-      take: STUDENT_PAGE_SIZE,
+      take: limit,
       include: {
         account: { select: { email: true } },
         // Nécessaire pour le classement par mention (dernier résultat en premier)
@@ -1189,7 +1190,7 @@ export async function listStudents(
     prisma.student.count({ where }),
   ]);
 
-  return { students, total, page, totalPages: Math.max(1, Math.ceil(total / STUDENT_PAGE_SIZE)) };
+  return { students, total };
 }
 
 // Variante non paginée : renvoie TOUS les dossiers correspondant aux mêmes

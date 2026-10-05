@@ -1,15 +1,20 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { FaLock } from "react-icons/fa";
 
 import { getSession } from "@/lib/auth";
 import { hasTaskPermission, getUserFormation, canManageStudent } from "@/lib/permissions";
-import { listInscrits, getStudentProfile } from "@/lib/students";
+import { listInscrits, getStudentProfile, getStudentFilterValues } from "@/lib/students";
 import { listSubjectsForStudent } from "@/lib/subjects";
 import { currentAcademicYear, getSelectedAcademicYear } from "@/lib/academic-year";
 import { getSelectedLevel } from "@/lib/level";
+import { ALL_LEVELS_VALUE, LEVELS } from "@/lib/level-shared";
 import { AppShell } from "@/app/ui/app-shell";
+import { AutoSubmitSelect } from "@/app/ui/auto-submit-select";
+import { SCROLL_AREA_BLACK_CLASS } from "@/app/ui/scroll-area";
 import { NotesForm } from "./notes-form";
 import { ShowMore } from "@/app/ui/show-more";
-import { LIST_PAGE_SIZE, hasMore, moreHref, parseListLimit } from "@/lib/pagination";
+import { STUDENT_LIST_PAGE_SIZE, hasMore, moreHref, parseListLimit } from "@/lib/pagination";
 
 const selectClass =
   "rounded-xl border border-black/10 bg-white px-3 py-1.5 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-black/20 dark:border-white/10 dark:bg-black dark:text-zinc-50";
@@ -19,6 +24,8 @@ export default async function AgentPedagogiqueNotesPage({
 }: {
   searchParams: Promise<{
     qi?: string;
+    niveau?: string;
+    filiere?: string;
     studentId?: string;
     academicYear?: string;
     semester?: string;
@@ -30,8 +37,16 @@ export default async function AgentPedagogiqueNotesPage({
   if (!["AGENT_PEDAGOGIQUE", "SUPERADMIN"].includes(session.role)) redirect("/");
   if (!(await hasTaskPermission(session.sub, session.role, "notes"))) redirect("/");
 
-  const { qi, studentId, academicYear, semester, limit: limitParam } = await searchParams;
-  const limit = parseListLimit(limitParam);
+  const {
+    qi,
+    niveau: niveauParam,
+    filiere: filiereParam,
+    studentId,
+    academicYear,
+    semester,
+    limit: limitParam,
+  } = await searchParams;
+  const limit = parseListLimit(limitParam, STUDENT_LIST_PAGE_SIZE);
 
   const userFormation = await getUserFormation(session.sub, session.role);
   const [selectedYear, selectedLevel] = await Promise.all([
@@ -42,10 +57,38 @@ export default async function AgentPedagogiqueNotesPage({
   const gradingYear = academicYear?.trim() || defaultYear;
   const gradingSemester = semester === "S2" ? "S2" : "S1";
 
+  // Niveau et filière se choisissent ici même ; sans choix explicite, le niveau
+  // reprend le sélecteur global de l'en-tête (« ALL » = tous les niveaux, qui
+  // doit primer sur lui). Une secrétaire de formation reste limitée à sa filière.
+  const niveau =
+    niveauParam === undefined
+      ? selectedLevel
+      : niveauParam === ALL_LEVELS_VALUE || !(LEVELS as readonly string[]).includes(niveauParam)
+        ? null
+        : niveauParam;
+  const filiere = userFormation ? null : filiereParam || null;
+  const filterValues = await getStudentFilterValues(selectedYear);
+
   const inscrits = await listInscrits(
-    { q: qi, year: selectedYear, level: selectedLevel },
+    { q: qi, year: selectedYear, level: niveau, filiere },
     userFormation,
   );
+
+  // Choix à conserver d'une page à l'autre (liens « Saisir les notes », « Voir plus »)
+  const keep = {
+    qi,
+    niveau: niveauParam,
+    filiere: filiere ?? undefined,
+  };
+  const studentHref = (id: string) => {
+    const query = new URLSearchParams({
+      studentId: id,
+      academicYear: gradingYear,
+      semester: gradingSemester,
+    });
+    for (const [k, v] of Object.entries(keep)) if (v) query.set(k, v);
+    return `/agent-pedagogique/notes?${query.toString()}`;
+  };
 
   const visibleInscrits = inscrits.slice(0, limit);
 
@@ -89,12 +132,55 @@ export default async function AgentPedagogiqueNotesPage({
             placeholder="Nom ou matricule..."
             className={`w-56 ${selectClass}`}
           />
+          <AutoSubmitSelect
+            aria-label="Niveau"
+            name="niveau"
+            defaultValue={niveau ?? ALL_LEVELS_VALUE}
+            className={selectClass}
+          >
+            <option value={ALL_LEVELS_VALUE}>Tous les niveaux</option>
+            {LEVELS.map((l) => (
+              <option key={l} value={l}>
+                {l}
+              </option>
+            ))}
+          </AutoSubmitSelect>
+          {userFormation ? (
+            <span
+              className="flex items-center gap-1.5 rounded-xl bg-indigo-50 px-3 py-1.5 text-sm font-medium text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300"
+              title="Votre accès est limité à cette formation"
+            >
+              <FaLock size={12} /> Formation : {userFormation}
+            </span>
+          ) : (
+            <AutoSubmitSelect
+              aria-label="Filière"
+              name="filiere"
+              defaultValue={filiere ?? ""}
+              className={selectClass}
+            >
+              <option value="">Toutes les filières</option>
+              {filterValues.filieres.map((f) => (
+                <option key={f} value={f}>
+                  {f}
+                </option>
+              ))}
+            </AutoSubmitSelect>
+          )}
           <button
             type="submit"
             className="rounded-xl border border-black/10 px-3 py-1.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-white/10 dark:text-zinc-200 dark:hover:bg-zinc-900"
           >
             Rechercher
           </button>
+          {(qi || niveauParam !== undefined || filiere) && (
+            <Link
+              href="/agent-pedagogique/notes"
+              className="rounded-xl px-3 py-1.5 text-sm font-medium text-zinc-500 transition hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
+            >
+              Réinitialiser
+            </Link>
+          )}
         </form>
 
         {inscrits.length === 0 ? (
@@ -102,7 +188,7 @@ export default async function AgentPedagogiqueNotesPage({
             Aucun étudiant inscrit ne correspond à ces critères.
           </p>
         ) : (
-          <div className="max-h-72 overflow-y-auto overflow-x-auto">
+          <div className={SCROLL_AREA_BLACK_CLASS}>
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-black/10 text-zinc-500 dark:border-white/10 dark:text-zinc-400">
@@ -131,7 +217,7 @@ export default async function AgentPedagogiqueNotesPage({
                     </td>
                     <td className="py-2">
                       <a
-                        href={`/agent-pedagogique/notes?studentId=${s.id}&academicYear=${gradingYear}&semester=${gradingSemester}${qi ? `&qi=${encodeURIComponent(qi)}` : ""}`}
+                        href={studentHref(s.id)}
                         className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-indigo-500"
                       >
                         Saisir les notes
@@ -148,12 +234,13 @@ export default async function AgentPedagogiqueNotesPage({
           total={inscrits.length}
           href={moreHref(
             "/agent-pedagogique/notes",
-            { qi, studentId, academicYear, semester },
+            { ...keep, studentId, academicYear, semester },
             "limit",
             limit,
+            STUDENT_LIST_PAGE_SIZE,
           )}
           canLoadMore={hasMore(visibleInscrits.length, inscrits.length, limit)}
-          pageSize={LIST_PAGE_SIZE}
+          pageSize={STUDENT_LIST_PAGE_SIZE}
         />
       </section>
 
@@ -183,6 +270,8 @@ export default async function AgentPedagogiqueNotesPage({
               <form method="get" className="mb-4 flex flex-wrap items-center gap-2">
                 <input type="hidden" name="studentId" value={studentId} />
                 {qi && <input type="hidden" name="qi" value={qi} />}
+                {niveauParam && <input type="hidden" name="niveau" value={niveauParam} />}
+                {filiere && <input type="hidden" name="filiere" value={filiere} />}
                 <input aria-label="Année universitaire"
                   name="academicYear"
                   type="text"

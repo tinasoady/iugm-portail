@@ -15,7 +15,8 @@ import { IconUsers, IconCash, IconClipboard, IconFolder } from "@/app/ui/icons";
 import { FaCheck, FaTimes, FaHourglassHalf } from "react-icons/fa";
 import { Tranche2Form } from "./tranche2-form";
 import { ShowMore } from "@/app/ui/show-more";
-import { LIST_PAGE_SIZE, hasMore, moreHref, parseListLimit } from "@/lib/pagination";
+import { SCROLL_AREA_CLASS } from "@/app/ui/scroll-area";
+import { STUDENT_LIST_PAGE_SIZE, hasMore, moreHref, parseListLimit } from "@/lib/pagination";
 
 const amountFormatter = new Intl.NumberFormat("fr-FR");
 
@@ -82,7 +83,7 @@ export default async function EcolagePage({
   if (!["AGENT_ADMINISTRATION", "SUPERADMIN"].includes(session.role)) redirect("/");
   if (!(await hasTaskPermission(session.sub, session.role, "ecolage"))) redirect("/agent-admin");
 
-  const limit = parseListLimit((await searchParams).limit);
+  const limit = parseListLimit((await searchParams).limit, STUDENT_LIST_PAGE_SIZE);
   // Année universitaire et niveau pilotés par les sélecteurs globaux de l'en-tête
   const [year, level] = await Promise.all([getSelectedAcademicYear(), getSelectedLevel()]);
   const [stats, due, revenueTrend] = await Promise.all([
@@ -304,7 +305,7 @@ export default async function EcolagePage({
             <FaCheck size={12} /> Tous les dossiers de cette sélection sont à jour.
           </p>
         ) : (
-          <div className="overflow-x-auto">
+          <div className={SCROLL_AREA_CLASS}>
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-black/10 text-xs uppercase tracking-wider text-zinc-500 dark:border-white/10 dark:text-zinc-400">
@@ -375,9 +376,9 @@ export default async function EcolagePage({
         <ShowMore
           shown={visibleDue.length}
           total={due.length}
-          href={moreHref("/agent-admin/ecolage", {}, "limit", limit)}
+          href={moreHref("/agent-admin/ecolage", {}, "limit", limit, STUDENT_LIST_PAGE_SIZE)}
           canLoadMore={hasMore(visibleDue.length, due.length, limit)}
-          pageSize={LIST_PAGE_SIZE}
+          pageSize={STUDENT_LIST_PAGE_SIZE}
         />
       </section>
     </AppShell>

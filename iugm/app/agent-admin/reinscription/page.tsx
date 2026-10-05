@@ -8,7 +8,8 @@ import { hasTaskPermission, getUserFormation } from "@/lib/permissions";
 import { AppShell } from "@/app/ui/app-shell";
 import { ReenrollForm } from "./reenroll-form";
 import { ShowMore } from "@/app/ui/show-more";
-import { LIST_PAGE_SIZE, hasMore, moreHref, parseListLimit } from "@/lib/pagination";
+import { SCROLL_AREA_CLASS } from "@/app/ui/scroll-area";
+import { STUDENT_LIST_PAGE_SIZE, hasMore, moreHref, parseListLimit } from "@/lib/pagination";
 
 export default async function ReinscriptionPage({
   searchParams,
@@ -24,7 +25,7 @@ export default async function ReinscriptionPage({
 
   const { q, limit: limitParam } = await searchParams;
   const query = q?.trim();
-  const limit = parseListLimit(limitParam);
+  const limit = parseListLimit(limitParam, STUDENT_LIST_PAGE_SIZE);
   // Secrétaire de formation : réinscriptions limitées à sa formation
   const userFormation = await getUserFormation(session.sub, session.role);
 
@@ -120,7 +121,7 @@ export default async function ReinscriptionPage({
               : "Aucun étudiant avec une inscription finalisée."}
           </p>
         ) : (
-          <div className="overflow-x-auto">
+          <div className={SCROLL_AREA_CLASS}>
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-black/10 text-xs uppercase tracking-wider text-zinc-500 dark:border-white/10 dark:text-zinc-400">
@@ -200,9 +201,9 @@ export default async function ReinscriptionPage({
         <ShowMore
           shown={students.length}
           total={totalStudents}
-          href={moreHref("/agent-admin/reinscription", { q: query }, "limit", limit)}
+          href={moreHref("/agent-admin/reinscription", { q: query }, "limit", limit, STUDENT_LIST_PAGE_SIZE)}
           canLoadMore={hasMore(students.length, totalStudents, limit)}
-          pageSize={LIST_PAGE_SIZE}
+          pageSize={STUDENT_LIST_PAGE_SIZE}
         />
       </section>
     </AppShell>

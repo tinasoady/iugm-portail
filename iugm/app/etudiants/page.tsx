@@ -14,6 +14,9 @@ import {
   GENDER_LABELS,
   REPEAT_LABELS,
 } from "@/app/ui/student-status";
+import { ShowMore } from "@/app/ui/show-more";
+import { SCROLL_AREA_CLASS } from "@/app/ui/scroll-area";
+import { STUDENT_LIST_PAGE_SIZE, hasMore, parseListLimit } from "@/lib/pagination";
 import { DeleteStudentButton, EditStudentLink } from "./delete-button";
 import { GROUP_OPTIONS, resolveGroup, groupStudents } from "./group-students";
 
@@ -36,7 +39,7 @@ type Params = {
   sort?: string;
   dir?: string;
   group?: string;
-  page?: string;
+  limit?: string;
 };
 
 // Requête (hors page) à transmettre telle quelle à l'export et à l'impression.
@@ -69,24 +72,22 @@ function sortHref(params: Params, year: string | null, key: string): string {
   return `/etudiants?${search.toString()}`;
 }
 
+// Adresse de la tranche suivante (« Voir plus ») : garde recherche, filtres,
+// classement et tri. Le niveau est conservé même vide (« Tous les niveaux »),
+// sinon la liste retomberait sur le niveau du sélecteur global.
+function moreStudentsHref(raw: Params, limit: number): string {
+  const search = new URLSearchParams();
+  for (const key of ["q", "filiere", "group", "sort", "dir"] as const) {
+    if (raw[key]) search.set(key, raw[key]);
+  }
+  if (raw.niveau !== undefined) search.set("niveau", raw.niveau);
+  search.set("limit", String(limit + STUDENT_LIST_PAGE_SIZE));
+  return `/etudiants?${search.toString()}`;
+}
+
 function sortArrow(params: Params, key: string): string {
   if (params.sort !== key) return "";
   return params.dir === "desc" ? " ↓" : " ↑";
-}
-
-// Lien de pagination : conserve tous les filtres/tri actifs
-function pageHref(params: Params, year: string | null, page: number): string {
-  const search = new URLSearchParams();
-  if (params.q) search.set("q", params.q);
-  if (year) search.set("year", year);
-  if (params.filiere) search.set("filiere", params.filiere);
-  if (params.niveau) search.set("niveau", params.niveau);
-  if (params.group) search.set("group", params.group);
-  if (params.sort) search.set("sort", params.sort);
-  if (params.dir) search.set("dir", params.dir);
-  if (page > 1) search.set("page", String(page));
-  const qs = search.toString();
-  return `/etudiants${qs ? `?${qs}` : ""}`;
 }
 
 export default async function EtudiantsPage({
@@ -116,11 +117,11 @@ export default async function EtudiantsPage({
     ...rawParams,
     niveau: rawParams.niveau !== undefined ? rawParams.niveau || undefined : (selectedLevel ?? undefined),
   };
-  const [{ students, total, page, totalPages }, filterValues] = await Promise.all([
-    listStudents(
-      { ...params, year: selectedYear ?? undefined, page: Number(params.page) || 1 },
-      userFormation,
-    ),
+  // 10 dossiers à la fois (« Voir plus » en ajoute 10) : la liste défile dans
+  // son cadre, sans allonger la page
+  const limit = parseListLimit(params.limit, STUDENT_LIST_PAGE_SIZE);
+  const [{ students, total }, filterValues] = await Promise.all([
+    listStudents({ ...params, year: selectedYear ?? undefined, limit }, userFormation),
     getStudentFilterValues(selectedYear),
   ]);
 
@@ -210,8 +211,7 @@ export default async function EtudiantsPage({
         </form>
         <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs text-zinc-500 dark:text-zinc-400">
-            {total} étudiant(s) au total — page {page} / {totalPages} — cliquez sur un en-tête de
-            colonne pour trier.
+            {total} étudiant(s) au total — cliquez sur un en-tête de colonne pour trier.
           </p>
           <div className="flex items-center gap-2">
             <a
@@ -232,7 +232,7 @@ export default async function EtudiantsPage({
         </div>
         <p className="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400">
           Impression et export portent sur l&apos;ensemble des étudiants correspondant aux
-          critères ci-dessus (pas seulement la page affichée).
+          critères ci-dessus (pas seulement les lignes affichées).
         </p>
       </section>
 
@@ -244,7 +244,9 @@ export default async function EtudiantsPage({
         </section>
       )}
 
-      {/* Un bloc par année universitaire */}
+      {/* Un bloc par année universitaire, dans un cadre qui défile seul */}
+      {groups.length > 0 && (
+      <div className={`${SCROLL_AREA_CLASS} space-y-5`}>
       {groups.map(([year, list]) => (
         <section
           key={year}
@@ -324,7 +326,7 @@ export default async function EtudiantsPage({
             ))}
           </div>
 
-          <div className="hidden overflow-x-auto md:block">
+          <div className="hidden md:block">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-black/10 text-xs uppercase tracking-wider dark:border-white/10">
@@ -475,37 +477,17 @@ export default async function EtudiantsPage({
           </div>
         </section>
       ))}
-
-      {/* Pagination : 50 dossiers par page, tous filtres/tri conservés */}
-      {totalPages > 1 && (
-        <section className="rounded-2xl border border-black/5 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-zinc-900">
-          <div className="flex items-center justify-between">
-            {page > 1 ? (
-              <Link
-                href={pageHref(params, selectedYear, page - 1)}
-                className="rounded-xl border border-black/10 px-3 py-1.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-white/10 dark:text-zinc-200 dark:hover:bg-zinc-800"
-              >
-                ← Page précédente
-              </Link>
-            ) : (
-              <span />
-            )}
-            <span className="text-sm text-zinc-500 dark:text-zinc-400">
-              Page {page} / {totalPages}
-            </span>
-            {page < totalPages ? (
-              <Link
-                href={pageHref(params, selectedYear, page + 1)}
-                className="rounded-xl border border-black/10 px-3 py-1.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-white/10 dark:text-zinc-200 dark:hover:bg-zinc-800"
-              >
-                Page suivante →
-              </Link>
-            ) : (
-              <span />
-            )}
-          </div>
-        </section>
+      </div>
       )}
+
+      {/* Pied de liste : « Voir plus » ajoute 10 dossiers, filtres et tri conservés */}
+      <ShowMore
+        shown={students.length}
+        total={total}
+        href={moreStudentsHref(rawParams, limit)}
+        canLoadMore={hasMore(students.length, total, limit)}
+        pageSize={STUDENT_LIST_PAGE_SIZE}
+      />
     </AppShell>
   );
 }

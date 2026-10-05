@@ -7,10 +7,11 @@ import { getSelectedAcademicYear } from "@/lib/academic-year";
 import { getSelectedLevel } from "@/lib/level";
 import { getFinancialReport, parseReportParams } from "@/lib/reports";
 import { FORMATIONS } from "@/lib/formations";
-import { LIST_PAGE_SIZE, hasMore, moreHref, parseListLimit } from "@/lib/pagination";
+import { STUDENT_LIST_PAGE_SIZE, hasMore, moreHref, parseListLimit } from "@/lib/pagination";
 import { AppShell } from "@/app/ui/app-shell";
 import { StatCard } from "@/app/ui/stat-card";
 import { ShowMore } from "@/app/ui/show-more";
+import { SCROLL_AREA_CLASS } from "@/app/ui/scroll-area";
 import { IconUsers, IconCash, IconClipboard, IconFolder } from "@/app/ui/icons";
 
 const amountFormatter = new Intl.NumberFormat("fr-FR");
@@ -35,7 +36,7 @@ export default async function ReportsPage({
   if (!(await hasTaskPermission(session.sub, session.role, "ecolage"))) redirect("/");
 
   const sp = await searchParams;
-  const limit = parseListLimit(sp.limit);
+  const limit = parseListLimit(sp.limit, STUDENT_LIST_PAGE_SIZE);
 
   // Année et niveau : sélecteurs globaux de l'en-tête (comme le reste du site)
   const [selectedYear, selectedLevel, scopeFormation] = await Promise.all([
@@ -239,7 +240,7 @@ export default async function ReportsPage({
             Tous les dossiers de cette sélection sont à jour.
           </p>
         ) : (
-          <div className="overflow-x-auto">
+          <div className={SCROLL_AREA_CLASS}>
             <table className="w-full text-left text-sm">
               <caption className="sr-only">Dossiers dont l&apos;écolage n&apos;est pas soldé</caption>
               <thead>
@@ -278,9 +279,9 @@ export default async function ReportsPage({
         <ShowMore
           shown={visibleDue.length}
           total={report.dueStudents.length}
-          href={moreHref("/rapports", { f: effectiveFormation ?? undefined }, "limit", limit)}
+          href={moreHref("/rapports", { f: effectiveFormation ?? undefined }, "limit", limit, STUDENT_LIST_PAGE_SIZE)}
           canLoadMore={hasMore(visibleDue.length, report.dueStudents.length, limit)}
-          pageSize={LIST_PAGE_SIZE}
+          pageSize={STUDENT_LIST_PAGE_SIZE}
         />
       </section>
     </AppShell>

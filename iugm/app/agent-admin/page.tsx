@@ -10,7 +10,8 @@ import { getLevelFinancialInfos, registrationMinimum, FOREIGN_NATIONALITY } from
 import { AppShell } from "@/app/ui/app-shell";
 import { StatCard } from "@/app/ui/stat-card";
 import { ShowMore } from "@/app/ui/show-more";
-import { LIST_PAGE_SIZE, hasMore, moreHref, parseListLimit } from "@/lib/pagination";
+import { SCROLL_AREA_BLACK_CLASS } from "@/app/ui/scroll-area";
+import { STUDENT_LIST_PAGE_SIZE, hasMore, moreHref, parseListLimit } from "@/lib/pagination";
 import { IconFolder, IconClipboard, IconShield, IconCap } from "@/app/ui/icons";
 import { FaDownload } from "react-icons/fa";
 import { STATUS_LABELS, STATUS_BADGE_CLASSES } from "@/app/ui/student-status";
@@ -29,7 +30,7 @@ export default async function AgentAdminPage({
   if (!["AGENT_ADMINISTRATION", "SUPERADMIN"].includes(session.role)) redirect("/");
 
   const { q, limit: limitParam } = await searchParams;
-  const limit = parseListLimit(limitParam);
+  const limit = parseListLimit(limitParam, STUDENT_LIST_PAGE_SIZE);
   // Secrétaire de formation : dossiers limités à sa formation
   const userFormation = await getUserFormation(session.sub, session.role);
   // Sélecteur global d'année universitaire et de niveau (en-tête)
@@ -170,7 +171,7 @@ export default async function AgentAdminPage({
                 {q ? `Aucun dossier ne correspond à « ${q} ».` : "Aucun dossier pour le moment."}
               </p>
             ) : (
-              <div className="overflow-x-auto">
+              <div className={SCROLL_AREA_BLACK_CLASS}>
                 <table className="w-full text-left text-sm">
                   <thead>
                     <tr className="border-b border-black/10 text-zinc-500 dark:border-white/10 dark:text-zinc-400">
@@ -222,9 +223,9 @@ export default async function AgentAdminPage({
             <ShowMore
               shown={visibleStudents.length}
               total={students.length}
-              href={moreHref("/agent-admin", { q }, "limit", limit)}
+              href={moreHref("/agent-admin", { q }, "limit", limit, STUDENT_LIST_PAGE_SIZE)}
               canLoadMore={hasMore(visibleStudents.length, students.length, limit)}
-              pageSize={LIST_PAGE_SIZE}
+              pageSize={STUDENT_LIST_PAGE_SIZE}
             />
           </section>
         </div>

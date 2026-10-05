@@ -9,7 +9,8 @@ import { getSelectedLevel } from "@/lib/level";
 import { AppShell } from "@/app/ui/app-shell";
 import { StatCard } from "@/app/ui/stat-card";
 import { ShowMore } from "@/app/ui/show-more";
-import { LIST_PAGE_SIZE, hasMore, moreHref, parseListLimit } from "@/lib/pagination";
+import { SCROLL_AREA_BLACK_CLASS } from "@/app/ui/scroll-area";
+import { STUDENT_LIST_PAGE_SIZE, hasMore, moreHref, parseListLimit } from "@/lib/pagination";
 import { IconClipboard, IconCap, IconChart, IconFolder } from "@/app/ui/icons";
 import { FaPrint } from "react-icons/fa";
 import {
@@ -44,9 +45,9 @@ export default async function AgentPedagogiquePage({
   if (!["AGENT_PEDAGOGIQUE", "SUPERADMIN"].includes(session.role)) redirect("/");
 
   const { q, qi, program, department, mention, lp, li, lu } = await searchParams;
-  const pendingLimit = parseListLimit(lp);
-  const inscritsLimit = parseListLimit(li);
-  const upstreamLimit = parseListLimit(lu);
+  const pendingLimit = parseListLimit(lp, STUDENT_LIST_PAGE_SIZE);
+  const inscritsLimit = parseListLimit(li, STUDENT_LIST_PAGE_SIZE);
+  const upstreamLimit = parseListLimit(lu, STUDENT_LIST_PAGE_SIZE);
   // Paramètres conservés d'une liste à l'autre quand on clique « Voir plus »
   const keep = { q, qi, program, department, mention, lp, li, lu };
 
@@ -150,7 +151,7 @@ export default async function AgentPedagogiquePage({
               Aucun dossier en attente de validation pédagogique.
             </p>
           ) : (
-            <div className="overflow-x-auto">
+            <div className={SCROLL_AREA_BLACK_CLASS}>
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-black/10 text-zinc-500 dark:border-white/10 dark:text-zinc-400">
@@ -186,9 +187,9 @@ export default async function AgentPedagogiquePage({
           <ShowMore
             shown={visiblePending.length}
             total={pending.length}
-            href={moreHref("/agent-pedagogique", keep, "lp", pendingLimit)}
+            href={moreHref("/agent-pedagogique", keep, "lp", pendingLimit, STUDENT_LIST_PAGE_SIZE)}
             canLoadMore={hasMore(visiblePending.length, pending.length, pendingLimit)}
-            pageSize={LIST_PAGE_SIZE}
+            pageSize={STUDENT_LIST_PAGE_SIZE}
           />
         </section>
 
@@ -247,7 +248,7 @@ export default async function AgentPedagogiquePage({
               Aucun étudiant inscrit ne correspond à ces critères.
             </p>
           ) : (
-            <div className="overflow-x-auto">
+            <div className={SCROLL_AREA_BLACK_CLASS}>
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-black/10 text-zinc-500 dark:border-white/10 dark:text-zinc-400">
@@ -315,9 +316,9 @@ export default async function AgentPedagogiquePage({
           <ShowMore
             shown={visibleInscrits.length}
             total={inscrits.length}
-            href={moreHref("/agent-pedagogique", keep, "li", inscritsLimit)}
+            href={moreHref("/agent-pedagogique", keep, "li", inscritsLimit, STUDENT_LIST_PAGE_SIZE)}
             canLoadMore={hasMore(visibleInscrits.length, inscrits.length, inscritsLimit)}
-            pageSize={LIST_PAGE_SIZE}
+            pageSize={STUDENT_LIST_PAGE_SIZE}
           />
         </section>
 
@@ -349,7 +350,7 @@ export default async function AgentPedagogiquePage({
               {q ? `Aucun dossier en cours ne correspond à « ${q} ».` : "Aucun dossier en cours."}
             </p>
           ) : (
-            <div className="overflow-x-auto">
+            <div className={SCROLL_AREA_BLACK_CLASS}>
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-black/10 text-zinc-500 dark:border-white/10 dark:text-zinc-400">
@@ -383,9 +384,9 @@ export default async function AgentPedagogiquePage({
           <ShowMore
             shown={visibleUpstream.length}
             total={upstream.length}
-            href={moreHref("/agent-pedagogique", keep, "lu", upstreamLimit)}
+            href={moreHref("/agent-pedagogique", keep, "lu", upstreamLimit, STUDENT_LIST_PAGE_SIZE)}
             canLoadMore={hasMore(visibleUpstream.length, upstream.length, upstreamLimit)}
-            pageSize={LIST_PAGE_SIZE}
+            pageSize={STUDENT_LIST_PAGE_SIZE}
           />
         </section>
     </AppShell>
