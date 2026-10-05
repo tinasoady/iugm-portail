@@ -273,7 +273,7 @@ export async function AppShell({
         <p className="px-6 pt-2 pb-2 text-[11px] font-semibold tracking-[0.2em] text-zinc-400">
           MENUS
         </p>
-        <nav aria-label="Navigation principale" className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 pb-4">
+        <nav aria-label="Navigation principale" className="sidebar-scroll min-h-0 flex-1 space-y-1 overflow-y-auto px-3 pb-4">
           {nav.map((item) => {
             const isActive = item.href === active;
             return (

@@ -95,6 +95,29 @@ body {
   outline-offset: 2px;
 }
 
+/* Barre de défilement discrète pour le menu latéral sombre : fine, quasi
+   transparente au repos, et ne réapparaît qu'au survol du menu. */
+.sidebar-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.sidebar-scroll:hover {
+  scrollbar-color: rgb(255 255 255 / 0.15) transparent;
+}
+.sidebar-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 9999px;
+}
+.sidebar-scroll:hover::-webkit-scrollbar-thumb {
+  background: rgb(255 255 255 / 0.15);
+}
+
 /* Respecte la préférence système « réduire les animations » */
 @media (prefers-reduced-motion: reduce) {
   *,
