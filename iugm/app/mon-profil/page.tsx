@@ -1,6 +1,7 @@
-﻿import { redirect } from "next/navigation";
+﻿import Link from "next/link";
+import { redirect } from "next/navigation";
 import QRCode from "qrcode";
-import { FaExclamationTriangle } from "react-icons/fa";
+import { FaCamera, FaExclamationTriangle } from "react-icons/fa";
 
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
@@ -90,14 +91,23 @@ export default async function MonProfilPage() {
           <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-zinc-900">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-4">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-indigo-600 text-lg font-bold text-white">
-                  {student.fullName
-                    .split(/\s+/)
-                    .slice(0, 2)
-                    .map((p) => p[0])
-                    .join("")
-                    .toUpperCase()}
-                </div>
+                {user.photo ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- URL Vercel Blob, next/image inutile ici
+                  <img
+                    src={user.photo}
+                    alt="Photo d'identité"
+                    className="h-20 w-16 rounded-lg border border-black/10 object-cover dark:border-white/10"
+                  />
+                ) : (
+                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-indigo-600 text-lg font-bold text-white">
+                    {student.fullName
+                      .split(/\s+/)
+                      .slice(0, 2)
+                      .map((p) => p[0])
+                      .join("")
+                      .toUpperCase()}
+                  </div>
+                )}
                 <div>
                   <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">
                     {student.fullName}
@@ -113,6 +123,24 @@ export default async function MonProfilPage() {
               </span>
             </div>
           </section>
+
+          {/* Photo d'identité : demandée à tout étudiant, elle s'affiche sur la
+              carte étudiante numérique (scan du QR code) */}
+          {!user.photo && (
+            <div className="rounded-2xl border border-indigo-200 bg-indigo-50 p-4 text-sm text-indigo-900 dark:border-indigo-900 dark:bg-indigo-950/40 dark:text-indigo-200">
+              <p className="flex items-center gap-1.5 font-semibold">
+                <FaCamera size={13} /> Ajoutez votre photo d&apos;identité
+              </p>
+              <p className="mt-1">
+                Vous êtes prié(e) de prendre ou d&apos;importer une vraie photo d&apos;identité
+                (visage de face, fond clair). Elle s&apos;affichera sur votre carte étudiante quand
+                votre QR code sera scanné.{" "}
+                <Link href="/profil" className="font-semibold underline">
+                  Ajouter ma photo
+                </Link>
+              </p>
+            </div>
+          )}
 
           {/* Reste à payer : alerte visible seulement s'il manque effectivement
               une somme (tarif configuré) — un tarif manquant ne doit pas

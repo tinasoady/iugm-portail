@@ -6,7 +6,8 @@ import { AppShell } from "@/app/ui/app-shell";
 import { ChangePasswordForm } from "@/app/changer-mot-de-passe/change-password-form";
 import { canUseTwoFactor } from "@/lib/two-factor";
 import { maskEmail } from "@/lib/recovery-email";
-import { PhotoForm, InfoForm } from "./profile-forms";
+import { InfoForm } from "./profile-forms";
+import { PhotoForm } from "./photo-form";
 import { TwoFactorCard } from "./two-factor-card";
 import { RecoveryEmailCard } from "./recovery-email-card";
 
@@ -69,11 +70,12 @@ export default async function ProfilPage() {
         {/* Photo de profil */}
         <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-zinc-900">
           <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-            Photo de profil
+            {user.role === "ETUDIANT" ? "Photo d'identité" : "Photo de profil"}
           </h2>
           <PhotoForm
             currentPhoto={user.photo}
             initials={initialsOf(user.fullName ?? user.email)}
+            isStudent={user.role === "ETUDIANT"}
           />
         </section>
 

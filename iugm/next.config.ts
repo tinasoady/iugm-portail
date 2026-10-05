@@ -75,10 +75,11 @@ const nextConfig: NextConfig = {
           { key: "X-Frame-Options", value: "DENY" },
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-          // Aucune fonctionnalité du navigateur utilisée par le portail
+          // Seule la caméra est utilisée, par le portail lui-même (« Prendre une
+          // photo » d'identité sur Mon compte) : jamais par un cadre tiers.
           {
             key: "Permissions-Policy",
-            value: "camera=(), microphone=(), geolocation=(), payment=()",
+            value: "camera=(self), microphone=(), geolocation=(), payment=()",
           },
           // Sans effet en HTTP (ignoré par les navigateurs) : inoffensif en
           // développement, actif dès que le déploiement passe en HTTPS.

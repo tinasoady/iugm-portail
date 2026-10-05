@@ -6,6 +6,7 @@ import {
   regenerateStudentQrToken,
   getStudentByQrToken,
 } from "@/lib/students";
+import { prisma } from "@/lib/prisma";
 import { disconnectDb, resetDb } from "../setup/db";
 import { createActor, validRegisterInput } from "../setup/factories";
 
@@ -39,6 +40,35 @@ describe("carte étudiante numérique (QR code)", () => {
     expect(card).not.toHaveProperty("address");
     expect(card).not.toHaveProperty("phone");
     expect(card).not.toHaveProperty("initialPassword");
+  });
+
+  it("expose la photo d'identité du compte étudiant, et rien d'autre du compte", async () => {
+    const actor = await createActor("AGENT_ADMINISTRATION");
+    const student = await registerStudent(validRegisterInput(), actor.id);
+    const token = await getOrCreateStudentQrToken(student.id);
+
+    // Le compte de connexion n'existe qu'après la validation pédagogique : on
+    // en rattache un directement, ce test ne porte que sur la carte publique.
+    const account = await prisma.user.create({
+      data: {
+        email: "etudiant-qr@test.local",
+        passwordHash: "not-a-real-hash",
+        role: "ETUDIANT",
+        fullName: student.fullName,
+      },
+    });
+    await prisma.student.update({ where: { id: student.id }, data: { accountId: account.id } });
+
+    const before = await getStudentByQrToken(token);
+    expect(before?.account?.photo ?? null).toBeNull();
+
+    const url = "https://exemple.public.blob.vercel-storage.com/avatars/photo.jpg";
+    await prisma.user.update({ where: { id: account.id }, data: { photo: url } });
+
+    const card = await getStudentByQrToken(token);
+    expect(card?.account?.photo).toBe(url);
+    expect(card?.account).not.toHaveProperty("email");
+    expect(card?.account).not.toHaveProperty("passwordHash");
   });
 
   it("renvoie null pour un jeton inconnu", async () => {

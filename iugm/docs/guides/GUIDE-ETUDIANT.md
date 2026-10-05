@@ -35,7 +35,7 @@ Si une information est fausse, signalez-la à l'administration : seuls les agent
 
 ## 3. Carte étudiante numérique (QR code)
 
-Votre carte contient un QR code. Toute personne qui le scanne voit une page de vérification de votre carte, **sans avoir besoin de se connecter**.
+Votre carte contient un QR code. Toute personne qui le scanne voit une page de vérification de votre carte, **sans avoir besoin de se connecter**. Cette page affiche votre **photo d'identité** : prenez ou importez une vraie photo (visage de face, fond clair) depuis **Mon compte** ; un rappel s'affiche sur votre profil tant qu'elle manque.
 
 Si vous pensez que votre QR code a été partagé par erreur, utilisez le bouton de **régénération** : l'ancien code cesse immédiatement de fonctionner et un nouveau est généré.
 
@@ -49,7 +49,7 @@ Si votre dossier contient une **adresse e-mail personnelle**, vous recevez aussi
 
 Le menu **Mon compte** permet de :
 
-- changer votre **photo** (PNG, JPEG ou WebP, 1 Mo maximum) ;
+- changer votre **photo** : bouton **Prendre une photo** (caméra) ou import d'un fichier PNG, JPEG ou WebP, recadré et allégé automatiquement ;
 - modifier votre nom affiché ;
 - **ajouter, changer ou retirer votre adresse e-mail** (nécessaire pour « Mot de passe oublié ») ;
 - **changer votre mot de passe** à tout moment. Après un changement, les autres appareils où vous étiez connecté sont déconnectés.

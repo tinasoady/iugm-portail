@@ -337,6 +337,9 @@ export async function createStudentFromExistingRecord(input: ExistingStudentInpu
 // Champs affichés sur la carte publique (page scannée) : identité et cursus
 // uniquement, jamais les données sensibles du dossier (CIN, adresse,
 // téléphone, contacts des parents...) — la page n'exige pas de connexion.
+// La photo d'identité (User.photo du compte de l'étudiant) en fait partie :
+// c'est précisément ce qui permet de vérifier que la carte est bien celle de
+// la personne qui la présente.
 const QR_CARD_SELECT = {
   matricule: true,
   fullName: true,
@@ -346,6 +349,7 @@ const QR_CARD_SELECT = {
   level: true,
   track: true,
   status: true,
+  account: { select: { photo: true } },
 } as const;
 
 export type StudentQrCard = Prisma.StudentGetPayload<{ select: typeof QR_CARD_SELECT }>;

@@ -21,6 +21,7 @@ export default async function CarteEtudiantPage({
   if (!student) notFound();
 
   const isActive = student.status === "INSCRIT";
+  const photo = student.account?.photo ?? null;
   const initials = student.fullName
     .split(/\s+/)
     .slice(0, 2)
@@ -47,9 +48,18 @@ export default async function CarteEtudiantPage({
 
         {/* Identité */}
         <div className="flex flex-col items-center gap-3 px-6 py-6 text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-indigo-600 text-xl font-bold text-white">
-            {initials}
-          </div>
+          {photo ? (
+            // eslint-disable-next-line @next/next/no-img-element -- URL Vercel Blob, next/image inutile ici
+            <img
+              src={photo}
+              alt={`Photo d'identité de ${student.fullName}`}
+              className="h-40 w-32 rounded-xl border border-black/10 object-cover shadow-sm dark:border-white/10"
+            />
+          ) : (
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-indigo-600 text-xl font-bold text-white">
+              {initials}
+            </div>
+          )}
           <div>
             <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
               {student.fullName}

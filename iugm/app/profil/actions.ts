@@ -65,6 +65,7 @@ export async function uploadPhotoAction(
   await deleteUploadedFile(previous?.photo); // évite d'accumuler les anciennes photos remplacées
   await logAction("PROFILE_UPDATED", `Photo de profil mise à jour par ${session.email}`, session.sub);
   revalidatePath("/profil");
+  revalidatePath("/mon-profil");
   return { success: "Photo de profil enregistrée." };
 }
 
@@ -80,5 +81,6 @@ export async function removePhotoAction(): Promise<ProfileState> {
   await deleteUploadedFile(previous?.photo);
   await logAction("PROFILE_UPDATED", `Photo de profil retirée par ${session.email}`, session.sub);
   revalidatePath("/profil");
+  revalidatePath("/mon-profil");
   return { success: "Photo retirée." };
 }
