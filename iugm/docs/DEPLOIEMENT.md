@@ -105,6 +105,8 @@ Migration `20261003120000_single_session` (session unique par compte) : une colo
 
 Migration `20261004100000_login_names` (connexion par nom d'utilisateur) : deux colonnes (`legacyLogin`, `pendingActivation`), une table (`ActivationToken`) et un rattrapage SQL idempotent des **comptes du personnel** : leur nouvel identifiant est la partie de l'ancienne adresse avant le « @ », nettoyée (minuscules, `a-z 0-9 . - _`) et numérotée en cas de doublon (`admin@iugm.edu` devient `admin`). **Effet au déploiement** : le personnel se connecte désormais avec ce nom d'utilisateur ; les mots de passe ne changent pas. Les **comptes étudiants** ne sont pas touchés par la migration : après le déploiement, lancer **une fois** `npx tsx scripts/backfill-student-logins.ts` (ajouter `--dry-run` pour compter d'abord) ; chacun reçoit son `prenom.nom` et garde l'ancien identifiant en alias.
 
+Migrations `20261012100000_subject_grading_settings` et `20261012110000_grading_cc_exam_elimination` (calcul automatique des résultats) : colonnes ajoutées avec une valeur par défaut ou nullables (`Subject`, `Grade`, `AcademicResult`), rien de destructif. **Effet au déploiement** : la saisie manuelle des moyennes disparaît, les résultats sont calculés à partir des notes par matière ; les moyennes déjà saisies restent affichées. Après le déploiement, renseigner dans **Matières (catalogue)** le semestre et le coefficient des matières existantes (marquées « S1 et S2 (à préciser) »), et accorder la tâche « Gérer le catalogue des matières » aux agents concernés.
+
 Les migrations sont écrites pour s'appliquer sur une base en service : colonnes
 ajoutées avec une valeur par défaut, aucune suppression de données.
 

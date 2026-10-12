@@ -336,7 +336,9 @@ enum Mention {
   TRES_BIEN // >= 16
 }
 
-// Résultat académique assigné par l'agent pédagogique
+// Résultat académique (moyenne du semestre) : calculé automatiquement à
+// partir des notes par matière (Grade), voir recomputeSemesterResult dans
+// lib/subjects.ts
 model AcademicResult {
   id           String   @id @default(cuid())
   student      Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
@@ -345,6 +347,11 @@ model AcademicResult {
   semester     String // "S1", "S2"...
   average      Float // moyenne sur 20
   mention      Mention
+  // Matières obligatoires dont la note est sous leur note éliminatoire
+  // (noms séparés par « , »), null sinon. Un semestre éliminé vaut ÉCHEC
+  // quelle que soit la moyenne, et bloque l'admission (voir
+  // getStudentYearResult dans lib/students.ts).
+  eliminatedBy String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -353,10 +360,14 @@ model AcademicResult {
 }
 
 // Matière du catalogue pédagogique, propre à une filière et un niveau.
-// Le catalogue (nom, filière, niveau, caractère obligatoire ou facultatif)
-// n'est alimenté QUE par le superadmin, depuis Admin > Matières — jamais par
-// les agents. `mandatory` est choisi à l'ajout puis modifiable par lui seul,
-// avec sa propre traçabilité (mandatorySetBy/At) distincte de createdBy/At.
+// Le catalogue (nom, filière, niveau, semestre et paramètres de calcul) est
+// alimenté depuis Admin > Matières par le superadmin, ou par un agent
+// pédagogique ayant la tâche "matieres" (limité à sa formation s'il en a
+// une). Les paramètres de calcul (semestre, coefficient, caractère, seuil du
+// bonus, part du contrôle continu, note éliminatoire) sont choisis à l'ajout
+// puis modifiables, avec leur propre traçabilité (mandatorySetBy/At)
+// distincte de createdBy/At. Ils servent au calcul automatique de la moyenne
+// du semestre (AcademicResult), voir lib/grading.ts.
 model Subject {
   id        String  @id @default(cuid())
   name      String
@@ -365,15 +376,28 @@ model Subject {
   // le dossier étudiant fonctionne directement.
   formation String
   level     String // L1, L2, L3, M1, M2 — voir lib/level-shared.ts
+  // Semestre où la matière est enseignée ("S1" | "S2"). null = non précisé
+  // (matières ajoutées avant ce paramètre) : proposée dans les deux semestres.
+  semester  String?
+  // Obligatoire : compte dans la moyenne avec son coefficient.
+  // Facultative : ne compte qu'en bonus (points au-delà de bonusThreshold).
   mandatory Boolean @default(true)
+  coefficient    Float @default(1)
+  bonusThreshold Float @default(10) // utilisé seulement si mandatory = false
+  // Part du contrôle continu dans la note de la matière, en % (0 à 100).
+  // 0 = note unique ; sinon note = CC × part + examen × (100 − part).
+  ccWeight       Float @default(0)
+  // Note éliminatoire (matière obligatoire) : une note strictement
+  // inférieure fait échouer le semestre. null = aucune.
+  eliminationThreshold Float?
 
   createdBy   User?    @relation("SubjectCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   createdById String?
   createdAt   DateTime @default(now())
 
-  // Dernière personne (secrétaire ou agent pédagogique) ayant fixé le
-  // caractère obligatoire/facultatif, et quand — null tant que personne n'a
-  // encore ajusté la valeur par défaut posée à la création.
+  // Dernière personne ayant modifié les paramètres de calcul (semestre,
+  // coefficient, caractère, seuil du bonus), et quand — null tant que
+  // personne n'a encore ajusté les valeurs posées à la création.
   mandatorySetBy   User?     @relation("SubjectMandatorySetBy", fields: [mandatorySetById], references: [id], onDelete: SetNull)
   mandatorySetById String?
   mandatorySetAt   DateTime?
@@ -387,10 +411,10 @@ model Subject {
 }
 
 // Note d'un étudiant dans une matière, pour une année/semestre donnés —
-// assignée par l'agent pédagogique (tâche "notes"). Distincte de
-// AcademicResult, qui reste la moyenne générale du semestre (utilisée pour
-// la mention et le passage de niveau) : Grade détaille cette moyenne matière
-// par matière, sans recalculer automatiquement AcademicResult.average.
+// assignée par l'agent pédagogique (tâche "notes"). AcademicResult (moyenne
+// du semestre, utilisée pour la mention et le passage de niveau) en est
+// calculé automatiquement, selon les paramètres de chaque matière, dès que
+// toutes les matières obligatoires du semestre sont notées.
 model Grade {
   id           String  @id @default(cuid())
   student      Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
@@ -400,7 +424,11 @@ model Grade {
   academicYear String // ex "2025-2026"
   semester     String // "S1", "S2"
 
-  value Float // note sur 20
+  value Float // note de la matière sur 20 (calculée si CC + examen)
+  // Détail quand la matière combine contrôle continu et examen
+  // (Subject.ccWeight > 0), null pour une note unique
+  ccValue   Float?
+  examValue Float?
 
   recordedBy   User?    @relation(fields: [recordedById], references: [id], onDelete: SetNull)
   recordedById String?

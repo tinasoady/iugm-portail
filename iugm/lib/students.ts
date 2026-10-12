@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { Prisma } from "@prisma/client";
 
 import { prisma } from "./prisma";
+import { semesterMention, type MentionValue } from "./grading";
 import { logAction } from "./audit";
 import { isValidMalagasyPhone, normalizePhone } from "./phone";
 import {
@@ -782,15 +783,19 @@ export async function reenrollStudent(
 
   let forcedOverride = false;
   if (isProgressing) {
-    const average = student.academicYear
-      ? await getStudentAverageForYear(studentId, student.academicYear)
+    const yearResult = student.academicYear
+      ? await getStudentYearResult(studentId, student.academicYear)
       : null;
-    const eligible = average !== null && average >= 10;
+    const average = yearResult?.average ?? null;
+    const eliminatedBy = yearResult?.eliminatedBy ?? [];
+    const eligible = average !== null && average >= 10 && eliminatedBy.length === 0;
     if (!eligible) {
       const reasonMissing =
         average === null
-          ? "la moyenne générale (S1+S2) de l'année en cours n'est pas encore saisie"
-          : `la moyenne générale est de ${average.toFixed(2)}/20 (10/20 requis)`;
+          ? "la moyenne générale (S1+S2) de l'année en cours n'est pas encore calculée"
+          : eliminatedBy.length > 0
+            ? `note éliminatoire en ${eliminatedBy.join(", ")}`
+            : `la moyenne générale est de ${average.toFixed(2)}/20 (10/20 requis)`;
       if (actorRole !== "SUPERADMIN") {
         throw new Error(
           `Passage au niveau supérieur impossible : ${reasonMissing}. Seul un superadmin peut forcer le passage, avec un motif.`,
@@ -880,16 +885,9 @@ export async function reenrollStudent(
 // Résultats académiques
 // ---------------------------------------------------------------------------
 
-export type MentionValue = "ECHEC" | "PASSABLE" | "ASSEZ_BIEN" | "BIEN" | "TRES_BIEN";
-
-// Barème standard : la mention découle mécaniquement de la moyenne
-export function mentionFromAverage(average: number): MentionValue {
-  if (average < 10) return "ECHEC";
-  if (average < 12) return "PASSABLE";
-  if (average < 14) return "ASSEZ_BIEN";
-  if (average < 16) return "BIEN";
-  return "TRES_BIEN";
-}
+// Barème des mentions : dans lib/grading.ts (module pur, aussi utilisé côté
+// client pour afficher la moyenne calculée), réexporté ici
+export { mentionFromAverage, type MentionValue } from "./grading";
 
 export type AssignResultInput = {
   studentId: string;
@@ -898,26 +896,38 @@ export type AssignResultInput = {
   average: number; // moyenne sur 20
 };
 
-// Moyenne générale d'un étudiant pour une année : moyenne des deux semestres
-// S1/S2, seulement si les deux sont déjà saisis (sinon `null` — condition
-// d'éligibilité au passage de niveau, voir reenrollStudent, et déclencheur de
-// l'avis d'admission, voir maybeSendAdmissionAnnouncement ci-dessous).
-export async function getStudentAverageForYear(
+// Résultat d'un étudiant pour une année : moyenne des deux semestres S1/S2
+// et matières éliminatoires de l'un ou l'autre, seulement si les deux
+// semestres sont déjà calculés (sinon `null`) — condition d'éligibilité au
+// passage de niveau (moyenne >= 10 sans note éliminatoire, voir
+// reenrollStudent) et déclencheur de l'avis d'admission (voir
+// maybeSendAdmissionAnnouncement ci-dessous).
+export async function getStudentYearResult(
   studentId: string,
   academicYear: string,
-): Promise<number | null> {
+): Promise<{ average: number; eliminatedBy: string[] } | null> {
   const results = await prisma.academicResult.findMany({
     where: { studentId, academicYear, semester: { in: ["S1", "S2"] } },
-    select: { semester: true, average: true },
+    select: { semester: true, average: true, eliminatedBy: true },
   });
   const s1 = results.find((r) => r.semester === "S1");
   const s2 = results.find((r) => r.semester === "S2");
   if (!s1 || !s2) return null;
-  return (s1.average + s2.average) / 2;
+  const eliminatedBy = [s1, s2].flatMap((r) => (r.eliminatedBy ? r.eliminatedBy.split(", ") : []));
+  return { average: (s1.average + s2.average) / 2, eliminatedBy };
+}
+
+// Moyenne générale seule (voir getStudentYearResult)
+export async function getStudentAverageForYear(
+  studentId: string,
+  academicYear: string,
+): Promise<number | null> {
+  return (await getStudentYearResult(studentId, academicYear))?.average ?? null;
 }
 
 // À l'issue de l'attribution d'un résultat, si l'étudiant a désormais ses
-// deux semestres pour cette année avec une moyenne générale >= 10, envoie un
+// deux semestres pour cette année avec une moyenne générale >= 10 et aucune
+// note éliminatoire, envoie un
 // communiqué personnel annonçant son admission et son éligibilité à la
 // réinscription au niveau suivant (jamais de saut — voir reenrollStudent).
 // Idempotent : la contrainte unique @@unique([studentId, sourceAcademicYear,
@@ -930,8 +940,9 @@ async function maybeSendAdmissionAnnouncement(
   academicYear: string,
   actorId: string,
 ): Promise<void> {
-  const average = await getStudentAverageForYear(studentId, academicYear);
-  if (average === null || average < 10) return;
+  const yearResult = await getStudentYearResult(studentId, academicYear);
+  if (yearResult === null || yearResult.average < 10 || yearResult.eliminatedBy.length > 0) return;
+  const { average } = yearResult;
 
   const student = await prisma.student.findUnique({ where: { id: studentId } });
   if (!student) return;
@@ -960,13 +971,24 @@ async function maybeSendAdmissionAnnouncement(
   }
 }
 
-// Agent pédagogique : assigne (ou remplace) le résultat d'un étudiant inscrit
-export async function assignAcademicResult(input: AssignResultInput, actorId: string) {
+// Enregistre (ou remplace) le résultat d'un semestre. En pratique appelée
+// par recomputeSemesterResult (lib/subjects.ts) avec `computed: true` : la
+// moyenne y est calculée à partir des notes par matière, il n'y a plus de
+// saisie manuelle. Dans ce cas, le statut INSCRIT n'est pas exigé — les notes
+// ont été saisies quand l'étudiant l'était, et un changement de paramètres
+// d'une matière peut recalculer une année passée après une réinscription.
+// `eliminatedBy` : matières obligatoires sous leur note éliminatoire — le
+// semestre vaut alors ÉCHEC quelle que soit la moyenne.
+export async function assignAcademicResult(
+  input: AssignResultInput,
+  actorId: string,
+  options: { computed?: boolean; eliminatedBy?: string[] } = {},
+) {
   const { studentId, academicYear, semester, average } = input;
 
   const student = await prisma.student.findUnique({ where: { id: studentId } });
   if (!student) throw new Error("Dossier introuvable.");
-  if (student.status !== "INSCRIT") {
+  if (!options.computed && student.status !== "INSCRIT") {
     throw new Error("Seul un étudiant inscrit peut recevoir un résultat.");
   }
   if (!Number.isFinite(average) || average < 0 || average > 20) {
@@ -976,16 +998,19 @@ export async function assignAcademicResult(input: AssignResultInput, actorId: st
     throw new Error("Année universitaire invalide (format attendu : 2025-2026).");
   }
 
-  const mention = mentionFromAverage(average);
+  const eliminatedBy = options.eliminatedBy?.length ? options.eliminatedBy.join(", ") : null;
+  const mention = semesterMention(average, eliminatedBy !== null);
   const result = await prisma.academicResult.upsert({
     where: { studentId_academicYear_semester: { studentId, academicYear, semester } },
-    update: { average, mention },
-    create: { studentId, academicYear, semester, average, mention },
+    update: { average, mention, eliminatedBy },
+    create: { studentId, academicYear, semester, average, mention, eliminatedBy },
   });
 
   await logAction(
-    "RESULT_ASSIGNED",
-    `Résultat ${academicYear} ${semester} de ${student.fullName} (${student.matricule}) : ${average}/20 — ${mention}`,
+    options.computed ? "RESULT_COMPUTED" : "RESULT_ASSIGNED",
+    `Résultat ${academicYear} ${semester} de ${student.fullName} (${student.matricule}) : ${average}/20 — ${mention}${
+      eliminatedBy ? ` (note éliminatoire en ${eliminatedBy})` : ""
+    }${options.computed ? " (calculé à partir des notes par matière)" : ""}`,
     actorId,
   );
 

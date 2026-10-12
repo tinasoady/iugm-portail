@@ -4,7 +4,7 @@ Ce guide couvre la validation pédagogique, les résultats, les notes par
 matière, la conduite et les communiqués.
 
 > **Vos tâches dépendent de vos permissions** (validation pédagogique,
-> résultats, notes, conduite, communiqués, matières). Si vous êtes affecté à
+> notes et résultats, conduite, communiqués, matières). Si vous êtes affecté à
 > une **formation**, vous ne voyez que les dossiers de cette formation.
 > Activez la **double authentification** depuis **Mon compte**.
 > Votre compte est créé par invitation : ouvrez le lien reçu par e-mail pour choisir votre mot de passe, puis connectez-vous avec votre **nom d'utilisateur**. L'adresse qui a reçu l'invitation est vérifiée et recevra le lien « mot de passe oublié » (modifiable dans **Mon compte** → *Adresse e-mail*).
@@ -29,7 +29,7 @@ Dans **Étudiants inscrits**, le bouton **Reçu** ouvre la version imprimable du
 
 ## 3. Résultats académiques (moyenne générale)
 
-Dans **Étudiants inscrits**, colonne *Assigner un résultat* : année universitaire (`2026-2027`), semestre (S1, S2...), moyenne **sur 20**. La **mention** est calculée automatiquement :
+Les résultats ne se saisissent plus : la moyenne de chaque semestre est **calculée automatiquement** à partir des notes par matière (voir section 4), selon les paramètres fixés dans le catalogue des matières (coefficients, bonus, contrôle continu, note éliminatoire). Elle apparaît dans la colonne *Résultats* de **Étudiants inscrits** dès que toutes les matières obligatoires du semestre sont notées. La **mention** en découle :
 
 | Moyenne | Mention |
 |---|---|
@@ -45,13 +45,13 @@ L'étudiant reçoit en plus un e-mail l'invitant à consulter ses nouveaux résu
 
 ## 4. Notes par matière
 
-Menu **Notes par matière** : cherchez un étudiant inscrit, choisissez l'année et le semestre, puis saisissez une note (0 à 20) pour chaque matière du catalogue de sa filière et de son niveau. Un champ laissé vide **n'écrase pas** une note déjà enregistrée ; ré-enregistrer une note la remplace.
+Menu **Notes par matière** : cherchez un étudiant inscrit, choisissez l'année et le semestre, puis saisissez une note (0 à 20) pour chaque matière du catalogue de sa filière, de son niveau et de ce semestre. Pour une matière qui combine **contrôle continu et examen**, saisissez les deux notes : la note de la matière est calculée selon la part du CC indiquée. Un champ laissé vide **n'écrase pas** une note déjà enregistrée ; ré-enregistrer une note la remplace.
 
-Les notes par matière sont **distinctes** de la moyenne générale du semestre (qui sert à la mention et au passage de niveau) : elles ne la recalculent pas.
+Sous le tableau s'affiche la **moyenne du semestre** calculée (avec sa mention), ou la liste des matières obligatoires qui manquent encore. Corriger une note recalcule la moyenne. Une note sous la **note éliminatoire** d'une matière obligatoire fait échouer le semestre, quelle que soit la moyenne.
 
-## 5. Matières obligatoires ou facultatives
+## 5. Catalogue des matières
 
-Le catalogue (nom, filière, niveau) est alimenté par le superadmin, qui indique aussi, à l'ajout de chaque matière, si elle est obligatoire ou facultative. Cette information est rappelée à côté de chaque matière dans **Notes par matière**.
+Le catalogue (nom, filière, niveau) est alimenté par le superadmin, ou par vous si la tâche **« Gérer le catalogue des matières »** vous est accordée (menu **Matières (catalogue)**, limité à votre formation si vous en avez une). Chaque matière a son semestre, son coefficient, sa part de contrôle continu, et est obligatoire (avec une note éliminatoire éventuelle) ou facultative. Une matière facultative ne compte qu'en **bonus** : seuls les points au-delà du seuil (10 par défaut) s'ajoutent. Le caractère et le coefficient sont rappelés à côté de chaque matière dans **Notes par matière**.
 
 ## 6. Appréciation de conduite
 

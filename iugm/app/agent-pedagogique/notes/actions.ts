@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { scheduleStudentNotification } from "@/lib/notifications";
-import { assignGrade, listSubjectsForStudent } from "@/lib/subjects";
+import { assignGrade, listSubjectsForStudent, recomputeSemesterResult } from "@/lib/subjects";
 import {
   hasTaskPermission,
   canManageStudent,
@@ -14,8 +14,8 @@ import {
 } from "@/lib/permissions";
 
 // Saisie des notes par matière : réservée à l'agent pédagogique (tâche
-// "notes"), distincte de "resultats" (moyenne générale par semestre, voir
-// app/agent-pedagogique/actions.ts).
+// "notes"). La moyenne du semestre (et sa mention) en est recalculée
+// automatiquement, selon les paramètres des matières (voir lib/grading.ts).
 async function requireNotesAgent() {
   const session = await getSession();
   if (!session || !["AGENT_PEDAGOGIQUE", "SUPERADMIN"].includes(session.role)) return null;
@@ -26,9 +26,11 @@ async function requireNotesAgent() {
 export type AssignGradesState = { success?: string; error?: string };
 
 // Enregistre en une fois toutes les notes saisies pour un étudiant, une
-// année et un semestre donnés (une entrée `note_<subjectId>` par matière du
-// formulaire). Un champ laissé vide n'écrase pas une note déjà enregistrée :
-// seules les valeurs renseignées sont prises en compte.
+// année et un semestre donnés : une entrée `note_<subjectId>` par matière à
+// note unique, ou `cc_<subjectId>` + `exam_<subjectId>` pour une matière qui
+// combine contrôle continu et examen. Un champ laissé vide n'écrase pas une
+// note déjà enregistrée : seules les valeurs renseignées sont prises en
+// compte. Tout est vérifié avant le premier enregistrement.
 export async function assignGradesAction(
   _prev: AssignGradesState,
   formData: FormData,
@@ -58,42 +60,72 @@ export async function assignGradesAction(
   // filière et son niveau) : empêche l'enregistrement d'une note sur une
   // matière d'une autre filière via un formulaire trafiqué.
   const applicableSubjects = await listSubjectsForStudent(studentId, academicYear, semester);
-  const subjectById = new Map(applicableSubjects.map((s) => [s.id, s]));
 
-  let saved = 0;
-  for (const [key, raw] of formData.entries()) {
-    if (!key.startsWith("note_")) continue;
-    const subjectId = key.slice("note_".length);
-    const subject = subjectById.get(subjectId);
-    if (!subject) continue; // matière hors périmètre : ignorée silencieusement
+  // Seules les matières applicables sont lues : un champ d'une matière hors
+  // périmètre est ignoré silencieusement.
+  const readMark = (key: string) => {
+    const text = String(formData.get(key) ?? "").trim().replace(",", ".");
+    return text === "" ? undefined : Number(text);
+  };
+  const invalid = (n: number | undefined) =>
+    n !== undefined && (!Number.isFinite(n) || n < 0 || n > 20);
 
-    const text = String(raw).trim().replace(",", ".");
-    if (text === "") continue; // champ vide = pas de saisie pour cette matière
-
-    const value = Number(text);
-    if (!Number.isFinite(value) || value < 0 || value > 20) {
-      return { error: `Note invalide pour « ${subject.name} » (doit être comprise entre 0 et 20).` };
-    }
-
-    try {
-      await assignGrade(
-        { studentId, subjectId, academicYear, semester, value },
-        session.sub,
-        { student, subject: { name: subject.name } },
-      );
-      saved += 1;
-    } catch (e) {
-      return { error: e instanceof Error ? e.message : "Erreur lors de l'enregistrement." };
+  const toSave: { subject: (typeof applicableSubjects)[number]; marks: { value?: number; cc?: number; exam?: number } }[] = [];
+  for (const subject of applicableSubjects) {
+    if (subject.ccWeight > 0) {
+      const cc = readMark(`cc_${subject.id}`);
+      const exam = readMark(`exam_${subject.id}`);
+      if (cc === undefined && exam === undefined) continue;
+      if (invalid(cc) || invalid(exam)) {
+        return { error: `Note invalide pour « ${subject.name} » (doit être comprise entre 0 et 20).` };
+      }
+      if (cc === undefined || exam === undefined) {
+        return {
+          error: `« ${subject.name} » : saisissez à la fois la note de contrôle continu et celle d'examen.`,
+        };
+      }
+      toSave.push({ subject, marks: { cc, exam } });
+    } else {
+      const value = readMark(`note_${subject.id}`);
+      if (value === undefined) continue; // champ vide = pas de saisie pour cette matière
+      if (invalid(value)) {
+        return { error: `Note invalide pour « ${subject.name} » (doit être comprise entre 0 et 20).` };
+      }
+      toSave.push({ subject, marks: { value } });
     }
   }
 
-  if (saved === 0) {
+  if (toSave.length === 0) {
     return { error: "Aucune note saisie." };
   }
 
+  try {
+    for (const { subject, marks } of toSave) {
+      await assignGrade(
+        { studentId, subjectId: subject.id, academicYear, semester, ...marks },
+        session.sub,
+        { student, subject },
+      );
+    }
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Erreur lors de l'enregistrement." };
+  }
+  const saved = toSave.length;
+
+  const computation = await recomputeSemesterResult(studentId, academicYear, semester, session.sub);
+
   revalidatePath("/agent-pedagogique/notes");
+  revalidatePath("/agent-pedagogique");
   scheduleStudentNotification(studentId, { kind: "RESULT_PUBLISHED" });
+  const savedText = `${saved} note${saved > 1 ? "s" : ""} enregistrée${saved > 1 ? "s" : ""} pour ${student.fullName}.`;
   return {
-    success: `${saved} note${saved > 1 ? "s" : ""} enregistrée${saved > 1 ? "s" : ""} pour ${student.fullName}.`,
+    success:
+      computation.status === "complete"
+        ? `${savedText} Moyenne ${semester} calculée : ${computation.average}/20${
+            computation.eliminatedBy.length > 0
+              ? ` — semestre non validé (note éliminatoire en ${computation.eliminatedBy.join(", ")})`
+              : ""
+          }.`
+        : savedText,
   };
 }

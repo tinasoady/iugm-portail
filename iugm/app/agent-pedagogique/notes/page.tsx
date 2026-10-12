@@ -120,8 +120,9 @@ export default async function AgentPedagogiqueNotesPage({
         </h2>
         <p className="mb-4 text-xs text-zinc-500 dark:text-zinc-400">
           Recherchez un étudiant inscrit pour saisir ses notes, matière par matière, pour un
-          semestre donné. Seules les matières du catalogue correspondant à sa filière et à son
-          niveau sont proposées (obligatoires et facultatives).
+          semestre donné. Seules les matières du catalogue correspondant à sa filière, à son
+          niveau et au semestre sont proposées (obligatoires et facultatives). La moyenne du
+          semestre et sa mention sont calculées automatiquement à partir de ces notes.
         </p>
 
         <form method="get" className="mb-4 flex flex-wrap items-center gap-2">

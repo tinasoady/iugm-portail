@@ -197,7 +197,7 @@ describe("reenrollStudent", () => {
         actor.id,
         "AGENT_ADMINISTRATION",
       ),
-    ).rejects.toThrow(/pas encore saisie[\s\S]*superadmin peut forcer/);
+    ).rejects.toThrow(/pas encore calculée[\s\S]*superadmin peut forcer/);
 
     await assignAcademicResult(
       { studentId: inscrit.id, academicYear: inscrit.academicYear!, semester: "S1", average: 4 },
@@ -215,6 +215,33 @@ describe("reenrollStudent", () => {
         "AGENT_ADMINISTRATION",
       ),
     ).rejects.toThrow(/4\.50[\s\S]*superadmin peut forcer/);
+  });
+
+  it("bloque le passage au niveau supérieur après une note éliminatoire, même avec la moyenne", async () => {
+    const actor = await createActor("AGENT_ADMINISTRATION");
+    const inscrit = await enrollToInscrit(actor.id);
+    await assignAcademicResult(
+      { studentId: inscrit.id, academicYear: inscrit.academicYear!, semester: "S1", average: 14 },
+      actor.id,
+      { computed: true, eliminatedBy: ["Algèbre"] },
+    );
+    await assignAcademicResult(
+      { studentId: inscrit.id, academicYear: inscrit.academicYear!, semester: "S2", average: 14 },
+      actor.id,
+    );
+
+    const s1 = await prisma.academicResult.findFirstOrThrow({
+      where: { studentId: inscrit.id, semester: "S1" },
+    });
+    expect(s1).toMatchObject({ mention: "ECHEC", eliminatedBy: "Algèbre" });
+    await expect(
+      reenrollStudent(
+        inscrit.id,
+        { academicYear: "2027-2028", level: "L2", ...REQUIRED_DOCS },
+        actor.id,
+        "AGENT_ADMINISTRATION",
+      ),
+    ).rejects.toThrow(/note éliminatoire en Algèbre/);
   });
 
   it("un superadmin peut forcer le passage avec un motif, mais pas sans motif", async () => {

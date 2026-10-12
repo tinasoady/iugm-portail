@@ -16,8 +16,8 @@ export type TaskKey =
   | "suppression_etudiant"
   | "modification_dossier"
   | "validation_pedagogique"
-  | "resultats"
   | "notes"
+  | "matieres"
   | "conduite"
   | "communiquer";
 
@@ -56,12 +56,14 @@ export const TASKS: Record<TaskKey, { label: string; roles: string[] }> = {
     label: "Valider les inscriptions pédagogiques et imprimer les reçus",
     roles: ["AGENT_PEDAGOGIQUE"],
   },
-  resultats: {
-    label: "Assigner les résultats académiques",
+  // Les résultats (moyenne et mention du semestre) ne se saisissent plus :
+  // ils sont calculés à partir des notes (ancienne tâche "resultats" retirée).
+  notes: {
+    label: "Assigner les notes par matière, par semestre (la moyenne en est calculée)",
     roles: ["AGENT_PEDAGOGIQUE"],
   },
-  notes: {
-    label: "Assigner les notes par matière, par semestre",
+  matieres: {
+    label: "Gérer le catalogue des matières et leurs paramètres de calcul (coefficients, bonus...)",
     roles: ["AGENT_PEDAGOGIQUE"],
   },
   conduite: {

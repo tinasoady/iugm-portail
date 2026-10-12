@@ -18,13 +18,13 @@ describe("tasksForRole", () => {
       ]),
     );
     expect(tasks).not.toContain("validation_pedagogique");
-    expect(tasks).not.toContain("resultats");
+    expect(tasks).not.toContain("notes");
   });
 
   it("un agent pédagogique reçoit uniquement les tâches de son domaine", () => {
     const tasks = tasksForRole("AGENT_PEDAGOGIQUE");
     expect(tasks).toEqual(
-      expect.arrayContaining(["validation_pedagogique", "resultats", "conduite", "communiquer"]),
+      expect.arrayContaining(["validation_pedagogique", "notes", "matieres", "conduite", "communiquer"]),
     );
     expect(tasks).not.toContain("inscription");
   });

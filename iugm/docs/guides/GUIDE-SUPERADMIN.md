@@ -45,7 +45,20 @@ Menu **Paramètres** :
 
 ## 5. Catalogue des matières
 
-Menu **Matières (catalogue)** : ajoutez les matières (nom, filière, niveau) et cochez, pour chacune, **Obligatoire** ou **Facultative**. Seul le superadmin alimente ce catalogue.
+Menu **Matières (catalogue)** : ajoutez les matières (nom, niveau, filière) avec leurs **paramètres de calcul**. Le catalogue est alimenté par le superadmin, ou par un agent pédagogique à qui vous accordez la tâche **« Gérer le catalogue des matières »** dans **Permissions** (limité à sa formation s'il en a une).
+
+| Paramètre | Effet sur la moyenne du semestre |
+|---|---|
+| **Semestre** (S1 ou S2) | La matière n'est proposée à la saisie des notes que pour ce semestre. |
+| **Coefficient** | Poids de la note dans la moyenne. |
+| **Part du CC** (%) | 0 = note unique. Sinon l'agent saisit une note de contrôle continu et une note d'examen, et la note de la matière vaut CC × part + examen × (100 − part). Ex. 40 % : CC 10 et examen 15 donnent 13. |
+| **Obligatoire** | Note × coefficient ; le coefficient compte au dénominateur. La moyenne n'est calculée qu'une fois toutes les matières obligatoires notées. |
+| **Facultative (bonus)** + seuil (10 par défaut) | Seuls les points au-delà du seuil comptent, multipliés par le coefficient, sans alourdir le dénominateur. Une note sous le seuil ne fait jamais baisser la moyenne. |
+| **Note éliminatoire** (obligatoire, optionnelle) | Une note strictement inférieure fait échouer le semestre (mention Échec) quelle que soit la moyenne ; l'avis d'admission n'est pas envoyé et le passage au niveau supérieur est bloqué (seul un superadmin peut le forcer, avec un motif). |
+
+Moyenne = (Σ note × coef des obligatoires + Σ bonus × coef des facultatives) ÷ Σ coef des obligatoires, plafonnée à 20.
+
+Les paramètres restent modifiables dans le catalogue (bouton **Enregistrer** de chaque matière) : les notes CC + examen sont recombinées et les moyennes déjà calculées avec des notes de la matière sont recalculées. Les matières ajoutées avant l'arrivée de ces paramètres sont marquées « S1 et S2 (à préciser) » : choisissez leur semestre.
 
 ## 6. Base de données (import de présélection)
 

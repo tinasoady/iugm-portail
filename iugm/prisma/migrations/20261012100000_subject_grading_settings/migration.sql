@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "Subject" ADD COLUMN     "bonusThreshold" DOUBLE PRECISION NOT NULL DEFAULT 10,
+ADD COLUMN     "coefficient" DOUBLE PRECISION NOT NULL DEFAULT 1,
+ADD COLUMN     "semester" TEXT;

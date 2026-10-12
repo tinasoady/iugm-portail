@@ -129,7 +129,8 @@ const NAV_ITEMS: NavItem[] = [
     href: "/admin/matieres",
     label: "Matières (catalogue)",
     icon: <FaBook />,
-    roles: ["SUPERADMIN"],
+    roles: ["SUPERADMIN", "AGENT_PEDAGOGIQUE"],
+    task: "matieres",
   },
   {
     href: "/admin/base-donnees",

@@ -3,7 +3,7 @@ import type { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { defaultEnrollmentYear, getStudentAverageForYear } from "@/lib/students";
+import { defaultEnrollmentYear, getStudentYearResult } from "@/lib/students";
 import { hasTaskPermission, getUserFormation } from "@/lib/permissions";
 import { AppShell } from "@/app/ui/app-shell";
 import { ReenrollForm } from "./reenroll-form";
@@ -68,14 +68,15 @@ export default async function ReinscriptionPage({
   const years = [defaultYear, `${startYear + 1}-${startYear + 2}`];
   const canForce = session.role === "SUPERADMIN";
 
-  // Moyenne générale (S1+S2) de l'année en cours de chaque étudiant, pour
-  // afficher l'éligibilité au passage avant même que l'agent ne tente de
-  // réinscrire (voir ReenrollForm) — voir getStudentAverageForYear.
-  const averages = new Map(
+  // Moyenne générale (S1+S2) de l'année en cours de chaque étudiant et
+  // notes éliminatoires, pour afficher l'éligibilité au passage avant même
+  // que l'agent ne tente de réinscrire (voir ReenrollForm) — voir
+  // getStudentYearResult.
+  const yearResults = new Map(
     await Promise.all(
       students.map(
         async (s) =>
-          [s.id, s.academicYear ? await getStudentAverageForYear(s.id, s.academicYear) : null] as const,
+          [s.id, s.academicYear ? await getStudentYearResult(s.id, s.academicYear) : null] as const,
       ),
     ),
   );
@@ -157,15 +158,21 @@ export default async function ReinscriptionPage({
                       )}
                     </td>
                     <td className="py-2.5 pr-4 whitespace-nowrap">
-                      {averages.get(s.id) != null ? (
+                      {yearResults.get(s.id) ? (
                         <span
                           className={
-                            averages.get(s.id)! >= 10
+                            yearResults.get(s.id)!.average >= 10 &&
+                            yearResults.get(s.id)!.eliminatedBy.length === 0
                               ? "font-semibold text-emerald-700 dark:text-emerald-400"
                               : "font-semibold text-rose-700 dark:text-rose-400"
                           }
                         >
-                          {averages.get(s.id)!.toFixed(2)}/20
+                          {yearResults.get(s.id)!.average.toFixed(2)}/20
+                          {yearResults.get(s.id)!.eliminatedBy.length > 0 && (
+                            <span className="block text-xs font-normal">
+                              Éliminé(e) : {yearResults.get(s.id)!.eliminatedBy.join(", ")}
+                            </span>
+                          )}
                         </span>
                       ) : (
                         <span className="text-xs text-zinc-500 dark:text-zinc-400">
@@ -184,7 +191,8 @@ export default async function ReinscriptionPage({
                         fullName={s.fullName}
                         currentLevel={s.level ?? s.track}
                         currentMention={s.mention ?? s.program}
-                        average={averages.get(s.id) ?? null}
+                        average={yearResults.get(s.id)?.average ?? null}
+                        eliminatedBy={yearResults.get(s.id)?.eliminatedBy ?? []}
                         canForce={canForce}
                         years={years}
                         defaultYear={

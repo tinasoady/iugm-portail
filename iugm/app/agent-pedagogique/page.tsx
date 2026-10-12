@@ -20,7 +20,6 @@ import {
   MENTION_BADGE_CLASSES,
 } from "@/app/ui/student-status";
 import { ValidatePedagoButton } from "./validate-button";
-import { AssignResultForm } from "./assign-result-form";
 
 const selectClass =
   "rounded-xl border border-black/10 bg-white px-3 py-1.5 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-black/20 dark:border-white/10 dark:bg-black dark:text-zinc-50";
@@ -93,8 +92,8 @@ export default async function AgentPedagogiquePage({
   const visiblePending = pending.slice(0, pendingLimit);
   const visibleInscrits = inscrits.slice(0, inscritsLimit);
   const visibleUpstream = upstream.slice(0, upstreamLimit);
-  // Résultat par défaut proposé : l'année consultée (sélecteur global), sinon
-  // l'année universitaire en cours
+  // Année proposée pour la saisie des notes : l'année consultée (sélecteur
+  // global), sinon l'année universitaire en cours
   const defaultYear = selectedYear ?? currentAcademicYear();
 
   return (
@@ -121,9 +120,9 @@ export default async function AgentPedagogiquePage({
             icon={<IconCap />}
           />
           <StatCard
-            label="Résultats assignés"
+            label="Résultats calculés"
             value={resultCount}
-            sublabel="moyennes enregistrées"
+            sublabel="moyennes de semestre"
             color="bg-sky-600"
             icon={<IconChart />}
           />
@@ -199,8 +198,9 @@ export default async function AgentPedagogiquePage({
             Étudiants inscrits ({inscrits.length})
           </h2>
           <p className="mb-4 text-xs text-zinc-500 dark:text-zinc-400">
-            Impression du reçu d&apos;inscription, assignation des résultats académiques (la
-            mention est calculée automatiquement) et listes par mention, filière ou département.
+            Impression du reçu d&apos;inscription, notes par matière et listes par mention, filière
+            ou département. Les résultats (moyenne et mention de chaque semestre) sont calculés
+            automatiquement à partir des notes, selon les coefficients et bonus des matières.
           </p>
 
           <form method="get" className="mb-4 flex flex-wrap items-center gap-2">
@@ -256,7 +256,6 @@ export default async function AgentPedagogiquePage({
                     <th scope="col" className="py-2 pr-4 font-medium">Nom</th>
                     <th scope="col" className="py-2 pr-4 font-medium">Filière / Niveau / Dépt</th>
                     <th scope="col" className="py-2 pr-4 font-medium">Résultats</th>
-                    <th scope="col" className="py-2 pr-4 font-medium">Assigner un résultat</th>
                     <th scope="col" className="py-2 pr-4 font-medium">Notes</th>
                     <th scope="col" className="py-2 font-medium">Reçu</th>
                   </tr>
@@ -274,7 +273,9 @@ export default async function AgentPedagogiquePage({
                       </td>
                       <td className="py-2.5 pr-4">
                         {s.results.length === 0 ? (
-                          <span className="text-xs text-zinc-500 dark:text-zinc-400">Aucun</span>
+                          <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                            En attente des notes
+                          </span>
                         ) : (
                           <ul className="space-y-1">
                             {s.results.map((r) => (
@@ -283,13 +284,15 @@ export default async function AgentPedagogiquePage({
                                 <span className={MENTION_BADGE_CLASSES[r.mention]}>
                                   {MENTION_LABELS[r.mention] ?? r.mention}
                                 </span>
+                                {r.eliminatedBy && (
+                                  <span className="block text-[11px] text-rose-600 dark:text-rose-400">
+                                    Éliminatoire : {r.eliminatedBy}
+                                  </span>
+                                )}
                               </li>
                             ))}
                           </ul>
                         )}
-                      </td>
-                      <td className="py-2.5 pr-4">
-                        <AssignResultForm studentId={s.id} defaultYear={defaultYear} />
                       </td>
                       <td className="py-2.5 pr-4">
                         <a

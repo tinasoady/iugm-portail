@@ -22,6 +22,7 @@ export function ReenrollForm({
   currentLevel,
   currentMention,
   average,
+  eliminatedBy = [],
   canForce,
   years,
   defaultYear,
@@ -31,13 +32,14 @@ export function ReenrollForm({
   currentLevel?: string | null;
   currentMention?: string | null;
   average: number | null;
+  eliminatedBy?: string[]; // matières sous leur note éliminatoire
   canForce: boolean;
   years: string[];
   defaultYear: string;
 }) {
   const [state, formAction, pending] = useActionState(reenrollAction, initialState);
   const next = nextLevel(currentLevel);
-  const eligible = average !== null && average >= 10;
+  const eligible = average !== null && average >= 10 && eliminatedBy.length === 0;
   const [levelChoice, setLevelChoice] = useState<"same" | "next">(
     next && eligible ? "next" : "same",
   );
@@ -124,6 +126,7 @@ export function ReenrollForm({
               {average !== null && (
                 <span className={eligible ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}>
                   — moyenne {average.toFixed(2)}/20
+                  {eliminatedBy.length > 0 && `, éliminé(e) en ${eliminatedBy.join(", ")}`}
                 </span>
               )}
             </label>
@@ -131,8 +134,8 @@ export function ReenrollForm({
         </div>
         {levelChoice === "next" && !eligible && !canForce && (
           <p className="text-[11px] text-rose-600 dark:text-rose-400">
-            Passage impossible : moyenne générale insuffisante ou pas encore saisie. Seul un
-            superadmin peut forcer le passage.
+            Passage impossible : moyenne générale insuffisante ou pas encore calculée, ou note
+            éliminatoire. Seul un superadmin peut forcer le passage.
           </p>
         )}
 
